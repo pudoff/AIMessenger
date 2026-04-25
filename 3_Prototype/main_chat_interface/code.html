@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#0b1c30",
+                    "outline": "#777587",
+                    "on-primary-fixed": "#0f0069",
+                    "on-tertiary-fixed": "#2a1700",
+                    "error": "#ba1a1a",
+                    "surface-container": "#e5eeff",
+                    "inverse-surface": "#213145",
+                    "outline-variant": "#c7c4d8",
+                    "primary-fixed": "#e2dfff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed": "#6ffbbe",
+                    "primary-container": "#4f46e5",
+                    "tertiary-fixed": "#ffddb8",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#006c49",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-dim": "#cbdbf5",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "secondary-container": "#6cf8bb",
+                    "tertiary": "#684000",
+                    "surface-tint": "#4d44e3",
+                    "on-secondary-container": "#00714d",
+                    "surface-container-high": "#dce9ff",
+                    "on-tertiary-container": "#ffd4a4",
+                    "surface-variant": "#d3e4fe",
+                    "surface-bright": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface": "#f8f9ff",
+                    "inverse-primary": "#c3c0ff",
+                    "on-surface": "#0b1c30",
+                    "background": "#f8f9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-container": "#dad7ff",
+                    "primary": "#3525cd",
+                    "on-surface-variant": "#464555",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#885500",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter", "sans-serif"],
+                    "body": ["Inter", "sans-serif"],
+                    "label": ["Inter", "sans-serif"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .message-bubble-inbound {
+            background-color: #dce9ff; /* surface-container-high */
+            color: #0b1c30; /* on-surface */
+        }
+        .message-bubble-outbound {
+            background: linear-gradient(135deg, #3525cd 0%, #4f46e5 100%);
+            color: #ffffff;
+        }
+        .glass-panel {
+            background: rgba(211, 228, 254, 0.6); /* surface-variant at 60% */
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/20">
+<div class="flex h-screen overflow-hidden">
+<!-- Left Sidebar (SideNavBar) -->
+<aside class="bg-slate-50 dark:bg-slate-900 h-screen w-80 flex-shrink-0 flex flex-col py-6 px-4">
+<div class="mb-8 px-2 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-lg font-bold tracking-tighter text-indigo-700 dark:text-indigo-300">The Lucid Flow</span>
+<span class="font-inter tracking-tight title-lg text-slate-500 text-xs">AI Assistant</span>
+</div>
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/20" data-alt="Close-up portrait of a professional woman in minimalist modern attire against a clean studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRIqE-G8j0sr4HsmVtRtMhCvmv0aytZ-q7oJTDe3OUdL_o0Ho3Hbj1eOyZ4aDAUF-m92kF4lobqk7-sXPXCHQfSsu2hdn0bdtbAFrNSYYEUxl-Wnwgm7AkCgOlHSwAQgjdB5hqcn_9xWJ9_Xj1vsSo0XcfT2eMnt7a4jzLL_qWaf7gFhDCfgjI5dHX1H02vS5EVfNtLRv1WSQm1LP4XJLXIbLM7bTxlGirPsufkklj80rPfpEZYUUbZujqPTMbnWlxwJ_qNXuKGtk"/>
+</div>
+<!-- New Chat CTA -->
+<button class="mb-6 flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 px-4 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:scale-95 duration-200 transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Chat</span>
+</button>
+<!-- Search Bar -->
+<div class="relative mb-6">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/60" placeholder="Search chats..." type="text"/>
+</div>
+<!-- Navigation Items -->
+<nav class="space-y-1 overflow-y-auto flex-1">
+<div class="px-2 py-1.5 rounded-xl text-indigo-700 dark:text-indigo-300 font-semibold bg-white/50 dark:bg-slate-800/50 flex items-center gap-3">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="text-sm">Chats</span>
+</div>
+<div class="px-2 py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="text-sm">Files</span>
+</div>
+<div class="px-2 py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined">group</span>
+<span class="text-sm">Contacts</span>
+</div>
+<div class="px-2 py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm">Settings</span>
+</div>
+<div class="mt-8 pt-6 border-t border-slate-200/50">
+<p class="px-2 mb-3 text-[10px] font-bold tracking-widest text-outline uppercase">Recent Channels</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:bg-white/40 transition-all text-sm" href="#">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+                            Product Team
+                        </a>
+<a class="flex items-center gap-3 px-2 py-2 rounded-lg text-indigo-700 bg-white/60 shadow-sm transition-all text-sm font-medium" href="#">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                            Marketing Strategy
+                        </a>
+<a class="flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:bg-white/40 transition-all text-sm" href="#">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+                            AI Dev
+                        </a>
+</div>
+</div>
+</nav>
+</aside>
+<!-- Main Chat Area -->
+<main class="flex-1 flex flex-col bg-surface-container-lowest relative">
+<!-- TopNavBar Cluster (Integrated) -->
+<header class="flex items-center justify-between px-8 h-16 w-full bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<h1 class="text-xl font-black tracking-tight text-slate-900">Marketing Strategy</h1>
+<span class="text-[10px] font-bold tracking-widest text-outline uppercase flex items-center gap-1.5">
+<span class="w-1 h-1 rounded-full bg-secondary"></span> 12 Active Members
+                        </span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex -space-x-2">
+<img alt="member" class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Portrait of a creative professional woman smiling gently" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3kl-UzxqrclWOlw8Bvpvv667nWXvh9wjt36f-AFRqzVCUS2CGHvpEubW29jl-K-CxuxDsv8KN7x1QVfnIRYa3wZqzlGn_2xbTPSWRLlZinlV1JGRJJrMDiHpRQvY_y84BmUNxhoEcDH9avnD5vtw8PvjmzR_Oez3wbGYskB6gSaHtBLxpI-slGn3gwU4zdZJd84MA2q_ANKjv1stnVs3FpUYSnywvaxf8Ritzbxhzoj2v5KL355_bZcBdpA16FHiHXDTfAMHniZg"/>
+<img alt="member" class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Close-up portrait of a thoughtful man in a tech office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoINVfmrQQWWL2OPI44NlGuZVwHHQn3Yzn-2FcfuvJEGLR297ENhPdrda9MT2SYsjRTPLhHgmuc2IJIZkOrLd0Oomnb73zkrHrFCiwWr-d5keKOcHi5ipc__GXxm4pye0kz3lr0jt8WspSS5bJQrvPY6_3TATSUHcy3Izz4qLi8PkaLXHsGFX73lOcf4Ouk2UsPm36UPzGf9T1NRCPzJFnBxhngPZDMme1O3BaKmbADvH9IgWrzWwHCyBQ0dRn0bTy_z9tyh8qgM0"/>
+<div class="w-7 h-7 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">+9</div>
+</div>
+<div class="flex items-center gap-4 text-slate-500">
+<button class="material-symbols-outlined hover:text-indigo-500 transition-all">notifications</button>
+<button class="material-symbols-outlined hover:text-indigo-500 transition-all">help_outline</button>
+<button class="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-primary hover:text-white transition-all">Upgrade</button>
+</div>
+</div>
+</header>
+<!-- Message Feed -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
+<!-- System/Time Marker -->
+<div class="flex justify-center">
+<span class="text-[10px] font-bold tracking-widest text-outline uppercase bg-surface-container px-3 py-1 rounded-full">Today</span>
+</div>
+<!-- Regular Message Inbound -->
+<div class="flex gap-4 max-w-2xl">
+<img alt="Alex" class="w-10 h-10 rounded-xl object-cover shrink-0" data-alt="Headshot of a modern software developer with glasses and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgoVI2NlffUE8yxc7ZssNFGVpNPsQ6BcDZGfHhmHD1MqCZpY9y4e3BzU-bg-U5XfaMDYTSbONNsDkwDtpDaUlJETwofJZuzXJyjsUSec08HJOhx9UOkA5zO4NwZ4n6ShC1XLOHWxUQfCCS8-_qTA8bryYc_alz8ocftgP3xC5YAc5kFlRmZQTMsgL5V4VCQuPGtciTQj2b_IctV1vA8Z5qBwHy60a3ttIU8-9sSEcKeAaZiiEAs74G9BLkMTZ3uTFcngpygTeWqLw"/>
+<div class="space-y-1">
+<div class="flex items-baseline gap-2">
+<span class="font-bold text-sm">Alex Rivera</span>
+<span class="text-[10px] text-outline font-medium">10:42 AM</span>
+</div>
+<div class="message-bubble-inbound p-4 rounded-xl rounded-tl-none shadow-sm text-sm leading-relaxed">
+                            I've finished the initial draft for the Q4 social media rollout. Looking at a heavy focus on video content this time around. What do you all think?
+                        </div>
+</div>
+</div>
+<!-- Question Message -->
+<div class="flex gap-4 max-w-2xl">
+<img alt="Sarah" class="w-10 h-10 rounded-xl object-cover shrink-0" data-alt="Professional woman looking directly at camera with professional workplace lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZYkInFEvjzJaVAxMS4zzV_pBVeScAPzQPITjk__eA_tKenWTKSU2oawNDE7HpkHwtfdBF2UnXJv91Hk5zUjeSZKKXznxdqfqYMJhRl3571ftRugsWBCaXugIRj_AaBBKCNZjxJhv52AR87Q4-rgOTwP3f0Ii8NvIEPDqRu1dAEHOVjFY-tSEhKSIBSOCMvgzGGWnnsS5x3E_kqY2EYCjaQsKP9y2DMbE17EaY67O9q1oKXtGkkyWn_6q4XKozF7xNdm5IJoiE4t0"/>
+<div class="space-y-1">
+<div class="flex items-baseline gap-2">
+<span class="font-bold text-sm">Sarah Chen</span>
+<span class="text-[10px] text-outline font-medium">10:45 AM</span>
+</div>
+<div class="relative bg-surface-container-high p-4 rounded-xl rounded-tl-none shadow-sm border-l-4 border-tertiary">
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-tertiary-container text-on-tertiary-container px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase">Question</span>
+</div>
+<p class="text-sm leading-relaxed italic text-on-surface">
+                                Have we confirmed the budget allocation for the influencer partnership phase yet? I need this to finalize the vendor contracts.
+                            </p>
+</div>
+</div>
+</div>
+<!-- Task Message -->
+<div class="flex gap-4 max-w-2xl">
+<div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="space-y-1 w-full">
+<div class="flex items-baseline gap-2">
+<span class="font-bold text-sm">Lumina AI</span>
+<span class="text-[10px] text-outline font-medium">10:46 AM</span>
+</div>
+<div class="relative bg-surface-container-high p-4 rounded-xl rounded-tl-none shadow-sm border-l-4 border-secondary">
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase">Task</span>
+</div>
+<div class="space-y-3">
+<p class="text-sm font-medium">I have analyzed the current budget docs and found some discrepancies. Action required:</p>
+<div class="bg-white/50 p-3 rounded-lg border border-outline-variant/20 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">check_circle</span>
+<span class="text-xs">Review 'Marketing_Spend_v2.xlsx' section 4.2</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Regular Message Outbound -->
+<div class="flex flex-row-reverse gap-4">
+<div class="w-10 h-10 rounded-xl bg-slate-200 overflow-hidden shrink-0">
+<img alt="Me" class="w-full h-full object-cover" data-alt="Self-portrait of the user, a modern professional woman in a bright home office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVJkUKtFixH8YDxqUN2x-j-bVm8qejCWY_4yUhYtOqSl4qGigj-IxNILXp0dZmrQLwCGdV-07V-8zwp78ObfdLlaJ4t_vr9S06FbWbIyQ7dGfrknmUWVLhWPqyTMTwTrL4EMLGi17wifhUg_YwOXH6VjIFuIUGfsZ07VbthEpHq5_emJ5-PSXzoWIJNfZ-WXGoNTwT5Ea7VU23XVZPSWdqSgZcZVW-1AbzpQpBpxrr-Rsy9AjMmjkjVyJHL9jo0jCLyGlMafnXyDA"/>
+</div>
+<div class="flex flex-col items-end space-y-1 max-w-xl">
+<div class="flex items-baseline gap-2">
+<span class="text-[10px] text-outline font-medium">10:50 AM</span>
+<span class="font-bold text-sm">Me</span>
+</div>
+<div class="message-bubble-outbound p-4 rounded-xl rounded-tr-none shadow-lg shadow-primary/10 text-sm leading-relaxed">
+                            I'm on it, Lumina. Sarah, I'll have that budget confirmation sent to your inbox by the end of the hour. Alex, let's touch base on the video aspect later this afternoon.
+                        </div>
+</div>
+</div>
+</div>
+<!-- Chat Input Area -->
+<div class="p-8 pt-0">
+<div class="bg-surface-container-low rounded-2xl flex items-end gap-3 p-3 group transition-all focus-within:bg-white focus-within:ring-1 focus-within:ring-primary/20">
+<div class="flex gap-1 pb-1">
+<button class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors text-outline">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors text-outline">
+<span class="material-symbols-outlined">mood</span>
+</button>
+</div>
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-1 resize-none h-10 max-h-32 placeholder:text-outline/50" placeholder="Message Marketing Strategy..." rows="1"></textarea>
+<button class="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-xl shadow-lg shadow-primary/30 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Right Side Panel -->
+<aside class="w-80 bg-surface h-screen border-l border-outline-variant/10 flex flex-col">
+<!-- Tabs -->
+<div class="flex border-b border-outline-variant/10">
+<button class="flex-1 py-4 text-xs font-bold tracking-widest uppercase text-primary border-b-2 border-primary">Search</button>
+<button class="flex-1 py-4 text-xs font-bold tracking-widest uppercase text-outline hover:text-on-surface transition-colors">Details</button>
+</div>
+<div class="p-6 space-y-8 overflow-y-auto">
+<!-- Search Input -->
+<div class="space-y-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Find in conversation..." type="text"/>
+</div>
+</div>
+<!-- Recent Searches -->
+<div class="space-y-4">
+<h3 class="text-[10px] font-bold tracking-widest text-outline uppercase">Recent Searches</h3>
+<div class="space-y-2">
+<button class="w-full text-left p-3 rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-3 text-sm group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">history</span>
+<span>Launch date</span>
+</button>
+<button class="w-full text-left p-3 rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-3 text-sm group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">history</span>
+<span>budget discussion</span>
+</button>
+<button class="w-full text-left p-3 rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-3 text-sm group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">history</span>
+<span>Q4 assets</span>
+</button>
+</div>
+</div>
+<!-- Shared Assets Grid (Bento Style) -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-[10px] font-bold tracking-widest text-outline uppercase">Media &amp; Files</h3>
+<button class="text-xs text-primary font-bold">View All</button>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="aspect-square rounded-xl overflow-hidden relative group">
+<img alt="asset" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Close-up of a modern minimalist office workstation with a laptop and clean desk setup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpdeZ44Ay0T1T2q6X2frV0IYe2hkA1tBPz971ca7Uk_EGja6p4DB1XunwsJ7oq55_KFGLPofyLOs7lnPa1h5X-fuqs59k6et5eCeTUILkGrDs4kewTzEg9Xf9n0QbNKr6W1ZQFf5zVPv2B1tfJKkAaC9jxdFI99hEYiOlHKFNeEmQmjJFdwU-5uceNTBjxJvLjJqPlCHSv9dpqTlH75B-lz1q8bnLQbmfpj5AWlS3eXed_mCs1F2dS4cpxsFrCdHaVaaN-4dipqwk"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-white">download</span>
+</div>
+</div>
+<div class="aspect-square rounded-xl overflow-hidden relative group">
+<img alt="asset" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Digital analytics dashboard showing vibrant line charts and data visualizations" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgxEiFHlUoW53Sau9qPM8K_-0C6HNuhhC_20uOh7iR4YVjNmvlZhDN6Myt5okAhGMi0580wFw7J61L9Vnhzi060MZCt8DVE27g9zeyG_rVJ2z49nUJtD1tU312VPMW-OQnAYmmWsVx73GJtOivsHAo3nI0sfs9ut3S8T-tfRvn0cnUesRhS_PQgBaQRpuKT1UKuVtqjXt958_Z06yTVbs4s8v9zcuYJCMO4sUbIpmsJsIf5mlIbRxhX2HxLrZVWGgqLWEKrbPdBzM"/>
+<div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-white">download</span>
+</div>
+</div>
+<div class="col-span-2 p-4 bg-surface-container-high rounded-xl flex items-center gap-4 group cursor-pointer">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold truncate">Q4_Plan_Draft.pdf</p>
+<p class="text-[10px] text-outline font-medium">2.4 MB • 2h ago</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

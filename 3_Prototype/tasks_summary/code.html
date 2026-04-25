@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina AI - Tasks &amp; Discussion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#0b1c30",
+                    "outline": "#777587",
+                    "on-primary-fixed": "#0f0069",
+                    "on-tertiary-fixed": "#2a1700",
+                    "error": "#ba1a1a",
+                    "surface-container": "#e5eeff",
+                    "inverse-surface": "#213145",
+                    "outline-variant": "#c7c4d8",
+                    "primary-fixed": "#e2dfff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed": "#6ffbbe",
+                    "primary-container": "#4f46e5",
+                    "tertiary-fixed": "#ffddb8",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#006c49",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-dim": "#cbdbf5",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "secondary-container": "#6cf8bb",
+                    "tertiary": "#684000",
+                    "surface-tint": "#4d44e3",
+                    "on-secondary-container": "#00714d",
+                    "surface-container-high": "#dce9ff",
+                    "on-tertiary-container": "#ffd4a4",
+                    "surface-variant": "#d3e4fe",
+                    "surface-bright": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface": "#f8f9ff",
+                    "inverse-primary": "#c3c0ff",
+                    "on-surface": "#0b1c30",
+                    "background": "#f8f9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-container": "#dad7ff",
+                    "primary": "#3525cd",
+                    "on-surface-variant": "#464555",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#885500",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(211, 228, 254, 0.6);
+            backdrop-filter: blur(24px);
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #3525cd 0%, #4f46e5 100%);
+        }
+        .ghost-border {
+            border: 1px solid rgba(199, 196, 216, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen overflow-hidden flex flex-col">
+<!-- TopNavBar from Shared Components -->
+<nav class="flex items-center justify-between px-8 h-16 w-full bg-white/80 backdrop-blur-xl docked full-width top-0 sticky z-50 shadow-sm font-inter text-sm font-medium">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black tracking-tight text-slate-900">Lucid AI</span>
+<div class="hidden md:flex items-center bg-surface-container-low px-4 py-2 rounded-xl">
+<span class="material-symbols-outlined text-outline text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-64" placeholder="Search discussions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-slate-500">
+<span class="material-symbols-outlined hover:text-indigo-500 transition-all cursor-pointer opacity-80 hover:opacity-100" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined hover:text-indigo-500 transition-all cursor-pointer opacity-80 hover:opacity-100" data-icon="help_outline">help_outline</span>
+</div>
+<button class="bg-primary text-on-primary px-4 py-1.5 rounded-lg font-semibold hover:opacity-90 transition-all">Upgrade</button>
+<img alt="User Avatar" class="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container" data-alt="portrait of a professional creative woman in a bright studio environment with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV0tpaBRykLzMi-7hW48cwogFQBGrbPimpAqQp1jipN2Xdrw9gtDY0C67AsL1eeKFQl_D-w--OsaCOIYwMTJr18lzfYmbM4qf31UINktESaIDfvTEeFAgJV7m-oeZSTxj3JXI6EHR_JZ1HlPfxzz-Yb-sDSmnerPk29jZLnUIO21-Ymtoy-IneqOnJiswj0pdkzV7BAu__-ptNvWTzJtSudzVjmHVWnKSmUJrokLL2R4YPH-uGlbLCK3Gi41TEOnIVIdUqKXj9Xrc"/>
+</div>
+</nav>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar from Shared Components -->
+<aside class="hidden md:flex flex-col h-full py-6 px-4 bg-slate-50 h-screen w-80 flex-shrink-0 font-inter tracking-tight">
+<div class="flex items-center gap-3 px-4 mb-8">
+<img alt="User Profile" class="w-10 h-10 rounded-xl" data-alt="abstract geometric logo representing fluid intelligence and AI flow with soft gradients" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyWf_YQIEFB9zx2gFvxBXEsUjueKrN2zLWhkjF80rdmj6LfRHx9GYUYVm6mzUXu5_gGuF6JT3QxDrmWyjn8PPqjeF48DGKkmHopbPzIWXwEgTxP75jKtEOYjAQWSoBXThEFVudvEA41ExbtxczaKfWUfgXDxdiBLj4Nq6LvBQiGePSWpAS10G7WJac54k1KhxHW9lYHdTEy30_JBTcHTPRCoyRKFOKIOHJ-ZJI-pt-3twbMya9pUUlPITAhe_b1hQb1pYO2S_dqiQ"/>
+<div>
+<h3 class="text-lg font-bold tracking-tighter text-indigo-700">The Lucid Flow</h3>
+<p class="text-xs text-slate-500">AI Assistant</p>
+</div>
+</div>
+<button class="mx-4 mb-8 primary-gradient text-on-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 scale-95 duration-200 hover:scale-100">
+<span class="material-symbols-outlined text-lg" data-icon="add">add</span>
+                New Chat
+            </button>
+<nav class="flex-1 space-y-1">
+<!-- Chats Active -->
+<a class="flex items-center gap-3 px-4 py-3 text-indigo-700 font-semibold bg-white/50 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Chats</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-indigo-600 hover:bg-white/40 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span>Files</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-indigo-600 hover:bg-white/40 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Contacts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-indigo-600 hover:bg-white/40 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Workspace -->
+<main class="flex flex-1 overflow-hidden bg-surface">
+<!-- Central Chat (Background Context) -->
+<section class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest">
+<header class="h-16 flex items-center px-8 ghost-border">
+<h2 class="text-xl font-bold text-on-background tracking-tight">Q3 Project Lumina</h2>
+</header>
+<div class="flex-1 overflow-y-auto p-8 space-y-8 opacity-40 select-none pointer-events-none">
+<div class="flex gap-4 max-w-2xl">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex-shrink-0"></div>
+<div class="bg-surface-container-high p-4 rounded-xl">
+<p class="body-md">We need to finalize the design system rollout strategy by Friday. Who is handling the documentation for the components?</p>
+</div>
+</div>
+<div class="flex gap-4 max-w-2xl ml-auto flex-row-reverse">
+<div class="w-8 h-8 rounded-full primary-gradient flex-shrink-0"></div>
+<div class="primary-gradient text-on-primary p-4 rounded-xl">
+<p class="body-md text-on-primary">I'll take the documentation. Let's schedule a sync with the design team tomorrow at 10 AM to confirm the tokens.</p>
+</div>
+</div>
+<div class="flex gap-4 max-w-2xl">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex-shrink-0"></div>
+<div class="bg-surface-container-high p-4 rounded-xl">
+<p class="body-md">Great. Also, don't forget to update the slide deck for the stakeholder meeting on Monday.</p>
+</div>
+</div>
+</div>
+<div class="p-6">
+<div class="bg-surface-container-low rounded-xl flex items-center p-4">
+<input class="bg-transparent border-none focus:ring-0 flex-1 opacity-50" disabled="" placeholder="Type a message..." type="text"/>
+<span class="material-symbols-outlined text-outline" data-icon="send">send</span>
+</div>
+</div>
+</section>
+<!-- Right Panel: Tasks & Discussion Summary -->
+<aside class="w-96 flex flex-col ghost-border bg-surface-container-low relative">
+<!-- Tabs -->
+<div class="flex border-b ghost-border border-outline-variant/10">
+<button class="flex-1 py-4 text-sm font-bold text-primary border-b-2 border-primary bg-surface-container-lowest">Summary</button>
+<button class="flex-1 py-4 text-sm font-medium text-outline hover:text-on-surface transition-colors">Resources</button>
+<button class="flex-1 py-4 text-sm font-medium text-outline hover:text-on-surface transition-colors">History</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8">
+<!-- Discussion Summary Section -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="label-md font-bold uppercase tracking-widest text-outline">Discussion Summary</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm space-y-4">
+<div class="flex gap-4">
+<span class="w-1 h-auto bg-primary rounded-full"></span>
+<p class="text-sm leading-relaxed text-on-surface">The team identified a critical deadline for the design system documentation, now set for this Friday.</p>
+</div>
+<div class="flex gap-4">
+<span class="w-1 h-auto bg-secondary rounded-full"></span>
+<p class="text-sm leading-relaxed text-on-surface">Agreed on a cross-functional sync involving the design team to synchronize token naming conventions.</p>
+</div>
+<div class="flex gap-4">
+<span class="w-1 h-auto bg-tertiary rounded-full"></span>
+<p class="text-sm leading-relaxed text-on-surface">Preparation for the stakeholder meeting on Monday is prioritized, requiring a deck update.</p>
+</div>
+</div>
+</section>
+<!-- Action Items Section -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="task_alt">task_alt</span>
+<h3 class="label-md font-bold uppercase tracking-widest text-outline">Action Items</h3>
+</div>
+<span class="text-xs font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">4 EXTRACTED</span>
+</div>
+<div class="space-y-3">
+<!-- Task 1 -->
+<div class="group bg-surface-container-lowest p-4 rounded-xl flex items-center gap-4 transition-all hover:translate-x-1 cursor-pointer">
+<input class="w-5 h-5 rounded border-outline text-primary focus:ring-primary transition-all" type="checkbox"/>
+<div class="flex-1">
+<p class="text-sm font-medium text-on-surface">Update slide deck</p>
+<p class="text-xs text-outline">Due Monday</p>
+</div>
+<img alt="Assignee" class="w-6 h-6 rounded-full border border-surface-container-high" data-alt="portrait of a focused man in professional attire against a blurred office window background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMtPivbUGsmBoVyTgSfYX8876Xc9lViVPqk_wgp76zquqVmAZk4WxVrNqmnKM0lWLFqMGGLpaEISRU8lnr917-jCOAjCPKLrmnEks-54HqXztYURE0dZq1UFksCg5HFYLb4Yw_KnIdo0162Xk8hfS8hhNbukI2-dURn2ltSS5N4N2Y1UnyPkfLxXUGN_Il5ovfPNqK99zhlWDjoG9O6FBL4qiwLrnnAdy-ARK3LJnqK57-Ri7Zv7tU66jaSQ8lp1rEYmbY0TpCN3A"/>
+</div>
+<!-- Task 2 -->
+<div class="group bg-surface-container-lowest p-4 rounded-xl flex items-center gap-4 transition-all hover:translate-x-1 cursor-pointer">
+<input class="w-5 h-5 rounded border-outline text-primary focus:ring-primary transition-all" type="checkbox"/>
+<div class="flex-1">
+<p class="text-sm font-medium text-on-surface">Schedule sync with design</p>
+<p class="text-xs text-outline">Due Tomorrow</p>
+</div>
+<img alt="Assignee" class="w-6 h-6 rounded-full border border-surface-container-high" data-alt="young professional woman in high-end studio lighting looking directly into the camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZfEN7IEnWVoauWobYU_ye9HCTCoQR8bZh1hJI0fzjPVl5hyluVDnk79z2efKcd4OQE0dbLg_cFwuX_-_bbgYxNZEWQrb8vKu8Vm_SCROD9g0wgZ43GNUQK6FN-G22rLo6X8fyanLS1YH5TiOSEDxwANBxXHg9nYxp8VcimHibwXntim3sB69ZArJG2lAgrAUiCN0kGpzjWG1eRMo9s7_ZVfCTZWZ92gRZhQQ60sLw5VltgpjrhdGo9mREp1sS30P1Oxi_i6TKLzg"/>
+</div>
+<!-- Task 3 -->
+<div class="group bg-surface-container-lowest p-4 rounded-xl flex items-center gap-4 transition-all hover:translate-x-1 cursor-pointer opacity-80">
+<input checked="" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary transition-all" type="checkbox"/>
+<div class="flex-1">
+<p class="text-sm font-medium text-on-surface line-through">Finalize documentation draft</p>
+<p class="text-xs text-secondary-fixed-dim">Completed</p>
+</div>
+<img alt="Assignee" class="w-6 h-6 rounded-full border border-surface-container-high" data-alt="closeup of a man's face with warm natural lighting in a contemporary creative environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYzpleY-N25-4ssKIKAzL4ho81KZigMYvr_6GPUO3v2jwsPXR5_8rsV7PeVMtjOFHYwG0u76iB5Wf0uRJj6FVhuTQpN175HMgnLdJK1eoub8CF5gZaJcg66_HvpbWooqH7qCb0MDuY4YLjqoHG2ZYMIzrAgmpwJA1QWozxo1kvW4ZqOyOLPS12COFxj1uWzif3pqMtbVLkdjDwIuR3Kadf5-1JM3cMYJLI0xmsTOX-g2WALiGCuOZDLb1kPpOKojcfkLhZMiQlUfg"/>
+</div>
+<!-- Task 4 -->
+<div class="group bg-surface-container-lowest p-4 rounded-xl flex items-center gap-4 transition-all hover:translate-x-1 cursor-pointer">
+<input class="w-5 h-5 rounded border-outline text-primary focus:ring-primary transition-all" type="checkbox"/>
+<div class="flex-1">
+<p class="text-sm font-medium text-on-surface">Confirm token naming</p>
+<p class="text-xs text-outline">Friday</p>
+</div>
+<div class="flex -space-x-2">
+<img alt="Assignee" class="w-6 h-6 rounded-full border-2 border-surface-container-lowest" data-alt="professional person portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIv20tt7J36aM18ucEMauFUHYAa3e1Amirq7q670T_LB2TzJHVp9cNwx04nrZuAcpcHO4Wn2XoJM0wTJNW8Z_6QNzoJHwi0mEolIuET7bFYDVu1biGKDwMRWNs8DgFTcZnPiZg4znpWHIIlpQjug-6LQUJKJkvrH8y93Yw9tDc5CGqLaOOTqCVyObOopB77YsWr7BV91vEAzeNIM54dZrxNWz8ea7rbHV-Vb24qQ2rGGJY96xV3OHYwYnE_aCyDYheg7nc2GMyKqU"/>
+<img alt="Assignee" class="w-6 h-6 rounded-full border-2 border-surface-container-lowest" data-alt="professional person portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLjLfgZICZ_0n7fFEjnQJ-SKJzfQdiViVAUNmeqUHXjkB_iNN17x-DN1LW2s5GvARDlBnpCYCIrRFMC8XUizn9M4CsgBRuZHEVcPSEDGcnnyYVVjCt3J-UoWea4Ea0ihnP3Xm4792rD0V7nlRJi2B5jG3wdSgSTGS7yhxT-w9k2VjwqfdPPYw8gaulVAXk-QFxSWOHg2F0Iq1pQH7cwWyLOr_4wie6D5zmoshsXd9hucQC-QzRNqZKQg7OgscjL04oFaVl65mlteA"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Context Card: AI Reasoning -->
+<div class="glass-panel p-5 rounded-2xl ghost-border">
+<p class="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-2">AI Context Engine</p>
+<p class="text-xs text-on-surface/70 leading-relaxed italic">Summaries and tasks are auto-updated based on the last 45 minutes of message activity. Changes to the project timeline were detected in message #204.</p>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="p-6 bg-surface-container-lowest border-t ghost-border">
+<button class="w-full primary-gradient text-on-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg" data-icon="share">share</span>
+                        Share Summary
+                    </button>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

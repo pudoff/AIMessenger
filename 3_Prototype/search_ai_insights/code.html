@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#0b1c30",
+                    "outline": "#777587",
+                    "on-primary-fixed": "#0f0069",
+                    "on-tertiary-fixed": "#2a1700",
+                    "error": "#ba1a1a",
+                    "surface-container": "#e5eeff",
+                    "inverse-surface": "#213145",
+                    "outline-variant": "#c7c4d8",
+                    "primary-fixed": "#e2dfff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed": "#6ffbbe",
+                    "primary-container": "#4f46e5",
+                    "tertiary-fixed": "#ffddb8",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#006c49",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#eff4ff",
+                    "surface-dim": "#cbdbf5",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "secondary-container": "#6cf8bb",
+                    "tertiary": "#684000",
+                    "surface-tint": "#4d44e3",
+                    "on-secondary-container": "#00714d",
+                    "surface-container-high": "#dce9ff",
+                    "on-tertiary-container": "#ffd4a4",
+                    "surface-variant": "#d3e4fe",
+                    "surface-bright": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface": "#f8f9ff",
+                    "inverse-primary": "#c3c0ff",
+                    "on-surface": "#0b1c30",
+                    "background": "#f8f9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-container": "#dad7ff",
+                    "primary": "#3525cd",
+                    "on-surface-variant": "#464555",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#885500",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(211, 228, 254, 0.6);
+            backdrop-filter: blur(24px);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c4d8;
+            border-radius: 10px;
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #3525cd 0%, #4f46e5 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body overflow-hidden h-screen flex">
+<!-- SideNavBar Anchor -->
+<aside class="h-screen w-80 flex-shrink-0 bg-slate-50 dark:bg-slate-900 flex flex-col py-6 px-4">
+<div class="mb-10 flex items-center gap-3 px-2">
+<div class="w-8 h-8 primary-gradient rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+</div>
+<span class="text-lg font-bold tracking-tighter text-indigo-700 dark:text-indigo-300">The Lucid Flow</span>
+</div>
+<button class="mb-8 w-full primary-gradient text-white py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 scale-95 duration-200 shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined">add</span>
+            New Chat
+        </button>
+<nav class="flex-1 space-y-2">
+<div class="text-indigo-700 dark:text-indigo-300 font-semibold bg-white/50 dark:bg-slate-800/50 flex items-center gap-4 py-3 px-4 rounded-xl transition-colors cursor-pointer">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-inter tracking-tight">Chats</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 transition-colors flex items-center gap-4 py-3 px-4 rounded-xl cursor-pointer">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-inter tracking-tight">Files</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 transition-colors flex items-center gap-4 py-3 px-4 rounded-xl cursor-pointer">
+<span class="material-symbols-outlined">group</span>
+<span class="font-inter tracking-tight">Contacts</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-white/40 transition-colors flex items-center gap-4 py-3 px-4 rounded-xl cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-inter tracking-tight">Settings</span>
+</div>
+</nav>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 px-2 flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="close-up portrait of a professional woman with a calm expression in a minimalist office setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwAKGkPW0-_A05aB1gANS79o3cx60WO0T4YdZUZnIr9jwXuPnWxeMznnDov-0up-SUPSjNqQpT96srfJ7KNdpZX811buRiNkPCzmKJWwi8uXS16EzlA8c0qY8kW58FT837t16rgeInqHF2p4W7tGH6QI7hL3DkEPSwg-STT-TJKNSbWx5fntVHbKWdx-OEiGn3W7VrEvuRSX4Zn43ieY6iCy-MI758z22FYXWr_3mSgH7ymEaG4GCoe8HKrxksFLJX5qlTBb_NsAM"/>
+<div>
+<p class="text-sm font-bold">User Profile</p>
+<p class="text-xs text-outline">AI Assistant Pro</p>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col relative overflow-hidden">
+<!-- TopNavBar Anchor -->
+<header class="flex items-center justify-between px-8 h-16 w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">Lucid AI</span>
+<div class="bg-surface-container-low px-4 py-2 rounded-full flex items-center gap-3 w-96">
+<span class="material-symbols-outlined text-outline text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-inter" placeholder="Global search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-slate-500">
+<span class="material-symbols-outlined cursor-pointer hover:text-indigo-500">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-indigo-500">help_outline</span>
+</div>
+<button class="bg-primary text-on-primary text-sm font-medium px-6 py-2 rounded-full hover:opacity-90 transition-all">
+                    Upgrade
+                </button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Central Chat Area -->
+<section class="flex-1 flex flex-col bg-surface border-r border-outline-variant/10">
+<div class="px-10 py-6 border-b border-outline-variant/5">
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Project Launch Q3</h2>
+<p class="text-sm text-outline">Active conversation with Lumina AI</p>
+</div>
+<div class="flex-1 overflow-y-auto p-10 space-y-8">
+<!-- Message Pair 1 -->
+<div class="flex flex-col items-start gap-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[10px] font-bold tracking-widest uppercase text-outline">Lumina AI</span>
+</div>
+<div class="max-w-2xl bg-surface-container-high text-on-surface p-5 rounded-xl rounded-tl-none relative shadow-sm">
+<p class="text-base leading-relaxed">I've analyzed the current trajectory for the <span class="font-semibold text-primary">Q3 launch</span>. Based on the current sprint velocity, we might need to compress the QA phase by 3 days to hit the September 15th window. How would you like to proceed with the resource allocation?</p>
+</div>
+</div>
+<!-- Message Pair 2 -->
+<div class="flex flex-col items-end gap-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[10px] font-bold tracking-widest uppercase text-outline">You</span>
+</div>
+<div class="max-w-2xl primary-gradient text-on-primary p-5 rounded-xl rounded-tr-none shadow-md">
+<p class="text-base leading-relaxed">Let's keep the QA phase intact. Can we pull the visual assets review forward? I want to make sure the brand alignment is perfect before the final build.</p>
+</div>
+</div>
+<!-- Message Pair 3 -->
+<div class="flex flex-col items-start gap-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[10px] font-bold tracking-widest uppercase text-outline text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">task_alt</span> TASK
+                            </span>
+</div>
+<div class="max-w-2xl bg-surface-container-high text-on-surface p-5 rounded-xl rounded-tl-none relative shadow-sm border-l-4 border-secondary">
+<p class="text-base leading-relaxed">Understood. I have rescheduled the visual review to August 24th. I've also flagged this in the project roadmap for the design team.</p>
+</div>
+</div>
+</div>
+<div class="p-8">
+<div class="bg-surface-container-low p-4 rounded-2xl flex items-end gap-4 border border-outline-variant/10 focus-within:border-primary/20 transition-all">
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 text-base" placeholder="Message Lumina AI..." rows="1"></textarea>
+<div class="flex gap-2">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<button class="w-10 h-10 primary-gradient text-white rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Panel: Insights & Search -->
+<section class="w-[420px] bg-surface-container-low flex flex-col">
+<div class="flex border-b border-outline-variant/10">
+<button class="flex-1 py-4 text-sm font-semibold text-outline hover:text-on-surface transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg">lightbulb</span>
+                        Insights
+                    </button>
+<button class="flex-1 py-4 text-sm font-semibold text-primary border-b-2 border-primary flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg">search</span>
+                        Search
+                    </button>
+</div>
+<div class="p-6 space-y-6 flex-1 overflow-y-auto">
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-outline-variant/20 rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:ring-primary/20 focus:border-primary/30 shadow-sm" type="text" value="What were the tasks for the Q3 launch?"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg">manage_search</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between px-1">
+<span class="text-[11px] font-bold tracking-widest uppercase text-outline">4 Semantic Results</span>
+<span class="text-[11px] font-bold text-primary px-2 py-1 bg-primary-fixed rounded-md">AI POWERED</span>
+</div>
+<!-- Result 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-transparent hover:border-primary/10 transition-all group">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-bold text-on-surface">Archive: July 12</span>
+</div>
+<span class="text-[10px] font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">98% Match</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">
+                                ...confirmed the <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">tasks for the Q3 launch</mark> include the API documentation freeze, the final security audit, and the <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">marketing assets</mark> handoff...
+                            </p>
+<button class="w-full py-2 bg-surface-container-low group-hover:bg-primary group-hover:text-white text-on-surface text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                                Jump to message
+                                <span class="material-symbols-outlined text-sm">arrow_outward</span>
+</button>
+</div>
+<!-- Result 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-transparent hover:border-primary/10 transition-all group">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-xs font-bold text-on-surface">Strategy Doc v2</span>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">92% Match</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">
+                                Strategic <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">tasks</mark> defined in the roadmap: Primary objective is the <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">Q3 launch</mark> scaling. Tasks: 1. Server load testing 2. Beta user onboarding...
+                            </p>
+<button class="w-full py-2 bg-surface-container-low group-hover:bg-primary group-hover:text-white text-on-surface text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                                Open Document
+                                <span class="material-symbols-outlined text-sm">description</span>
+</button>
+</div>
+<!-- Result 3 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-transparent hover:border-primary/10 transition-all group">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="text-xs font-bold text-on-surface">Archive: June 28</span>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">85% Match</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">
+                                ...discussed the preliminary <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">Q3 launch</mark> requirements. We need to assign specific <mark class="bg-primary/10 text-primary font-medium p-0.5 rounded">tasks</mark> to the dev-ops team for the cloud transition phase...
+                            </p>
+<button class="w-full py-2 bg-surface-container-low group-hover:bg-primary group-hover:text-white text-on-surface text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                                Jump to message
+                                <span class="material-symbols-outlined text-sm">arrow_outward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="p-6 bg-surface-container-high/30 border-t border-outline-variant/10">
+<div class="glass-panel p-4 rounded-2xl border border-white/40">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">auto_fix</span>
+<span class="text-sm font-bold text-on-surface">Summarize these results?</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-normal mb-3">Lumina can synthesize these results into a concise list of actionable tasks.</p>
+<button class="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                            Generate summary
+                            <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

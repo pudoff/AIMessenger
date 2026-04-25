@@ -1,0 +1,9 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegraph-ai-messenger
+    ports:
+      - "80:80"
+    restart: unless-stopped
