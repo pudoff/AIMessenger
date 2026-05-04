@@ -1,0 +1,31 @@
+.avatar,
+.avatar--primary {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.avatar {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border: 1px solid rgba(126, 137, 217, 0.22);
+}
+
+.avatar--primary {
+  color: white;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+}
+
+.avatar--circle {
+  border-radius: 999px;
+}
+
+.avatar--xl {
+  width: 92px;
+  height: 92px;
+  font-size: 1.4rem;
+}

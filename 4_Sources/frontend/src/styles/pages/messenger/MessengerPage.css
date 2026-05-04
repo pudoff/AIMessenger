@@ -1,0 +1,61 @@
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.section-header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+}
+
+.section-header p {
+  color: var(--text-soft);
+}
+
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-toolbar--stack {
+  align-items: flex-start;
+}
+
+.chat-toolbar__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chat-toolbar p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+}
+
+.search-box {
+  margin-bottom: 18px;
+}
+
+.workspace-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(126, 137, 217, 0.14), rgba(255, 255, 255, 0.9));
+  border: 1px solid var(--border);
+}
+
+.workspace-summary-card p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+}

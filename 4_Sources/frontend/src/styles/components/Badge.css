@@ -1,0 +1,18 @@
+.badge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-strong);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.badge--soft {
+  background: rgba(126, 137, 217, 0.14);
+  color: var(--accent-strong);
+}

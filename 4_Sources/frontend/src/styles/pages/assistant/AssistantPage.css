@@ -1,0 +1,33 @@
+.assistant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.assistant-form label {
+  width: 100%;
+}
+
+.assistant-form input {
+  width: 100%;
+  border: 1px solid rgba(126, 137, 217, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--text);
+}
+
+.assistant-form {
+  flex-direction: row;
+  align-items: center;
+}
+
+.assistant-cards {
+  margin-top: 18px;
+}
+
+.assistant-context {
+  margin: 18px 0 22px;
+}
