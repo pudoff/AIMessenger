@@ -1,23 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { MOCK_USERS } from '../data/users';
 
 const STORAGE_KEY = 'slon_auth';
-
-const credentials = {
-  user: {
-    login: 'user',
-    password: '123456',
-    role: 'user',
-    name: 'Елена Ковалева',
-    position: 'Проектный менеджер'
-  },
-  admin: {
-    login: 'admin',
-    password: 'admin123',
-    role: 'admin',
-    name: 'Администратор',
-    position: 'Системный администратор'
-  }
-};
 
 const AuthContext = createContext(null);
 
@@ -42,8 +26,13 @@ export function AuthProvider({ children }) {
   }, [currentUser]);
 
   const login = ({ login, password }) => {
-    const account = Object.values(credentials).find(
-      (item) => item.login === login && item.password === password
+    const identifier = login.toLowerCase().trim();
+
+    const account = MOCK_USERS.find(
+      (user) =>
+        (user.login.toLowerCase() === identifier || 
+        (user.email && user.email.toLowerCase() === identifier)) && 
+        user.password === password
     );
 
     if (!account) {
@@ -57,7 +46,8 @@ export function AuthProvider({ children }) {
       login: account.login,
       role: account.role,
       name: account.name,
-      position: account.position
+      position: account.position,
+      email: account.email
     };
 
     setCurrentUser(sessionUser);

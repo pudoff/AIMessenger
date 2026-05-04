@@ -30,10 +30,15 @@ function MessengerPage() {
     <div className="workspace workspace--messenger">
       {!selectedChatId ? (
         <section className="panel panel--list panel--list-only">
-          <div className="search-box">
-            <input placeholder="Поиск по чатам" />
-          </div>
-
+        <div className="search-box">
+          <input
+            type="search"
+            className="search-box__input"
+            placeholder="Поиск по чатам"
+            aria-label="Поиск по чатам"
+          />
+        </div>
+        
           <div className="list-stack">
             {mainChats.map((chat) => (
               <button

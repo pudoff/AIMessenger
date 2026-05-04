@@ -23,7 +23,7 @@
 @import './layouts/adminLayout.css';
 
 /* Pages */
-@import './pages/auth/LoginPage.css';
+@import './pages/auth/AuthPages.css';
 @import './pages/assistant/AssistantPage.css';
 @import './pages/messenger/CommunitiesPage.css';
 @import './pages/messenger/ContactsPage.css';

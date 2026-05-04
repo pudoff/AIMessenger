@@ -4,6 +4,8 @@ import AppLayout from './layouts/AppLayout';
 import AdminLayout from './layouts/AdminLayout';
 
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+
 import CommunitiesPage from './pages/messenger/CommunitiesPage';
 import MessengerPage from './pages/messenger/MessengerPage';
 import DirectChatsPage from './pages/messenger/DirectChatsPage';
@@ -28,6 +30,13 @@ function App() {
             <LoginPage />
           </RequireGuest>}/>
 
+      <Route
+        path="/register"
+        element={
+          <RequireGuest>
+            <RegisterPage />
+          </RequireGuest>}/>
+          
       {/* Пользователь */}
       <Route
         path="/app"

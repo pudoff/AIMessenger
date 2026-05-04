@@ -1,19 +1,18 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Logo from '../../components/Logo';
+import { useNavigate, Link } from 'react-router-dom';
+
 import { useAuth } from '../../context/AuthContext';
-import logoAuth from '../../assets/logoAuth.png';
+
+import logoAuth from '../../assets/logo_new.png';
+import Logo from '../../components/Logo';
 
 function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+
   const [form, setForm] = useState({ login: '', password: '' });
   const [error, setError] = useState('');
-
-  const fillDemo = (role) => {
-    setForm(role === 'admin' ? { login: 'admin', password: 'admin123' } : { login: 'user', password: '123456' });
-    setError('');
-  };
+  const [showPassword, hidePassword] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -28,51 +27,54 @@ function LoginPage() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
+    <div className="auth-page">
+      <div className="auth-card">
         <Logo src={logoAuth} hideText />
-        <div className="login-card__heading">
+        <div className="auth-card__heading">
           <h1>Вход в систему</h1>
           <p>Авторизуйтесь, чтобы перейти в рабочее пространство "Наш слон".</p>
         </div>
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             <span>Логин</span>
             <input
               value={form.login}
               onChange={(event) => setForm((prev) => ({ ...prev, login: event.target.value }))}
-              placeholder="Введите логин"
+              placeholder="Введите логин или почту"
             />
           </label>
 
-          <label>
+          <label className="password-field">
             <span>Пароль</span>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-              placeholder="Введите пароль"
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'} 
+                value={form.password}
+                onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                placeholder="Введите пароль"
+              />
+              <button
+                type="button" 
+                className="toggle-password-btn"
+                onClick={() => hidePassword((prev) => !prev)}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              >
+                {showPassword ? '⚫' : '👁️'}
+              </button>
+            </div>
           </label>
 
           {error && <div className="form-error">{error}</div>}
 
-          <button className="primary-button login-form__submit" type="submit">
+          <button className="primary-button auth-form__submit" type="submit">
             Войти
           </button>
+          <div className="auth-form__register">
+              <span>Нету аккаунта? </span>
+              <Link to="/register" className="auth-form__register-link">Зарегистрироваться</Link>
+          </div>
         </form>
-
-        <div className="demo-accounts">
-          <button className="demo-account" type="button" onClick={() => fillDemo('user')}>
-            <strong>Пользователь</strong>
-            <span>user / 123456</span>
-          </button>
-          <button className="demo-account" type="button" onClick={() => fillDemo('admin')}>
-            <strong>Администратор</strong>
-            <span>admin / admin123</span>
-          </button>
-        </div>
       </div>
     </div>
   );

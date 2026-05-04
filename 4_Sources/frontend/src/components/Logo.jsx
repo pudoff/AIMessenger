@@ -1,4 +1,4 @@
-import defaultLogo from '../assets/logo.png';
+import defaultLogo from '../assets/logo_new.png';
 
 function Logo({ compact = false, src = defaultLogo, hideText = false }) {
   return (
