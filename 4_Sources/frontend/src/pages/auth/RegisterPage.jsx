@@ -1,134 +1,166 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; //  добавили useEffect
 import { useNavigate, Link } from 'react-router-dom';
-
 import { useAuth } from '../../context/AuthContext';
-import { MOCK_USERS } from '../../data/users';
-import { LEGAL_CONTENT } from '../../data/legalContent';
 import { formatPhone, cleanPhone } from '../../utils/phoneMask';
+import { LEGAL_CONTENT } from '../../data/legalContent';
+import { validateField, parseBackendErrors, PASSWORD_REQUIREMENTS } from '../../utils/validation'; //  импорт
 
 import Logo from '../../components/Logo';
 import LegalModal from '../../components/LegalModal';
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { register, loading, error: globalError, clearError } = useAuth();
 
   const [form, setForm] = useState({
-    firstName: '', lastName: '', birthDate: '', login: '',
+    firstName: '', lastName: '', birthDate: '', username: '',
     phone: '', email: '', password: '', confirmPassword: '',
-    agreeTerms: false, agreePrivacy: false
+    accepted_user_agreement: false, accepted_privacy_policy: false
   });
   
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({}); //  Ошибки по полям
+  const [touched, setTouched] = useState({}); //  Отслеживаем, было ли поле сфокусировано
   const [activeModal, setActiveModal] = useState(null);
-  const [isSubmitted, setIsSubmitted] = useState(false); // 👈 Новый стейт
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  
+
+  //  Валидация поля при изменении (только если поле уже "трогали")
+  useEffect(() => {
+    const errors = {};
+    for (const [name, value] of Object.entries(form)) {
+      if (touched[name] || value) { // Валидируем, если поле трогали или оно не пустое
+        const err = validateField(name, value, form);
+        if (err) errors[name] = err;
+      }
+    }
+    setFieldErrors(errors);
+  }, [form, touched]);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
+    
     if (name === 'phone') {
       const cleaned = cleanPhone(value);
-      setForm((prev) => ({ ...prev, phone: cleaned }));
-      setError('');
+      setForm(prev => ({ ...prev, phone: cleaned }));
       return;
     }
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    setError('');
+    
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    clearError(); // Сбрасываем глобальную ошибку при любом вводе
   };
 
-  const handleSubmit = (event) => {
+  //  Помечаем поле как "тронутое" при потере фокуса
+  const handleBlur = (event) => {
+    const { name } = event.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    clearError();
     
-    const textFields = ['firstName', 'lastName', 'login', 'phone', 'email', 'password', 'confirmPassword', 'birthDate'];
-    if (textFields.some((field) => !form[field].trim())) return setError('Заполните все обязательные поля');
+    //  Валидируем ВСЕ поля перед отправкой
+    const newTouched = {};
+    const newErrors = {};
+    let hasError = false;
+    
+    for (const field of Object.keys(form)) {
+      newTouched[field] = true;
+      const err = validateField(field, form[field], form);
+      if (err) {
+        newErrors[field] = err;
+        hasError = true;
+      }
+    }
+    
+    setTouched(newTouched);
+    setFieldErrors(newErrors);
+    
+    if (hasError) {
+      // Прокрутка к первой ошибке
+      const firstErrorField = Object.keys(newErrors)[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
-    const birth = new Date(form.birthDate);
-    const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
-    if (birth > today || age < 14 || age > 100) return setError('Укажите корректную дату рождения (14–100 лет)');
-
-    if (form.phone.length !== 10) return setError('Введите корректный номер телефона');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Введите корректный email');
-    if (form.password !== form.confirmPassword) return setError('Пароли не совпадают');
-    if (MOCK_USERS.some((u) => u.login?.toLowerCase() === form.login.toLowerCase())) return setError('Этот логин уже занят');
-    if (MOCK_USERS.some((u) => u.email?.toLowerCase() === form.email.toLowerCase())) return setError('Этот email уже используется');
-    if (!form.agreeTerms || !form.agreePrivacy) return setError('Необходимо принять соглашения');
-
-    // 👇 Создаём пользователя (для демо), но НЕ логиним автоматически
-    const newUser = {
-      id: Date.now(),
-      firstName: form.firstName.trim(), lastName: form.lastName.trim(),
-      birthDate: form.birthDate, login: form.login.trim(),
-      phone: `+7${form.phone}`, email: form.email.trim().toLowerCase(),
-      password: form.password, role: 'user',
-      createdAt: new Date().toISOString(), agreedToTermsAt: new Date().toISOString(),
-      isEmailVerified: false // 👈 Флаг для будущей верификации
+    const payload = {
+      username: form.username.trim(),
+      password: form.password,
+      email: form.email.trim().toLowerCase(),
+      first_name: form.firstName.trim(),
+      last_name: form.lastName.trim(),
+      birth_date: form.birthDate,
+      phone_number: `+7${form.phone}`,
+      accepted_user_agreement: true,
+      accepted_privacy_policy: true
     };
 
-    MOCK_USERS.push(newUser);
+    const result = await register(payload);
     
-    // 👇 Показываем сообщение об успехе вместо авто-входа
-    setIsSubmitted(true);
-    setError('');
+    if (result.success) {
+      setIsSubmitted(true);
+    } else {
+      // 👇 Распределяем ошибки бэкенда по полям
+      const backendErrors = parseBackendErrors(result.errors || {});
+      setFieldErrors(prev => ({ ...prev, ...backendErrors }));
+      
+      // Если есть ошибки не по полям (non_field_errors) — показываем глобально
+      if (result.errors?.non_field_errors) {
+        // Можно добавить в globalError, но у нас он уже есть через useAuth
+      }
+      
+      // Фокус на первое поле с ошибкой
+      const firstBackendError = Object.keys(backendErrors)[0];
+      if (firstBackendError) {
+        const element = document.querySelector(`[name="${firstBackendError}"]`);
+        element?.focus();
+      }
+    }
   };
 
-  // Если форма отправлена — показываем экран успеха
-  if (isSubmitted) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <Logo hideText />
-          <div className="auth-card__heading">
-            <h1>✅ Проверьте почту</h1>
-            <p>Мы отправили ссылку для подтверждения на <strong>{form.email}</strong></p>
-          </div>
-
-          <div className="auth-form" style={{ textAlign: 'left', padding: '0 8px' }}>
-            <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
-              Перейдите по ссылке из письма, чтобы активировать аккаунт. 
-              Если письмо не пришло в течение 5 минут, проверьте папку «Спам».
-            </p>
-
-            <button 
-              className="secondary-button" 
-              type="button" 
-              onClick={() => navigate('/login')}
-              style={{ width: '100%' }}
-            >
-              Перейти ко входу
-            </button>
-
-            <button 
-              className="auth-form__footer-link" 
-              type="button" 
-              onClick={() => {
-                setIsSubmitted(false);
-                setForm({ ...form, password: '', confirmPassword: '' });
-                setError('');
-              }}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: 'var(--text-soft)', 
-                cursor: 'pointer', 
-                font: 'inherit',
-                marginTop: '12px'
-              }}
-            >
-              ← Вернуться и изменить данные
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 👇 Обычная форма регистрации (без изменений, кроме текста кнопки)
+  //  Форма валидна, если нет ошибок в тронутых полях и все обязательные заполнены
   const isFormValid = 
+    !Object.values(fieldErrors).some(err => err) &&
     form.firstName.trim() && form.lastName.trim() && form.birthDate &&
-    form.login.trim() && form.phone.length === 10 &&
+    form.username.trim() && form.phone.length === 10 &&
     form.email.trim() && form.password && form.confirmPassword &&
-    form.agreeTerms && form.agreePrivacy;
+    form.password === form.confirmPassword &&
+    form.accepted_user_agreement && form.accepted_privacy_policy;
 
+  // ─────────────────────────────────────────────────────────
+  //  Экран успеха
+  // ─────────────────────────────────────────────────────────
+  // if (isSubmitted) {
+  //   return (
+  //     <div className="auth-page">
+  //       <div className="auth-card">
+  //         <Logo hideText />
+  //         <div className="auth-card__heading">
+  //           <h1>✅ Проверьте почту</h1>
+  //           <p>Мы отправили ссылку для подтверждения на <strong>{form.email}</strong></p>
+  //         </div>
+  //         <div className="auth-form" style={{ textAlign: 'left', padding: '0 8px' }}>
+  //           <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
+  //             Перейдите по ссылке из письма, чтобы активировать аккаунт.
+  //           </p>
+  //           <button 
+  //             className="secondary-button" 
+  //             type="button" 
+  //             onClick={() => navigate('/login')}
+  //             style={{ width: '100%' }}
+  //           >
+  //             Перейти ко входу
+  //           </button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // ─────────────────────────────────────────────────────────
+  //  Форма регистрации
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -138,29 +170,87 @@ function RegisterPage() {
           <p>Заполните данные, чтобы перейти в рабочее пространство "Наш слон".</p>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit} noValidate> {/*  noValidate отключаем браузерную валидацию */}
+          
+          {/* Имя и Фамилия */}
           <div className="auth-form__row">
-            <label>
+            <label className={fieldErrors.firstName && touched.firstName ? 'auth-form__label--error' : ''}>
               <span>Имя *</span>
-              <input name="firstName" value={form.firstName} onChange={handleChange} placeholder="Иван" required />
+              <input 
+                name="firstName" 
+                value={form.firstName} 
+                onChange={handleChange} 
+                onBlur={handleBlur}
+                placeholder="Иван" 
+                required 
+                disabled={loading}
+                aria-invalid={!!(fieldErrors.firstName && touched.firstName)}
+                aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
+              />
+              {fieldErrors.firstName && touched.firstName && (
+                <span id="firstName-error" className="auth-form__field-error">{fieldErrors.firstName}</span>
+              )}
             </label>
-            <label>
+            <label className={fieldErrors.lastName && touched.lastName ? 'auth-form__label--error' : ''}>
               <span>Фамилия *</span>
-              <input name="lastName" value={form.lastName} onChange={handleChange} placeholder="Иванов" required />
+              <input 
+                name="lastName" 
+                value={form.lastName} 
+                onChange={handleChange} 
+                onBlur={handleBlur}
+                placeholder="Иванов" 
+                required 
+                disabled={loading}
+                aria-invalid={!!(fieldErrors.lastName && touched.lastName)}
+              />
+              {fieldErrors.lastName && touched.lastName && (
+                <span className="auth-form__field-error">{fieldErrors.lastName}</span>
+              )}
             </label>
           </div>
 
+          {/* Дата рождения */}
           <div className="auth-form__field">
             <span className="auth-form__label">Дата рождения *</span>
-            <input name="birthDate" type="date" value={form.birthDate} onChange={handleChange} required />
+            <input 
+              name="birthDate" 
+              type="date" 
+              value={form.birthDate} 
+              onChange={handleChange} 
+              onBlur={handleBlur}
+              required 
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.birthDate && touched.birthDate)}
+            />
+            {fieldErrors.birthDate && touched.birthDate && (
+              <span className="auth-form__field-error">{fieldErrors.birthDate}</span>
+            )}
           </div>
 
-          <label>
+          {/* Логин */}
+          <label className={fieldErrors.username && touched.username ? 'auth-form__label--error' : ''}>
             <span>Логин для чата *</span>
-            <input name="login" value={form.login} onChange={handleChange} placeholder="Придумайте логин" required />
+            <input 
+              name="username" 
+              value={form.username} 
+              onChange={handleChange} 
+              onBlur={handleBlur}
+              placeholder="ivan_ivanov (латиница, цифры, _)" 
+              pattern="^[a-zA-Z0-9_.+-]+$"
+              required 
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.username && touched.username)}
+            />
+            {fieldErrors.username && touched.username && (
+              <span className="auth-form__field-error">{fieldErrors.username}</span>
+            )}
+            {!fieldErrors.username && form.username && /^[a-zA-Z0-9_.+-]+$/.test(form.username) && form.username.length >= 3 && (
+              <span className="auth-form__field-success">✓ Допустимый формат</span>
+            )}
           </label>
 
-          <label>
+          {/* Телефон */}
+          <label className={fieldErrors.phone && touched.phone ? 'auth-form__label--error' : ''}>
             <span>Телефон *</span>
             <input
               name="phone"
@@ -168,54 +258,154 @@ function RegisterPage() {
               inputMode="tel"
               value={formatPhone(form.phone)}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="+7 (___) ___-__-__"
               required
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.phone && touched.phone)}
             />
+            {fieldErrors.phone && touched.phone && (
+              <span className="auth-form__field-error">{fieldErrors.phone}</span>
+            )}
           </label>
 
-          <label>
+          {/* Email */}
+          <label className={fieldErrors.email && touched.email ? 'auth-form__label--error' : ''}>
             <span>Почта *</span>
-            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="example@mail.ru" required />
+            <input 
+              name="email" 
+              type="email" 
+              value={form.email} 
+              onChange={handleChange} 
+              onBlur={handleBlur}
+              placeholder="example@mail.ru" 
+              required 
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.email && touched.email)}
+            />
+            {fieldErrors.email && touched.email && (
+              <span className="auth-form__field-error">{fieldErrors.email}</span>
+            )}
           </label>
 
-          <label>
+          {/* Пароль с подсказками требований */}
+          <label className={fieldErrors.password && touched.password ? 'auth-form__label--error' : ''}>
             <span>Пароль *</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Придумайте пароль" required minLength={6} />
+            <input 
+              name="password" 
+              type="password" 
+              value={form.password} 
+              onChange={handleChange} 
+              onBlur={handleBlur}
+              placeholder="Придумайте надёжный пароль" 
+              required 
+              minLength={8}
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.password && touched.password)}
+              aria-describedby="password-requirements"
+            />
+            
+            {/*  Подсказки требований к паролю */}
+            <ul id="password-requirements" className="password-requirements">
+              {PASSWORD_REQUIREMENTS.map((req, i) => {
+                const isMet = form.password ? req.test(form.password) : false;
+                const showAsError = touched.password && !isMet && fieldErrors.password;
+                return (
+                  <li 
+                    key={i} 
+                    className={`password-requirement ${isMet ? 'password-requirement--met' : ''} ${showAsError ? 'password-requirement--error' : ''}`}
+                  >
+                    <span className="password-requirement__icon">{isMet ? '✓' : '○'}</span>
+                    {req.text}
+                  </li>
+                );
+              })}
+            </ul>
+            
+            {/* Ошибка пароля (в т.ч. от бэкенда) */}
+            {fieldErrors.password && touched.password && (
+              <span className="auth-form__field-error auth-form__field-error--block">{fieldErrors.password}</span>
+            )}
           </label>
 
-          <label>
+          {/* Подтверждение пароля */}
+          <label className={fieldErrors.confirmPassword && touched.confirmPassword ? 'auth-form__label--error' : ''}>
             <span>Повторите пароль *</span>
-            <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Подтвердите пароль" required />
+            <input 
+              name="confirmPassword" 
+              type="password" 
+              value={form.confirmPassword} 
+              onChange={handleChange} 
+              onBlur={handleBlur}
+              placeholder="Подтвердите пароль" 
+              required 
+              disabled={loading}
+              aria-invalid={!!(fieldErrors.confirmPassword && touched.confirmPassword)}
+            />
+            {fieldErrors.confirmPassword && touched.confirmPassword && (
+              <span className="auth-form__field-error">{fieldErrors.confirmPassword}</span>
+            )}
+            {form.confirmPassword && form.password === form.confirmPassword && touched.confirmPassword && (
+              <span className="auth-form__field-success">✓ Пароли совпадают</span>
+            )}
           </label>
 
+          {/* Чекбоксы соглашений */}
           <div className="auth-form__agreements">
-            <label className="auth-form__checkbox">
-              <input type="checkbox" name="agreeTerms" checked={form.agreeTerms} onChange={handleChange} required />
+            <label className={`auth-form__checkbox ${fieldErrors.accepted_user_agreement && touched.accepted_user_agreement ? 'auth-form__checkbox--error' : ''}`}>
+              <input 
+                type="checkbox" 
+                name="accepted_user_agreement" 
+                checked={form.accepted_user_agreement} 
+                onChange={handleChange} 
+                onBlur={handleBlur}
+                required 
+                disabled={loading} 
+              />
               <span>
                 Я принимаю{' '}
-                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('terms')}>
+                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('terms')} disabled={loading}>
                   пользовательское соглашение
                 </button>{' '}
                 *
               </span>
+              {fieldErrors.accepted_user_agreement && touched.accepted_user_agreement && (
+                <span className="auth-form__field-error">{fieldErrors.accepted_user_agreement}</span>
+              )}
             </label>
-            <label className="auth-form__checkbox">
-              <input type="checkbox" name="agreePrivacy" checked={form.agreePrivacy} onChange={handleChange} required />
+            <label className={`auth-form__checkbox ${fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy ? 'auth-form__checkbox--error' : ''}`}>
+              <input 
+                type="checkbox" 
+                name="accepted_privacy_policy" 
+                checked={form.accepted_privacy_policy} 
+                onChange={handleChange} 
+                onBlur={handleBlur}
+                required 
+                disabled={loading} 
+              />
               <span>
                 Я соглашаюсь с{' '}
-                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('privacy')}>
+                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('privacy')} disabled={loading}>
                   политикой конфиденциальности
                 </button>{' '}
                 *
               </span>
+              {fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy && (
+                <span className="auth-form__field-error">{fieldErrors.accepted_privacy_policy}</span>
+              )}
             </label>
           </div>
 
-          {error && <div className="form-error">{error}</div>}
+          {/* Глобальная ошибка (не по полям) */}
+          {globalError && <div className="form-error">{globalError}</div>}
 
-          {/* 👇 Кнопка с новым текстом */}
-          <button className="primary-button auth-form__submit" type="submit" disabled={!isFormValid}>
-            Отправить ссылку на email
+          <button 
+            className="primary-button auth-form__submit" 
+            type="submit" 
+            disabled={!isFormValid || loading}
+            aria-busy={loading}
+          >
+            {loading ? 'Регистрация...' : 'Отправить ссылку на email'}
           </button>
 
           <div className="auth-form__footer">
@@ -225,18 +415,8 @@ function RegisterPage() {
         </form>
       </div>
 
-      <LegalModal
-        isOpen={activeModal === 'terms'}
-        onClose={() => setActiveModal(null)}
-        title={LEGAL_CONTENT.terms.title}
-        sections={LEGAL_CONTENT.terms.sections}
-      />
-      <LegalModal
-        isOpen={activeModal === 'privacy'}
-        onClose={() => setActiveModal(null)}
-        title={LEGAL_CONTENT.privacy.title}
-        sections={LEGAL_CONTENT.privacy.sections}
-      />
+      <LegalModal isOpen={activeModal === 'terms'} onClose={() => setActiveModal(null)} title={LEGAL_CONTENT.terms.title} sections={LEGAL_CONTENT.terms.sections} />
+      <LegalModal isOpen={activeModal === 'privacy'} onClose={() => setActiveModal(null)} title={LEGAL_CONTENT.privacy.title} sections={LEGAL_CONTENT.privacy.sections} />
     </div>
   );
 }

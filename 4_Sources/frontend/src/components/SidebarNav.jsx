@@ -15,6 +15,14 @@ const items = [
 function SidebarNav() {
   const { currentUser, logout } = useAuth();
 
+  const fullName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim() 
+                 || currentUser?.username || 'Пользователь';
+  
+  const initials = (fullName.slice(0, 2) || '??').toUpperCase();
+
+  const roleLabels = { user: 'Сотрудник', admin: 'Администратор' };
+  const displayRole = roleLabels[currentUser?.role] || '';
+
   return (
     <aside className="shell-sidebar">
       <Logo compact />
@@ -24,12 +32,10 @@ function SidebarNav() {
       </button>
 
       <nav className="shell-nav">
-        {items.map((item) => (
+        {items.map((item) =>
           item.disabled ? (
             <div key={item.label} className="shell-nav__item">
-              <span className="shell-nav__icon" aria-hidden="true">
-                {item.icon}
-              </span>
+              <span className="shell-nav__icon" aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
             </div>
           ) : (
@@ -41,22 +47,20 @@ function SidebarNav() {
                 `shell-nav__item ${isActive ? 'shell-nav__item--active' : ''}`
               }
             >
-              <span className="shell-nav__icon" aria-hidden="true">
-                {item.icon}
-              </span>
+              <span className="shell-nav__icon" aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           )
-        ))}
+        )}
       </nav>
 
       <div className="profile-card">
         <div className="avatar avatar--primary">
-          {currentUser?.name?.slice(0, 2).toUpperCase()}
+          {initials}
         </div>
         <div className="profile-card__text">
-          <strong>{currentUser?.name}</strong>
-          <span>{currentUser?.position}</span>
+          <strong>{fullName}</strong>
+          <span>{displayRole}</span>
         </div>
       </div>
 
