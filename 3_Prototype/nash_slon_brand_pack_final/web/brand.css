@@ -1,0 +1,48 @@
+:root {
+  --nash-blue: #0033A0;
+  --nash-red: #D52B1E;
+  --nash-bg: #F4EDE0;
+  --nash-white: #FFFFFF;
+}
+
+.nash-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--nash-blue);
+}
+
+.nash-brand__logo { width: 96px; height: auto; }
+
+.nash-brand__title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 48px;
+  line-height: 0.9;
+  color: var(--nash-blue);
+  margin: 0;
+}
+
+.nash-brand__sub {
+  font-family: "Inter", Arial, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  color: var(--nash-blue);
+  margin-top: 8px;
+}
+
+.nash-brand__slogan {
+  font-family: "Inter", Arial, sans-serif;
+  font-weight: 600;
+  color: var(--nash-red);
+  margin-top: 8px;
+}
+
+.nash-elephant-bounce {
+  animation: nash-bounce 1.2s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+@keyframes nash-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
