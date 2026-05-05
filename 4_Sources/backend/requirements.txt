@@ -4,4 +4,3 @@ psycopg[binary]==3.2.13
 python-dotenv==1.2.2
 gunicorn==26.0.0
 whitenoise==6.12.0
-pytest==9.0.3
