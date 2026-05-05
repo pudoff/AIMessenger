@@ -1,3 +1,9 @@
+import os
+from io import StringIO
+from unittest.mock import patch
+
+from django.core.management import CommandError, call_command
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -117,3 +123,46 @@ class AuthApiTests(APITestCase):
         response = self.client.get(reverse('user-list'))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SeedAdminUserCommandTests(TestCase):
+    def test_creates_admin_from_env_when_missing(self):
+        with patch.dict(
+            os.environ,
+            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "StrongPassword123"},
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
+
+        user = User.objects.get(username="admin")
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_staff)
+        self.assertEqual(user.role, User.Role.ADMIN)
+        self.assertTrue(user.check_password("StrongPassword123"))
+
+    def test_does_not_update_existing_user(self):
+        existing_user = User.objects.create_user(username="admin", password="OldPassword123")
+
+        with patch.dict(
+            os.environ,
+            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "NewPassword123"},
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
+
+        self.assertEqual(User.objects.count(), 1)
+        existing_user.refresh_from_db()
+        self.assertFalse(existing_user.is_superuser)
+        self.assertFalse(existing_user.is_staff)
+        self.assertTrue(existing_user.check_password("OldPassword123"))
+
+    def test_skips_when_admin_env_is_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            call_command("seed_admin_user", stdout=StringIO())
+
+        self.assertFalse(User.objects.exists())
+
+    def test_requires_username_and_password_together(self):
+        with patch.dict(os.environ, {"ADMIN_USER": "admin"}, clear=True):
+            with self.assertRaises(CommandError):
+                call_command("seed_admin_user", stdout=StringIO())
