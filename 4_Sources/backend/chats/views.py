@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from users.permissions import is_project_admin
 from .models import Chat, ChatMember
 from .permissions import IsChatMember, IsChatMemberRecordVisible, IsChatOwnerOrAdminForUnsafe
 from .serializers import ChatMemberSerializer, ChatSerializer
@@ -13,7 +14,7 @@ class ChatViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Chat.objects.prefetch_related('chat_members')
         user = self.request.user
-        if user.is_staff or user.is_superuser:
+        if is_project_admin(user):
             return queryset
         return queryset.filter(chat_members__user=user).distinct()
 
@@ -33,7 +34,7 @@ class ChatMemberViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = ChatMember.objects.select_related('chat', 'user')
         user = self.request.user
-        if user.is_staff or user.is_superuser:
+        if is_project_admin(user):
             filtered_queryset = queryset
         else:
             filtered_queryset = queryset.filter(chat__chat_members__user=user)

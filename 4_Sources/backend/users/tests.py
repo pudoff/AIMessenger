@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -117,3 +118,36 @@ class AuthApiTests(APITestCase):
         response = self.client.get(reverse('user-list'))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_role_admin_can_access_admin_users_endpoint(self):
+        user = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(user)
+
+        response = self.client.get(reverse('user-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_drf_login_redirects_to_api_root(self):
+        self.assertEqual(settings.LOGIN_REDIRECT_URL, '/api/')
+
+        User.objects.create_user(username='demo', password='StrongPassword123')
+
+        response = self.client.post(
+            '/api/auth/login/',
+            {'username': 'demo', 'password': 'StrongPassword123'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response['Location'], '/api/')
+
+    def test_cors_preflight_allows_local_frontend_authorization_header(self):
+        response = self.client.options(
+            reverse('api-me'),
+            HTTP_ORIGIN='http://localhost:5173',
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD='GET',
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS='authorization',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['access-control-allow-origin'], 'http://localhost:5173')
+        self.assertIn('authorization', response['access-control-allow-headers'].lower())

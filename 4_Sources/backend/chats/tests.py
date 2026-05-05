@@ -83,6 +83,26 @@ class ChatAccessTests(APITestCase):
         self.chat.refresh_from_db()
         self.assertEqual(self.chat.title, 'Changed by owner')
 
+    def test_role_admin_can_see_and_update_any_chat(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(admin)
+
+        list_response = self.client.get(reverse('chat-list'))
+        update_response = self.client.patch(
+            reverse('chat-detail', args=[self.foreign_chat.id]),
+            {'title': 'Changed by role admin'},
+            format='json',
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            sorted(item['id'] for item in results(list_response)),
+            sorted([self.chat.id, self.foreign_chat.id]),
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.foreign_chat.refresh_from_db()
+        self.assertEqual(self.foreign_chat.title, 'Changed by role admin')
+
 
 class ChatMemberAccessTests(APITestCase):
     def setUp(self):
@@ -138,6 +158,19 @@ class ChatMemberAccessTests(APITestCase):
 
     def test_owner_can_add_chat_member(self):
         self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            reverse('chat-member-list'),
+            {'chat': self.chat.id, 'user': self.new_user.id, 'role': ChatMember.Role.MEMBER},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ChatMember.objects.filter(chat=self.chat, user=self.new_user).exists())
+
+    def test_role_admin_can_add_chat_member_without_chat_membership(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(admin)
 
         response = self.client.post(
             reverse('chat-member-list'),

@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from users.permissions import is_project_admin
 from .models import Message
 from .permissions import CanWriteMessageInChat, IsMessageChatMember
 from .serializers import MessageSerializer
@@ -13,7 +14,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Message.objects.select_related('chat', 'sender')
         user = self.request.user
-        if not (user.is_staff or user.is_superuser):
+        if not is_project_admin(user):
             queryset = queryset.filter(chat__chat_members__user=user)
 
         chat_id = self.request.query_params.get('chat')
