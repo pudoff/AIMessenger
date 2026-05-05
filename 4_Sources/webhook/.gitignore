@@ -1,0 +1,11 @@
+node_modules
+workspace.yml
+workspace.yaml
+dist
+logs
+.idea
+.env
+.git
+.adminjs
+.vscode
+*.sql
