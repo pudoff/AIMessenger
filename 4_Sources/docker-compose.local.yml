@@ -1,0 +1,65 @@
+name: aimessenger
+
+services:
+  traefik:
+    image: traefik:3.6.9
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.env:/app/.env:ro
+      - aimessenger_static_data:/app/staticfiles
+    entrypoint: /app/entrypoint.sh
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18.3
+    restart: always
+    container_name: postgres
+    ports:
+      - "5432:${POSTGRES_PORT}"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - aimessenger_postgres_data:/var/lib/postgresql/18/main
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d ${DB_NAME} -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 1s
+      retries: 10
+      start_period: 5s
+      start_interval: 1s
+
+volumes:
+  aimessenger_postgres_data:
+  aimessenger_static_data:
+
+networks:
+  backend:
+    driver: bridge

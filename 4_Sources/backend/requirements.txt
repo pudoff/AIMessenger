@@ -2,3 +2,5 @@ Django==5.2.13
 djangorestframework==3.17.1
 psycopg[binary]==3.2.13
 python-dotenv==1.2.2
+gunicorn==26.0.0
+whitenoise==6.12.0
