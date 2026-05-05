@@ -5,6 +5,7 @@
 ### Запуск
 1. открыть docker desktop
 2. `cd 4_Sources`
-3. `make local`
+3. `cp .env.example .env`
+4. `make local`
 
 Если возникла ошибка при выполнении `make local` - возможно у вас не установен `make`, выполните `sudo apt install make`
