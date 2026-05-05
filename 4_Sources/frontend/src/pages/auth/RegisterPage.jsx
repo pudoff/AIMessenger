@@ -3,76 +3,131 @@ import { useNavigate, Link } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_USERS } from '../../data/users';
+import { LEGAL_CONTENT } from '../../data/legalContent';
+import { formatPhone, cleanPhone } from '../../utils/phoneMask';
 
 import Logo from '../../components/Logo';
+import LegalModal from '../../components/LegalModal';
 
 function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const [form, setForm] = useState({
-    login: '',
-    name: '',
-    email: '',
-    position: '',
-    password: '',
-    confirmPassword: ''
+    firstName: '', lastName: '', birthDate: '', login: '',
+    phone: '', email: '', password: '', confirmPassword: '',
+    agreeTerms: false, agreePrivacy: false
   });
+  
   const [error, setError] = useState('');
+  const [activeModal, setActiveModal] = useState(null);
+  const [isSubmitted, setIsSubmitted] = useState(false); // 👈 Новый стейт
 
-  // Универсальный обработчик для всех полей
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setError(''); // Сбрасываем ошибку при любом вводе
+    const { name, value, type, checked } = event.target;
+    if (name === 'phone') {
+      const cleaned = cleanPhone(value);
+      setForm((prev) => ({ ...prev, phone: cleaned }));
+      setError('');
+      return;
+    }
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setError('');
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-
-    // 1. Проверка на пустоту
-    const requiredFields = ['login', 'name', 'email', 'position', 'password', 'confirmPassword'];
-    const isEmpty = requiredFields.some((field) => !form[field].trim());
-    if (isEmpty) return setError('Заполните все поля');
-
-    // 2. Валидация email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      return setError('Введите корректный email');
-    }
-
-    // 3. Совпадение паролей
-    if (form.password !== form.confirmPassword) {
-      return setError('Пароли не совпадают');
-    }
-
-    // 4. Проверка уникальности логина
-    if (MOCK_USERS.some((user) => user.login === form.login.trim())) {
-      return setError('Этот логин уже занят');
-    }
-
-    // 5. Проверка уникальности email (регистронезависимо)
-    if (MOCK_USERS.some((user) => user.email?.toLowerCase() === form.email.toLowerCase())) {
-      return setError('Этот email уже используется');
-    }
     
+    const textFields = ['firstName', 'lastName', 'login', 'phone', 'email', 'password', 'confirmPassword', 'birthDate'];
+    if (textFields.some((field) => !form[field].trim())) return setError('Заполните все обязательные поля');
+
+    const birth = new Date(form.birthDate);
+    const today = new Date();
+    const age = today.getFullYear() - birth.getFullYear();
+    if (birth > today || age < 14 || age > 100) return setError('Укажите корректную дату рождения (14–100 лет)');
+
+    if (form.phone.length !== 10) return setError('Введите корректный номер телефона');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Введите корректный email');
+    if (form.password !== form.confirmPassword) return setError('Пароли не совпадают');
+    if (MOCK_USERS.some((u) => u.login?.toLowerCase() === form.login.toLowerCase())) return setError('Этот логин уже занят');
+    if (MOCK_USERS.some((u) => u.email?.toLowerCase() === form.email.toLowerCase())) return setError('Этот email уже используется');
+    if (!form.agreeTerms || !form.agreePrivacy) return setError('Необходимо принять соглашения');
+
+    // 👇 Создаём пользователя (для демо), но НЕ логиним автоматически
     const newUser = {
       id: Date.now(),
-      login: form.login.trim(),
-      name: form.name.trim(),
-      email: form.email.trim(),
-      position: form.position.trim(),
-      password: form.password,
-      role: 'user' // При саморегистрации всегда роль "user"
+      firstName: form.firstName.trim(), lastName: form.lastName.trim(),
+      birthDate: form.birthDate, login: form.login.trim(),
+      phone: `+7${form.phone}`, email: form.email.trim().toLowerCase(),
+      password: form.password, role: 'user',
+      createdAt: new Date().toISOString(), agreedToTermsAt: new Date().toISOString(),
+      isEmailVerified: false // 👈 Флаг для будущей верификации
     };
 
     MOCK_USERS.push(newUser);
-
-    // Авто-вход после успешной регистрации
-    const result = login({ login: newUser.login, password: newUser.password });
-    if (result.success) {
-      navigate('/app', { replace: true });
-    }
+    
+    // 👇 Показываем сообщение об успехе вместо авто-входа
+    setIsSubmitted(true);
+    setError('');
   };
+
+  // Если форма отправлена — показываем экран успеха
+  if (isSubmitted) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <Logo hideText />
+          <div className="auth-card__heading">
+            <h1>✅ Проверьте почту</h1>
+            <p>Мы отправили ссылку для подтверждения на <strong>{form.email}</strong></p>
+          </div>
+
+          <div className="auth-form" style={{ textAlign: 'left', padding: '0 8px' }}>
+            <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
+              Перейдите по ссылке из письма, чтобы активировать аккаунт. 
+              Если письмо не пришло в течение 5 минут, проверьте папку «Спам».
+            </p>
+
+            <button 
+              className="secondary-button" 
+              type="button" 
+              onClick={() => navigate('/login')}
+              style={{ width: '100%' }}
+            >
+              Перейти ко входу
+            </button>
+
+            <button 
+              className="auth-form__footer-link" 
+              type="button" 
+              onClick={() => {
+                setIsSubmitted(false);
+                setForm({ ...form, password: '', confirmPassword: '' });
+                setError('');
+              }}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: 'var(--text-soft)', 
+                cursor: 'pointer', 
+                font: 'inherit',
+                marginTop: '12px'
+              }}
+            >
+              ← Вернуться и изменить данные
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 👇 Обычная форма регистрации (без изменений, кроме текста кнопки)
+  const isFormValid = 
+    form.firstName.trim() && form.lastName.trim() && form.birthDate &&
+    form.login.trim() && form.phone.length === 10 &&
+    form.email.trim() && form.password && form.confirmPassword &&
+    form.agreeTerms && form.agreePrivacy;
 
   return (
     <div className="auth-page">
@@ -80,44 +135,87 @@ function RegisterPage() {
         <Logo hideText />
         <div className="auth-card__heading">
           <h1>Регистрация</h1>
-          <p>Создайте аккаунт, чтобы перейти в рабочее пространство "Наш слон".</p>
+          <p>Заполните данные, чтобы перейти в рабочее пространство "Наш слон".</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-form__row">
+            <label>
+              <span>Имя *</span>
+              <input name="firstName" value={form.firstName} onChange={handleChange} placeholder="Иван" required />
+            </label>
+            <label>
+              <span>Фамилия *</span>
+              <input name="lastName" value={form.lastName} onChange={handleChange} placeholder="Иванов" required />
+            </label>
+          </div>
+
+          <div className="auth-form__field">
+            <span className="auth-form__label">Дата рождения *</span>
+            <input name="birthDate" type="date" value={form.birthDate} onChange={handleChange} required />
+          </div>
+
           <label>
-            <span>Логин</span>
-            <input name="login" value={form.login} onChange={handleChange} placeholder="Придумайте логин" />
+            <span>Логин для чата *</span>
+            <input name="login" value={form.login} onChange={handleChange} placeholder="Придумайте логин" required />
           </label>
 
           <label>
-            <span>ФИО</span>
-            <input name="name" value={form.name} onChange={handleChange} placeholder="Иванов Иван Иванович" />
+            <span>Телефон *</span>
+            <input
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              value={formatPhone(form.phone)}
+              onChange={handleChange}
+              placeholder="+7 (___) ___-__-__"
+              required
+            />
           </label>
 
           <label>
-            <span>Почта</span>
-            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="example@mail.ru" />
+            <span>Почта *</span>
+            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="example@mail.ru" required />
           </label>
 
           <label>
-            <span>Роль в проекте</span>
-            <input name="position" value={form.position} onChange={handleChange} placeholder="Например: Дизайнер" />
+            <span>Пароль *</span>
+            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Придумайте пароль" required minLength={6} />
           </label>
 
           <label>
-            <span>Пароль</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Придумайте пароль" />
+            <span>Повторите пароль *</span>
+            <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Подтвердите пароль" required />
           </label>
 
-          <label>
-            <span>Повторите пароль</span>
-            <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Подтвердите пароль" />
-          </label>
+          <div className="auth-form__agreements">
+            <label className="auth-form__checkbox">
+              <input type="checkbox" name="agreeTerms" checked={form.agreeTerms} onChange={handleChange} required />
+              <span>
+                Я принимаю{' '}
+                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('terms')}>
+                  пользовательское соглашение
+                </button>{' '}
+                *
+              </span>
+            </label>
+            <label className="auth-form__checkbox">
+              <input type="checkbox" name="agreePrivacy" checked={form.agreePrivacy} onChange={handleChange} required />
+              <span>
+                Я соглашаюсь с{' '}
+                <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('privacy')}>
+                  политикой конфиденциальности
+                </button>{' '}
+                *
+              </span>
+            </label>
+          </div>
 
           {error && <div className="form-error">{error}</div>}
 
-          <button className="primary-button auth-form__submit" type="submit">
-            Зарегистрироваться
+          {/* 👇 Кнопка с новым текстом */}
+          <button className="primary-button auth-form__submit" type="submit" disabled={!isFormValid}>
+            Отправить ссылку на email
           </button>
 
           <div className="auth-form__footer">
@@ -126,6 +224,19 @@ function RegisterPage() {
           </div>
         </form>
       </div>
+
+      <LegalModal
+        isOpen={activeModal === 'terms'}
+        onClose={() => setActiveModal(null)}
+        title={LEGAL_CONTENT.terms.title}
+        sections={LEGAL_CONTENT.terms.sections}
+      />
+      <LegalModal
+        isOpen={activeModal === 'privacy'}
+        onClose={() => setActiveModal(null)}
+        title={LEGAL_CONTENT.privacy.title}
+        sections={LEGAL_CONTENT.privacy.sections}
+      />
     </div>
   );
 }

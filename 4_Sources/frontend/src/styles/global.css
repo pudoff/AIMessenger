@@ -16,6 +16,7 @@
 @import './components/Badge.css';
 @import './components/Cards.css';
 @import './components/Common.css';
+@import './components/LegalModal.css';
 
 /* Layouts */
 @import './layouts/common-layout.css';

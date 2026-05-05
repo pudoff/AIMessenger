@@ -139,3 +139,126 @@
   color: var(--text);
   border-bottom-color: currentColor;
 }
+
+/* Строка с именем и фамилией */
+.auth-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Чекбоксы соглашений */
+.auth-form__agreements {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.auth-form__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.auth-form__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.auth-form__checkbox a {
+  color: var(--accent-strong);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s;
+}
+
+.auth-form__checkbox a:hover {
+  border-bottom-color: currentColor;
+}
+
+/* Адаптив: на мобильных имя/фамилия в столбик */
+@media (max-width: 520px) {
+  .auth-form__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.auth-form__label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Состояние disabled для кнопки регистрации */
+.auth-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important; /* Отменяем ховер-эффект */
+  box-shadow: none;
+}
+
+.auth-form__submit:disabled:hover {
+  transform: none;
+}
+
+/* Ссылка-кнопка для возврата к форме */
+.auth-form__footer-link {
+  color: #5b6abf;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.auth-form__footer-link:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+button.auth-form__footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Ссылка "Забыли пароль?" */
+.auth-form__forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.auth-form__forgot-link:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+.auth-form__forgot-link:focus {
+  outline: none;
+  border-bottom-color: var(--accent-strong);
+}

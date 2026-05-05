@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 import logoAuth from '../../assets/logo_new.png';
 import Logo from '../../components/Logo';
+import PasswordRecoveryForm from '../../components/PasswordRecoveryForm'; // 👈 Импорт
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -12,20 +13,49 @@ function LoginPage() {
 
   const [form, setForm] = useState({ login: '', password: '' });
   const [error, setError] = useState('');
-  const [showPassword, hidePassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // 👇 Стейт только для переключения режима
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     const result = login(form);
-
     if (!result.success) {
       setError(result.message);
       return;
     }
-
     navigate(result.user.role === 'admin' ? '/admin' : '/app', { replace: true });
   };
 
+  // 👇 Обработчик для компонента восстановления (демо)
+  const handleRecoverySubmit = (email, userExists) => {
+    // В реальном приложении: await fetch('/api/auth/forgot-password', { body: JSON.stringify({ email }) })
+    console.log(`[DEMO] Reset link to: ${email}, exists: ${userExists}`);
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // 📧 Режим восстановления
+  // ─────────────────────────────────────────────────────────
+  if (isRecoveryMode) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <Logo src={logoAuth} hideText />
+          
+          <PasswordRecoveryForm
+            onSubmit={handleRecoverySubmit}
+            onBack={() => setIsRecoveryMode(false)}
+            onCancel={() => setIsRecoveryMode(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 🔐 Обычная форма входа
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -37,7 +67,7 @@ function LoginPage() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            <span>Логин</span>
+            <span>Логин или почта</span>
             <input
               value={form.login}
               onChange={(event) => setForm((prev) => ({ ...prev, login: event.target.value }))}
@@ -57,7 +87,7 @@ function LoginPage() {
               <button
                 type="button" 
                 className="toggle-password-btn"
-                onClick={() => hidePassword((prev) => !prev)}
+                onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
               >
                 {showPassword ? '⚫' : '👁️'}
@@ -65,14 +95,26 @@ function LoginPage() {
             </div>
           </label>
 
+          {/* 👇 Ссылка на восстановление */}
+          <div style={{ textAlign: 'right', marginTop: '-8px' }}>
+            <button 
+              type="button" 
+              className="auth-form__forgot-link" 
+              onClick={() => setIsRecoveryMode(true)}
+            >
+              Забыли пароль?
+            </button>
+          </div>
+
           {error && <div className="form-error">{error}</div>}
 
           <button className="primary-button auth-form__submit" type="submit">
             Войти
           </button>
-          <div className="auth-form__register">
-              <span>Нету аккаунта? </span>
-              <Link to="/register" className="auth-form__register-link">Зарегистрироваться</Link>
+          
+          <div className="auth-form__footer">
+            <span>Нету аккаунта? </span>
+            <Link to="/register" className="auth-form__footer-link">Зарегистрироваться</Link>
           </div>
         </form>
       </div>

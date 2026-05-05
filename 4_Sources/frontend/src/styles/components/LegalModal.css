@@ -1,0 +1,150 @@
+/* ────────────── LegalModal (Соглашения) ────────────── */
+.legal-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 47, 99, 0.55);
+  backdrop-filter: blur(12px);
+  padding: 24px;
+  animation: legal-fade 0.2s ease-out;
+}
+
+@keyframes legal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.legal-modal__content {
+  width: min(100%, 680px);
+  max-height: 85vh;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: legal-slide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes legal-slide {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Шапка */
+.legal-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(126, 137, 217, 0.06);
+}
+
+.legal-modal__header h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.legal-modal__close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(126, 137, 217, 0.1);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legal-modal__close:hover {
+  background: rgba(126, 137, 217, 0.2);
+  color: var(--accent-strong);
+}
+
+/* Тело (скроллируемый контент) */
+.legal-modal__body {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  color: var(--text);
+  line-height: 1.65;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.legal-modal__body strong {
+  display: block;
+  margin: 20px 0 10px;
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.legal-modal__body strong:first-child {
+  margin-top: 0;
+}
+
+.legal-modal__body p {
+  margin: 0 0 12px;
+  color: var(--text-soft);
+}
+
+/* Футер с кнопкой */
+.legal-modal__footer {
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* Кастомный скроллбар */
+.legal-modal__body::-webkit-scrollbar { width: 6px; }
+.legal-modal__body::-webkit-scrollbar-track { background: transparent; }
+.legal-modal__body::-webkit-scrollbar-thumb {
+  background: rgba(126, 137, 217, 0.25);
+  border-radius: 10px;
+}
+.legal-modal__body::-webkit-scrollbar-thumb:hover {
+  background: rgba(126, 137, 217, 0.45);
+}
+
+/* 📱 Мобильный адаптив (sheet-паттерн) */
+@media (max-width: 640px) {
+  .legal-modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .legal-modal__content {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    animation: legal-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes legal-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  
+  .legal-modal__header,
+  .legal-modal__body,
+  .legal-modal__footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
