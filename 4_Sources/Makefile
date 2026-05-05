@@ -1,4 +1,5 @@
-OPTIONS = --env-file .env up -d --build --force-recreate --remove-orphans
+OPTIONS := --env-file .env up -d --build --force-recreate --remove-orphans
+UNAME_S := $(shell uname -s 2>/dev/null || echo unknown)
 
 .PHONY: lf
 lf:
@@ -10,5 +11,8 @@ lf:
 		-exec sed -i 's/\r$$//' {} +
 
 .PHONY: local
-local: lf
+local:
+	@if [ "$(UNAME_S)" != "Darwin" ]; then \
+		$(MAKE) lf; \
+	fi
 	docker compose -f docker-compose.local.yml ${OPTIONS}
