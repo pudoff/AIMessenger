@@ -11,9 +11,11 @@ REST API на Django и Django REST Framework для пользователей,
 - Добавлена фильтрация участников по чату: `GET /api/chat-members/?chat=<chat_id>`.
 - Добавлена регистрация: `POST /api/register/`.
 - Добавлен профиль текущего пользователя для frontend: `GET /api/me/`.
-- `/api/users/` оставлен как админский endpoint только для Django staff/superuser.
+- `/api/users/` оставлен как админский endpoint для Django staff/superuser и пользователей с `role = "admin"`.
 - Queryset'ы `chats`, `chat-members`, `messages` ограничены текущим пользователем.
 - Добавлены object permissions для чатов, участников и сообщений.
+- Добавлен CORS для локального frontend, список origin'ов задаётся через `.env`.
+- После логина через стандартную DRF-форму `/api/auth/login/` пользователь перенаправляется на `/api/`.
 - Модель пользователя расширена под требования регистрации: дата рождения, телефон, согласие с пользовательским соглашением, согласие с политикой конфиденциальности, timestamps согласий, поле `blocked_until` для будущей блокировки.
 - Добавлена доменная валидация: `task_status` можно указывать только для сообщений с `message_type = "task"`.
 - Добавлены API-тесты на авторизацию, регистрацию, профиль пользователя, права на чаты, участников и сообщения.
@@ -24,6 +26,7 @@ REST API на Django и Django REST Framework для пользователей,
 - Django 5.2
 - Django REST Framework
 - DRF Token Authentication
+- django-cors-headers
 - PostgreSQL для разработки и запуска
 - SQLite fallback только для `manage.py test`, чтобы тесты можно было гонять без поднятой PostgreSQL
 - Docker Compose для локальной PostgreSQL
@@ -79,6 +82,7 @@ SECRET_KEY=django-insecure-change-me
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 API_PAGE_SIZE=20
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000
 
 POSTGRES_DB=aimessenger
 POSTGRES_USER=aimessenger
@@ -93,6 +97,7 @@ POSTGRES_PORT=5433
 | `DEBUG` | `True` только локально. На сервере должно быть `False`. |
 | `ALLOWED_HOSTS` | Хосты через запятую. |
 | `API_PAGE_SIZE` | Размер страницы для list endpoints. По умолчанию `20`. |
+| `CORS_ALLOWED_ORIGINS` | Разрешённые frontend origin'ы через запятую. По умолчанию включены `localhost`/`127.0.0.1` на портах `5173` и `3000`. |
 | `POSTGRES_DB` | Имя базы PostgreSQL. |
 | `POSTGRES_USER` | Пользователь PostgreSQL. |
 | `POSTGRES_PASSWORD` | Пароль PostgreSQL. |
@@ -179,6 +184,16 @@ $env:USE_POSTGRES_FOR_TESTS='True'
 ## Авторизация frontend -> backend
 
 Используется DRF Token Authentication.
+
+Для локального запуска frontend должен идти с origin из `CORS_ALLOWED_ORIGINS`.
+По умолчанию разрешены:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+
+Заголовок `Authorization: Token <token>` разрешён CORS-настройками и может использоваться frontend'ом в запросах к API.
 
 ## Сверка с требованиями аналитика по регистрации и авторизации
 
@@ -305,7 +320,7 @@ Response:
 Роли пользователя:
 
 - `user` - обычный пользователь;
-- `admin` - Django staff/superuser.
+- `admin` - администратор проекта. Django staff/superuser автоматически сохраняются с этой ролью, но доступ к админским API также работает для пользователя с `role = "admin"` без флагов `is_staff`/`is_superuser`.
 
 ## Правила доступа
 
@@ -323,7 +338,7 @@ Response:
 - может добавлять/менять/удалять участников только если он `owner/admin` этого чата;
 - не имеет доступа к `/api/users/`.
 
-Django staff/superuser:
+Администратор проекта (`role = "admin"`) или Django staff/superuser:
 
 - видит все чаты, участников и сообщения;
 - может управлять всеми чатами, участниками и сообщениями;
@@ -350,9 +365,9 @@ Base URL: `/api/chats/`
 | `GET` | `/api/chats/` | участник чатов | Список только своих чатов. |
 | `POST` | `/api/chats/` | authenticated | Создать чат. Создатель станет `owner`. |
 | `GET` | `/api/chats/{id}/` | участник чата | Получить свой чат. Чужой чат будет скрыт как `404`. |
-| `PUT` | `/api/chats/{id}/` | owner/admin чата или staff | Полностью изменить чат. |
-| `PATCH` | `/api/chats/{id}/` | owner/admin чата или staff | Частично изменить чат. |
-| `DELETE` | `/api/chats/{id}/` | owner/admin чата или staff | Удалить чат. |
+| `PUT` | `/api/chats/{id}/` | owner/admin чата или администратор проекта | Полностью изменить чат. |
+| `PATCH` | `/api/chats/{id}/` | owner/admin чата или администратор проекта | Частично изменить чат. |
+| `DELETE` | `/api/chats/{id}/` | owner/admin чата или администратор проекта | Удалить чат. |
 
 Создание чата:
 
@@ -370,11 +385,11 @@ Base URL: `/api/chat-members/`
 |---|---|---|---|
 | `GET` | `/api/chat-members/` | участник соответствующих чатов | Список участников только из своих чатов. |
 | `GET` | `/api/chat-members/?chat=1` | участник чата | Участники конкретного своего чата. |
-| `POST` | `/api/chat-members/` | owner/admin чата или staff | Добавить пользователя в чат. |
+| `POST` | `/api/chat-members/` | owner/admin чата или администратор проекта | Добавить пользователя в чат. |
 | `GET` | `/api/chat-members/{id}/` | участник соответствующего чата | Получить запись участника. |
-| `PUT` | `/api/chat-members/{id}/` | owner/admin чата или staff | Полностью изменить запись участника. |
-| `PATCH` | `/api/chat-members/{id}/` | owner/admin чата или staff | Частично изменить запись участника. |
-| `DELETE` | `/api/chat-members/{id}/` | owner/admin чата или staff | Удалить участника. |
+| `PUT` | `/api/chat-members/{id}/` | owner/admin чата или администратор проекта | Полностью изменить запись участника. |
+| `PATCH` | `/api/chat-members/{id}/` | owner/admin чата или администратор проекта | Частично изменить запись участника. |
+| `DELETE` | `/api/chat-members/{id}/` | owner/admin чата или администратор проекта | Удалить участника. |
 
 Добавить участника:
 
@@ -402,9 +417,9 @@ Base URL: `/api/messages/`
 | `GET` | `/api/messages/?chat=1` | участник чата | Сообщения конкретного своего чата. |
 | `POST` | `/api/messages/` | участник чата | Создать сообщение в своём чате. |
 | `GET` | `/api/messages/{id}/` | участник чата | Получить сообщение из своего чата. Чужое сообщение будет скрыто как `404`. |
-| `PUT` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Полностью изменить сообщение. |
-| `PATCH` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Частично изменить сообщение. |
-| `DELETE` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Удалить сообщение. |
+| `PUT` | `/api/messages/{id}/` | автор, owner/admin чата или администратор проекта | Полностью изменить сообщение. |
+| `PATCH` | `/api/messages/{id}/` | автор, owner/admin чата или администратор проекта | Частично изменить сообщение. |
+| `DELETE` | `/api/messages/{id}/` | автор, owner/admin чата или администратор проекта | Удалить сообщение. |
 
 Обычное сообщение:
 
@@ -462,11 +477,11 @@ Base URL: `/api/users/`
 
 | Method | URL | Доступ | Назначение |
 |---|---|---|---|
-| `GET` | `/api/users/` | Django staff/superuser | Список пользователей. |
-| `POST` | `/api/users/` | Django staff/superuser | Создать пользователя. |
-| `GET` | `/api/users/{id}/` | Django staff/superuser | Получить пользователя. |
-| `PUT/PATCH` | `/api/users/{id}/` | Django staff/superuser | Изменить пользователя. |
-| `DELETE` | `/api/users/{id}/` | Django staff/superuser | Удалить пользователя. |
+| `GET` | `/api/users/` | администратор проекта | Список пользователей. |
+| `POST` | `/api/users/` | администратор проекта | Создать пользователя. |
+| `GET` | `/api/users/{id}/` | администратор проекта | Получить пользователя. |
+| `PUT/PATCH` | `/api/users/{id}/` | администратор проекта | Изменить пользователя. |
+| `DELETE` | `/api/users/{id}/` | администратор проекта | Удалить пользователя. |
 
 Поля пользователя:
 

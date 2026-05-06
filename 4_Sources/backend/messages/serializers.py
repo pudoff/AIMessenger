@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from chats.models import ChatMember
+from users.permissions import is_project_admin
 from .models import Message
 
 
@@ -36,7 +37,7 @@ class MessageSerializer(serializers.ModelSerializer):
             getattr(self.instance, 'task_status', Message.TaskStatus.NONE),
         )
 
-        if chat and user and user.is_authenticated and not (user.is_staff or user.is_superuser):
+        if chat and user and user.is_authenticated and not is_project_admin(user):
             if not ChatMember.objects.filter(chat=chat, user=user).exists():
                 raise serializers.ValidationError({'chat': 'Вы не состоите в этом чате.'})
 
