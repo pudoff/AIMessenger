@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Наш слон — бренд-пак</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="brand.css" />
+  <style>
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #fff; color: #0033A0; padding: 48px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; margin-top: 36px; }
+    .card { border: 1px solid rgba(0,51,160,.18); border-radius: 24px; padding: 24px; background: #fff; }
+    .card img { max-width: 100%; height: auto; display: block; }
+    h1 { font-family: Playfair Display, Georgia, serif; font-size: 48px; }
+    h2 { font-size: 16px; letter-spacing: .08em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <h1>Бренд-пак «Наш слон»</h1>
+  <p>Основные варианты логотипа, маскота и иконок.</p>
+  <div class="grid">
+    <div class="card"><h2>Основной логотип</h2><img src="../logo/logo-main.png" alt="Наш слон"></div>
+    <div class="card"><h2>Горизонтальный</h2><img src="../logo/logo-horizontal.png" alt="Наш слон horizontal"></div>
+    <div class="card"><h2>Маскот</h2><img class="nash-elephant-bounce" src="../mascot/elephant-jump.png" alt="Слон"></div>
+    <div class="card"><h2>Иконка</h2><img src="../icons/icon-512.png" alt="Иконка"></div>
+    <div class="card"><h2>Монохром</h2><img src="../mono/elephant-black.png" alt="Монохромный слон"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>НашСлон — Мессенджер</title>
+<style>
+/* ============================================================
+   ТЕМА: СВЕТЛАЯ (по умолчанию — «старая бумага»)
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  --navy:        #0033A0;
+  --navy-dark:   #00247A;
+  --navy-light:  #1A4DB5;
+  --cream:       #F4EDE0;
+  --red:         #D52B1E;
+  --red-dark:    #B02018;
+  --white:       #FFFFFF;
+  --paper:       #FAF6EE;   /* тёплый бумажный */
+  --pale-blue:   #F0EEE8;   /* кремово-серый вместо синего */
+  --milk:        #EDE5D4;
+  --msg-out:     #1F5274;
+  --text-main:   #1a1a2e;
+  --text-muted:  #7a6e5f;
+  --border:      #d8cfc0;
+  --shadow-sm:   0 2px 8px rgba(90,70,40,0.10);
+  --shadow-md:   0 8px 32px rgba(90,70,40,0.14);
+  --shadow-lg:   0 20px 60px rgba(90,70,40,0.18);
+  --radius:      12px;
+  --radius-lg:   20px;
+  --font-head:   'Georgia', 'Times New Roman', serif;
+  --font-body:   'Trebuchet MS', 'Segoe UI', sans-serif;
+  --transition:  0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Фон «старой бумаги» */
+  --bg-body:     #EDE4D3;
+  --bg-overlay:  rgba(180,150,100,0.06);
+  --bg-noise:    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   ТЕМА: ТЁМНАЯ
+   ============================================================ */
+[data-theme="dark"] {
+  --navy:        #4A7FE8;
+  --navy-dark:   #2A5CC8;
+  --navy-light:  #6A9FFF;
+  --cream:       #1a1a2a;
+  --red:         #FF4D3D;
+  --red-dark:    #E03020;
+  --white:       #FFFFFF;
+  --paper:       #1E1E2E;
+  --pale-blue:   #16162A;
+  --milk:        #2A2A3E;
+  --msg-out:     #1A4A6A;
+  --text-main:   #E8E4F0;
+  --text-muted:  #8888AA;
+  --border:      #333350;
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md:   0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg:   0 20px 60px rgba(0,0,0,0.5);
+  --bg-body:     #12121E;
+  --bg-overlay:  rgba(74,127,232,0.04);
+  --bg-noise:    none;
+}
+
+/* ============================================================
+   АНИМАЦИИ КНОПОК — ripple + press + shimmer
+   ============================================================ */
+
+/* Базовый ripple-контейнер для всех кнопок */
+.btn-primary,
+.btn-secondary,
+.btn-login,
+.btn-register-link,
+.btn-header-solid,
+.btn-header-ghost,
+.btn-forgot,
+.composer-btn-send {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ripple — волна при клике */
+.btn-primary::after,
+.btn-secondary::after,
+.btn-login::after,
+.btn-register-link::after,
+.btn-header-solid::after,
+.composer-btn-send::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: rgba(255,255,255,0.35);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.5s ease, height 0.5s ease, opacity 0.5s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.btn-primary:active::after,
+.btn-secondary:active::after,
+.btn-login:active::after,
+.btn-register-link:active::after,
+.btn-header-solid:active::after,
+.composer-btn-send:active::after {
+  width: 300px; height: 300px;
+  opacity: 0;
+  transition: width 0.4s ease, height 0.4s ease, opacity 0.3s 0.1s ease;
+}
+
+/* Press-эффект — лёгкое вдавливание */
+.btn-primary:active,
+.btn-login:active,
+.btn-header-solid:active {
+  transform: translateY(0) scale(0.97) !important;
+  box-shadow: 0 2px 8px rgba(0,51,160,0.2) !important;
+  transition-duration: 0.08s;
+}
+.btn-secondary:active,
+.btn-register-link:active,
+.btn-forgot:active {
+  transform: translateY(0) scale(0.97) !important;
+  transition-duration: 0.08s;
+}
+
+/* Shimmer — блик на основных кнопках */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.btn-primary,
+.btn-login {
+  background-image: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.12) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: -200% center;
+}
+.btn-primary:hover,
+.btn-login:hover {
+  animation: shimmer 0.7s ease forwards;
+}
+
+/* Пульс на кнопке «Войти» в header */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(213,43,30,0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(213,43,30,0); }
+}
+.btn-header-solid {
+  animation: pulse-glow 2.5s infinite;
+}
+.btn-header-solid:hover {
+  animation: none;
+}
+
+/* Иконки-кнопки — поворот */
+.icon-btn {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+}
+.icon-btn:hover  { transform: rotate(8deg) scale(1.12); }
+.icon-btn:active { transform: scale(0.9); }
+
+/* Кнопки быстрых ответов — slide-in */
+.ai-tag {
+  transition: all 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.ai-tag:hover { transform: translateX(4px); }
+.ai-tag:active { transform: translateX(2px) scale(0.97); }
+
+/* Кнопки nav-sidebar */
+.nav-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-btn:hover  { transform: translateX(3px); }
+.nav-btn:active { transform: translateX(1px) scale(0.98); }
+.nav-btn.active { transform: none; }
+
+/* Feature-карточки — bounce hover */
+.feature-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+.feature-card:hover { transform: translateY(-6px) scale(1.01); }
+
+/* Composer-кнопка отправки — bounce */
+.composer-btn-send {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.composer-btn-send:hover { transform: scale(1.1) rotate(-5deg); }
+.composer-btn-send:active { transform: scale(0.9); }
+
+/* Кнопки header — slide underline */
+.btn-header-ghost {
+  position: relative;
+}
+.btn-header-ghost::before {
+  content: '';
+  position: absolute;
+  bottom: 2px; left: 50%; right: 50%;
+  height: 1px;
+  background: var(--cream);
+  transition: left 0.25s ease, right 0.25s ease;
+}
+.btn-header-ghost:hover::before { left: 10%; right: 10%; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-body);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* ============================================================
+   ФОН «СТАРАЯ БУМАГА» — многослойная текстура
+   Слой 1: шум (зерно бумаги), Слой 2: горизонтальные волокна,
+   Слой 3: тёплый градиент с пятнами.
+   В тёмной/стеклянной теме — мягкие сетки.
+   ============================================================ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: all 0.4s ease;
+}
+
+/* Тема «светлая» / бумага */
+[data-theme="light"] body::before,
+:root body::before {
+  background:
+    var(--bg-noise),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 80px,
+      rgba(160,120,70,0.025) 80px,
+      rgba(160,120,70,0.025) 81px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 60px,
+      rgba(160,120,70,0.018) 60px,
+      rgba(160,120,70,0.018) 61px
+    ),
+    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(220,190,140,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 70%, rgba(200,170,120,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 60% 10%, rgba(240,210,160,0.10) 0%, transparent 50%);
+}
+
+/* Тема «тёмная» */
+[data-theme="dark"] body::before {
+  background:
+    repeating-linear-gradient(
+      90deg, transparent, transparent 60px,
+      rgba(74,127,232,0.04) 60px, rgba(74,127,232,0.04) 61px
+    ),
+    repeating-linear-gradient(
+      0deg, transparent, transparent 60px,
+      rgba(74,127,232,0.04) 60px, rgba(74,127,232,0.04) 61px
+    ),
+    radial-gradient(ellipse 70% 50% at 20% 20%, rgba(74,127,232,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 80%, rgba(74,127,232,0.06) 0%, transparent 60%);
+}
+
+/* ============================================================
+   ПЕРЕКЛЮЧАТЕЛЬ ТЕМ
+   ============================================================ */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 30px;
+  padding: 4px;
+  margin-right: 8px;
+}
+.theme-btn {
+  width: 34px; height: 28px;
+  border: none;
+  border-radius: 22px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  transition: all 0.25s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+.theme-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.theme-btn.active {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+/* Тултипы тем */
+.theme-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.theme-btn:hover::after { opacity: 1; }
+
+/* ============================================================
+   СТРАНИЦЫ — переключение
+   ============================================================ */
+.page {
+  display: none;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.4s ease;
+}
+.page.active { display: flex; flex-direction: column; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   ШАПКА — общий Header
+   ============================================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px;
+  background: var(--navy);
+  border-bottom: 3px solid var(--red);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.header-logo img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1);  /* белый логотип на синем */
+}
+/* Заглушка логотипа если изображение не загрузилось */
+.logo-placeholder {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-elephant {
+  font-size: 26px;
+  line-height: 1;
+}
+.logo-text-header {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 1px;
+}
+.logo-text-header span { color: var(--red); }
+
+.header-nav { display: flex; align-items: center; gap: 12px; }
+
+.btn-header {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  border: 2px solid transparent;
+}
+.btn-header-ghost {
+  background: transparent;
+  color: var(--cream);
+  border-color: rgba(244,237,224,0.4);
+}
+.btn-header-ghost:hover {
+  background: rgba(244,237,224,0.1);
+  border-color: var(--cream);
+}
+.btn-header-solid {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+}
+.btn-header-solid:hover {
+  background: var(--red-dark);
+  border-color: var(--red-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(213,43,30,0.35);
+}
+
+/* ============================================================
+   ===  СТРАНИЦА 1: ГЛАВНАЯ (ЛЕНДИНГ)  ===
+   ============================================================ */
+
+/* Hero-секция */
+.hero {
+  display: grid;
+  grid-template-columns: 770fr 420fr;
+  gap: 0;
+  max-width: 1240px;
+  margin: 40px auto 0;
+  padding: 0 20px;
+  align-items: center;
+}
+
+.hero-content {
+  background: var(--paper);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  padding: 52px 56px;
+  min-height: 390px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+/* Декоративная диагональная полоса */
+.hero-content::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,51,160,0.06) 0%, transparent 70%);
+}
+
+.hero-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: var(--red);
+  display: inline-block;
+}
+
+.hero-title {
+  font-family: var(--font-head);
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.18;
+  color: var(--navy);
+  margin-bottom: 24px;
+}
+.hero-title em {
+  font-style: normal;
+  color: var(--red);
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  max-width: 480px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Основные кнопки */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 32px;
+  background: var(--navy);
+  color: var(--white);
+  border: 2px solid var(--navy);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  font-family: var(--font-body);
+  letter-spacing: 0.3px;
+}
+.btn-primary:hover {
+  background: var(--navy-light);
+  border-color: var(--navy-light);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,51,160,0.3);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 32px;
+  background: transparent;
+  color: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.btn-secondary:hover {
+  background: var(--navy);
+  color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,51,160,0.2);
+}
+
+/* Превью продукта */
+.hero-preview {
+  background: var(--pale-blue);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: 20px;
+  min-height: 390px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-app-header {
+  background: var(--navy);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preview-app-header::before {
+  content: '🐘';
+  font-size: 16px;
+}
+
+.preview-panels {
+  display: grid;
+  grid-template-columns: 70px 1fr 90px;
+  gap: 8px;
+  flex: 1;
+}
+
+.preview-panel {
+  background: var(--white);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-msg {
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+.preview-msg.in  { background: var(--milk); color: var(--text-main); align-self: flex-start; }
+.preview-msg.out { background: var(--msg-out); color: var(--white); align-self: flex-end; }
+
+/* Feature-карточки */
+.features {
+  max-width: 1240px;
+  margin: 48px auto 0;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.feature-card {
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--navy);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.feature-card:hover::before { transform: scaleX(1); }
+
+.feature-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+  display: block;
+}
+.feature-title {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.feature-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* Концептуальный блок */
+.concept-bar {
+  max-width: 1240px;
+  margin: 40px auto 48px;
+  padding: 0 20px;
+}
+.concept-bar-inner {
+  background: var(--navy);
+  border-radius: var(--radius);
+  padding: 22px 36px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-md);
+}
+.concept-bar-icon { font-size: 28px; }
+.concept-bar-text {
+  color: var(--cream);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.concept-bar-text strong { color: var(--white); }
+.concept-bar-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: var(--white);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   ===  СТРАНИЦА 2: АВТОРИЗАЦИЯ  ===
+   ============================================================ */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 520px 1fr;
+  align-items: center;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 60px 32px;
+  gap: 32px;
+  width: 100%;
+}
+
+/* Левый декоративный блок */
+.auth-deco {
+  background: var(--pale-blue);
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  min-height: 445px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.auth-deco::after {
+  content: '🐘';
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  font-size: 80px;
+  opacity: 0.08;
+  transform: scaleX(-1);
+}
+.auth-deco-tag {
+  display: inline-block;
+  background: var(--red);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+.auth-deco-title {
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.3;
+  margin-bottom: 16px;
+}
+.auth-deco-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.auth-deco-list li {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+.auth-deco-list li::before {
+  content: '★';
+  color: var(--navy);
+  font-size: 11px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Центральная карточка входа */
+.auth-card {
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  padding: 44px 48px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+/* Цветная полоска сверху */
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--navy), var(--red));
+  border-radius: 0;
+}
+
+.auth-card-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.auth-card-logo img {
+  height: 52px;
+  object-fit: contain;
+}
+/* Заглушка если нет файла logo.png */
+.auth-logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-logo-placeholder .elephant-icon { font-size: 40px; }
+.auth-logo-placeholder .brand-name {
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+.auth-logo-placeholder .brand-name span { color: var(--red); }
+.auth-logo-placeholder .brand-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.auth-card-title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--navy);
+  margin-bottom: 28px;
+}
+
+/* Поля формы */
+.form-group {
+  margin-bottom: 18px;
+}
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.form-input {
+  width: 100%;
+  padding: 13px 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--text-main);
+  background: var(--white);
+  transition: var(--transition);
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(0,51,160,0.1);
+}
+.form-input::placeholder { color: var(--text-muted); }
+
+/* Чекбокс "Запомнить меня" */
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  cursor: pointer;
+}
+.form-check input[type="checkbox"] { display: none; }
+.form-check-box {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.form-check input:checked + .form-check-box {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+.form-check input:checked + .form-check-box::after {
+  content: '✓';
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+}
+.form-check-label { font-size: 14px; color: var(--text-muted); user-select: none; }
+
+/* Кнопки форм авторизации */
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.btn-login {
+  padding: 14px;
+  background: var(--navy);
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: 0.3px;
+}
+.btn-login:hover {
+  background: var(--navy-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,51,160,0.3);
+}
+
+.btn-forgot {
+  padding: 14px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+.btn-forgot:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+
+.form-divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.form-divider::before, .form-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: var(--border);
+}
+.form-divider::before { left: 0; }
+.form-divider::after  { right: 0; }
+
+.btn-register-link {
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-register-link:hover {
+  background: var(--navy);
+  color: var(--white);
+  transform: translateY(-1px);
+}
+
+/* Правый технический блок */
+.auth-tech {
+  background: #fbf2df;
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  min-height: 445px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid rgba(213,43,30,0.15);
+}
+.auth-tech-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 16px;
+}
+.auth-tech-status {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 20px;
+}
+.auth-tech-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tech-badge {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tech-badge-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(34,197,94,0.5);
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ============================================================
+   ===  СТРАНИЦА 3: РЕГИСТРАЦИЯ  ===
+   ============================================================ */
+.reg-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.reg-card {
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  padding: 44px 48px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 560px;
+  position: relative;
+  overflow: hidden;   /* фиксит «убегающую» полоску */
+}
+.reg-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--red), var(--navy));
+  border-radius: 0;   /* родитель уже скруглён, псевдоэлемент — нет */
+}
+
+.reg-card-logo { text-align: center; margin-bottom: 28px; }
+.reg-card-title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.reg-card-sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+/* Имя + фамилия рядом */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.password-strength {
+  margin-top: 6px;
+  display: flex;
+  gap: 4px;
+}
+.strength-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.strength-bar.active-weak   { background: var(--red); }
+.strength-bar.active-medium { background: #f59e0b; }
+.strength-bar.active-strong { background: #22c55e; }
+
+.form-terms {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.form-terms a {
+  color: var(--navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ============================================================
+   ===  СТРАНИЦА 4: ГЛАВНАЯ ПОЛЬЗОВАТЕЛЯ (ЧАТИК)  ===
+   ============================================================ */
+.app-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 350px;
+  height: calc(100vh - 57px);  /* минус высота header */
+  overflow: hidden;
+}
+
+/* Левый сайдбар */
+.sidebar {
+  background: var(--pale-blue);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: left;
+  width: 100%;
+}
+.nav-btn:hover { background: rgba(0,51,160,0.07); color: var(--navy); }
+.nav-btn.active { background: var(--navy); color: var(--white); }
+.nav-btn-icon { font-size: 18px; width: 22px; text-align: center; }
+
+/* Центральная панель */
+.chat-panel {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  overflow: hidden;
+}
+
+/* Список чатов */
+.chat-list {
+  background: var(--paper);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.chat-list-header {
+  padding: 16px 16px 12px;
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  z-index: 5;
+}
+
+.chat-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chat-item:hover  { background: var(--pale-blue); }
+.chat-item.active { background: rgba(0,51,160,0.06); border-left: 3px solid var(--navy); }
+
+.chat-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.chat-item-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-badge {
+  background: var(--red);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* Основная область чата */
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+  position: sticky;
+  top: 0;
+}
+.chat-header-name {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.chat-header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.chat-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  border: none;
+  background: var(--pale-blue);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: var(--transition);
+}
+.icon-btn:hover { background: rgba(0,51,160,0.1); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msg.in  { align-self: flex-start; }
+.msg.out { align-self: flex-end; }
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+}
+.msg.in  .msg-bubble { background: var(--milk); color: var(--text-main); border-bottom-left-radius: 4px; }
+.msg.out .msg-bubble { background: var(--msg-out); color: var(--white); border-bottom-right-radius: 4px; }
+
+.msg-meta { font-size: 11px; color: var(--text-muted); }
+.msg.out .msg-meta { text-align: right; }
+
+/* ML-тег классификации */
+.ml-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,51,160,0.07);
+  border: 1px solid rgba(0,51,160,0.2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-top: 4px;
+}
+
+/* Composer */
+.chat-composer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--white);
+}
+.composer-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: var(--font-body);
+  resize: none;
+  outline: none;
+  transition: var(--transition);
+  max-height: 120px;
+  overflow-y: auto;
+}
+.composer-input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0,51,160,0.08); }
+.composer-btn {
+  width: 42px; height: 42px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.composer-btn-file { background: var(--pale-blue); }
+.composer-btn-emoji { background: var(--pale-blue); }
+.composer-btn-send { background: var(--navy); color: var(--white); }
+.composer-btn-send:hover { background: var(--navy-light); transform: scale(1.05); }
+.composer-btn-file:hover, .composer-btn-emoji:hover { background: rgba(0,51,160,0.1); }
+
+/* Правая AI-панель */
+.ai-panel {
+  background: var(--pale-blue);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 10px;
+}
+.ai-panel-title {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-widget {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.ai-widget:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+.ai-widget-code {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.ai-widget-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.ai-widget-content {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ai-widget-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.ai-tag {
+  background: var(--pale-blue);
+  color: var(--navy);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+.ai-tag:hover { background: var(--navy); color: var(--white); }
+
+/* Статус системы */
+.sys-status { display: flex; align-items: center; gap: 8px; }
+.sys-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-dot 2s infinite;
+}
+
+/* ============================================================
+   УТИЛИТЫ И АДАПТИВНОСТЬ
+   ============================================================ */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Скроллбар */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,51,160,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,51,160,0.4); }
+
+/* Notification Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--navy);
+  color: var(--white);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toast.visible { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 18px; }
+
+/* ============================================================
+   ТЁМНАЯ ТЕМА — переопределение фонов карточек и панелей
+   ============================================================ */
+[data-theme="dark"] .hero-content,
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .reg-card,
+[data-theme="dark"] .feature-card,
+[data-theme="dark"] .ai-widget,
+[data-theme="dark"] .chat-main,
+[data-theme="dark"] .preview-panel { background: var(--paper) !important; }
+
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .ai-panel,
+[data-theme="dark"] .chat-list,
+[data-theme="dark"] .hero-preview,
+[data-theme="dark"] .auth-deco,
+[data-theme="dark"] .auth-tech,
+[data-theme="dark"] .chat-list-header { background: var(--pale-blue) !important; }
+
+[data-theme="dark"] .concept-bar-inner { background: #0d1225 !important; }
+[data-theme="dark"] .auth-tech { background: #1a1510 !important; }
+
+[data-theme="dark"] .chat-item:hover  { background: rgba(74,127,232,0.1) !important; }
+[data-theme="dark"] .chat-item.active { background: rgba(74,127,232,0.15) !important; border-left-color: var(--navy) !important; }
+
+[data-theme="dark"] .composer-input {
+  background: var(--pale-blue) !important;
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .form-input {
+  background: #16162a !important;
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .hero-title,
+[data-theme="dark"] .auth-deco-title,
+[data-theme="dark"] .feature-title,
+[data-theme="dark"] .auth-card-title,
+[data-theme="dark"] .reg-card-title,
+[data-theme="dark"] .chat-header-name,
+[data-theme="dark"] .ai-widget-title { color: var(--navy) !important; }
+
+/* ============================================================
+   АДАПТИВНОСТЬ (оставляем на месте, после тем)
+   ============================================================ */
+  .features { grid-template-columns: repeat(2, 1fr); }
+  .hero { grid-template-columns: 1fr; }
+  .hero-preview { display: none; }
+  .hero-content { border-radius: var(--radius-lg); }
+}
+
+@media (max-width: 768px) {
+  .auth-body { grid-template-columns: 1fr; }
+  .auth-deco, .auth-tech { display: none; }
+  .app-layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .ai-panel { display: none; }
+  .chat-panel { grid-template-columns: 1fr; }
+  .chat-list { display: none; }
+  .features { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .header { padding: 12px 16px; }
+  .auth-card, .reg-card { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     ОБЩИЙ ТОСТ-УВЕДОМЛЕНИЙ
+     ============================================================ -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toast-msg">Действие выполнено</span>
+</div>
+
+<!-- ============================================================
+     СТРАНИЦА 1: АВТОРИЗАЦИЯ (стартовая)
+     ============================================================ -->
+<div class="page active" id="page-auth">
+
+  <header class="header">
+    <div class="header-logo">
+      <img src="logo.png" alt="Логотип НашСлон"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+      <div class="logo-placeholder" style="display:none">
+        <span class="logo-elephant">🐘</span>
+        <span class="logo-text-header">Наш<span>Слон</span></span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <div class="theme-switcher" id="ts1">
+        <button class="theme-btn active" data-theme="light" data-tip="Бумага" onclick="setTheme('light',this)">☀️</button>
+        <button class="theme-btn" data-theme="dark" data-tip="Тёмная" onclick="setTheme('dark',this)">🌙</button>
+      </div>
+      <button class="btn-header btn-header-ghost" onclick="showPage('page-register')">Регистрация</button>
+    </nav>
+  </header>
+
+  <div class="auth-body">
+
+    <!-- Левый декоративный блок -->
+    <div class="auth-deco">
+      <span class="auth-deco-tag">Мессенджер</span>
+      <div class="auth-deco-title">ML-ассистент для структурирования коммуникаций</div>
+      <ul class="auth-deco-list">
+        <li>Умная классификация входящих сообщений</li>
+        <li>Семантический поиск по всей истории</li>
+        <li>RAG-агент отвечает на основе ваших документов</li>
+        <li>Сводки диалогов за один клик</li>
+        <li>Быстрые ИИ-ответы без настройки</li>
+      </ul>
+    </div>
+
+    <!-- Карточка авторизации -->
+    <div class="auth-card">
+      <div class="auth-card-logo">
+        <!-- Заглушка: замените src на реальный logo.png -->
+        <img src="logo.png" alt="НашСлон"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+        <div class="auth-logo-placeholder" style="display:none">
+          <span class="elephant-icon">🐘</span>
+          <div>
+            <div class="brand-name">Наш<span>Слон</span></div>
+            <div class="brand-sub">мессенджер</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card-title">Вход в систему</div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label class="form-label" for="auth-email">Email / Логин</label>
+        <input class="form-input" type="email" id="auth-email"
+               placeholder="ivan@company.ru" autocomplete="email">
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label class="form-label" for="auth-pass">Пароль</label>
+        <input class="form-input" type="password" id="auth-pass"
+               placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <!-- Remember me -->
+      <label class="form-check">
+        <input type="checkbox" id="auth-remember">
+        <span class="form-check-box"></span>
+        <span class="form-check-label">Запомнить меня</span>
+      </label>
+
+      <!-- Кнопки -->
+      <div class="form-actions">
+        <button class="btn-login" onclick="doLogin()">Войти</button>
+        <button class="btn-forgot" onclick="showToast('📧 Письмо восстановления отправлено')">
+          Забыли пароль?
+        </button>
+      </div>
+
+      <div class="form-divider">или</div>
+
+      <button class="btn-register-link" onclick="showPage('page-register')">
+        Создать аккаунт
+      </button>
+    </div>
+
+    <!-- Правый технический блок -->
+    <div class="auth-tech">
+      <div class="auth-tech-title">Статус доступа</div>
+      <div class="auth-tech-status">Access Status</div>
+      <div class="auth-tech-badges">
+        <div class="tech-badge">
+          <div class="tech-badge-dot"></div>
+          <div>
+            <div style="font-weight:700;font-size:13px;">ГОСТ Р 34.10-2018</div>
+            <div style="font-size:11px;color:var(--text-muted);">Электронная подпись</div>
+          </div>
+        </div>
+        <div class="tech-badge">
+          <div class="tech-badge-dot"></div>
+          <div>
+            <div style="font-weight:700;font-size:13px;">КБ — Конфиденциально</div>
+            <div style="font-size:11px;color:var(--text-muted);">Шифрование данных</div>
+          </div>
+        </div>
+        <div class="tech-badge">
+          <div class="tech-badge-dot"></div>
+          <div>
+            <div style="font-weight:700;font-size:13px;">НИИ-совместимость</div>
+            <div style="font-size:11px;color:var(--text-muted);">Корпоративная интеграция</div>
+          </div>
+        </div>
+        <div class="tech-badge" style="background:rgba(213,43,30,0.04);border-color:rgba(213,43,30,0.2);">
+          <span style="font-size:18px;">🛡️</span>
+          <div>
+            <div style="font-weight:700;font-size:12px;color:var(--red);">Данные хранятся в РФ</div>
+            <div style="font-size:11px;color:var(--text-muted);">152-ФЗ соблюдён</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /page-auth -->
+
+
+<!-- ============================================================
+     СТРАНИЦА 3: РЕГИСТРАЦИЯ
+     ============================================================ -->
+<div class="page" id="page-register">
+
+  <header class="header">
+    <div class="header-logo" onclick="showPage('page-auth')" style="cursor:pointer">
+      <img src="logo.png" alt="Логотип НашСлон"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+      <div class="logo-placeholder" style="display:none">
+        <span class="logo-elephant">🐘</span>
+        <span class="logo-text-header">Наш<span>Слон</span></span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <div class="theme-switcher" id="ts2">
+        <button class="theme-btn active" data-theme="light" data-tip="Бумага" onclick="setTheme('light',this)">☀️</button>
+        <button class="theme-btn" data-theme="dark" data-tip="Тёмная" onclick="setTheme('dark',this)">🌙</button>
+      </div>
+      <button class="btn-header btn-header-ghost" onclick="showPage('page-auth')">Уже есть аккаунт?</button>
+    </nav>
+  </header>
+
+  <div class="reg-body">
+    <div class="reg-card">
+
+      <div class="reg-card-logo">
+        <img src="logo.png" alt="НашСлон" style="height:44px"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+        <div class="auth-logo-placeholder" style="display:none">
+          <span class="elephant-icon">🐘</span>
+          <div>
+            <div class="brand-name">Наш<span>Слон</span></div>
+            <div class="brand-sub">мессенджер</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-card-title">Создать аккаунт</div>
+      <div class="reg-card-sub">Присоединяйтесь к умному корпоративному мессенджеру</div>
+
+      <!-- Имя / Фамилия -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="reg-name">Имя</label>
+          <input class="form-input" type="text" id="reg-name" placeholder="Иван">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reg-surname">Фамилия</label>
+          <input class="form-input" type="text" id="reg-surname" placeholder="Петров">
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label class="form-label" for="reg-email">Рабочий Email</label>
+        <input class="form-input" type="email" id="reg-email"
+               placeholder="ivan@company.ru">
+      </div>
+
+      <!-- Организация -->
+      <div class="form-group">
+        <label class="form-label" for="reg-org">Организация</label>
+        <input class="form-input" type="text" id="reg-org"
+               placeholder="ООО «Название компании»">
+      </div>
+
+      <!-- Пароль -->
+      <div class="form-group">
+        <label class="form-label" for="reg-pass">Пароль</label>
+        <input class="form-input" type="password" id="reg-pass"
+               placeholder="Минимум 8 символов" oninput="checkStrength(this.value)">
+        <div class="password-strength">
+          <div class="strength-bar" id="s1"></div>
+          <div class="strength-bar" id="s2"></div>
+          <div class="strength-bar" id="s3"></div>
+        </div>
+      </div>
+
+      <!-- Подтверждение пароля -->
+      <div class="form-group">
+        <label class="form-label" for="reg-pass2">Повторите пароль</label>
+        <input class="form-input" type="password" id="reg-pass2"
+               placeholder="Повторите пароль">
+      </div>
+
+      <!-- Кнопка регистрации -->
+      <button class="btn-login" style="width:100%;margin-top:8px" onclick="doRegister()">
+        🐘 Зарегистрироваться
+      </button>
+
+      <p class="form-terms">
+        Нажимая кнопку, вы принимаете
+        <a onclick="showToast('📄 Открытие пользовательского соглашения')">Пользовательское соглашение</a>
+        и
+        <a onclick="showToast('📄 Открытие политики конфиденциальности')">Политику конфиденциальности</a>
+      </p>
+
+      <div class="form-divider" style="margin-top:16px">есть аккаунт?</div>
+
+      <button class="btn-register-link" onclick="showPage('page-auth')">
+        Войти в систему
+      </button>
+    </div>
+  </div>
+</div><!-- /page-register -->
+
+
+<!-- ============================================================
+     СТРАНИЦА 4: ГЛАВНАЯ СТРАНИЦА ПОЛЬЗОВАТЕЛЯ (ЧАТИК)
+     ============================================================ -->
+<div class="page" id="page-app">
+
+  <header class="header">
+    <div class="header-logo">
+      <img src="logo.png" alt="Логотип"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+      <div class="logo-placeholder" style="display:none">
+        <span class="logo-elephant">🐘</span>
+        <span class="logo-text-header">Наш<span>Слон</span></span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <div class="theme-switcher" id="ts3">
+        <button class="theme-btn active" data-theme="light" data-tip="Бумага" onclick="setTheme('light',this)">☀️</button>
+        <button class="theme-btn" data-theme="dark" data-tip="Тёмная" onclick="setTheme('dark',this)">🌙</button>
+      </div>
+      <span style="color:rgba(244,237,224,0.7);font-size:14px;">Иван Петров</span>
+      <button class="btn-header btn-header-ghost" onclick="showPage('page-auth')">
+        Выйти
+      </button>
+    </nav>
+  </header>
+
+  <div class="app-layout">
+
+    <!-- Левый сайдбар — навигация -->
+    <nav class="sidebar">
+      <button class="nav-btn active" onclick="setNavActive(this)">
+        <span class="nav-btn-icon">💬</span>Чаты
+      </button>
+      <button class="nav-btn" onclick="setNavActive(this)">
+        <span class="nav-btn-icon">🔍</span>Поиск
+      </button>
+      <button class="nav-btn" onclick="setNavActive(this)">
+        <span class="nav-btn-icon">🤖</span>Ассистент
+      </button>
+      <button class="nav-btn" onclick="setNavActive(this)">
+        <span class="nav-btn-icon">📁</span>Файлы
+      </button>
+      <button class="nav-btn" onclick="setNavActive(this)">
+        <span class="nav-btn-icon">⚙️</span>Настройки
+      </button>
+    </nav>
+
+    <!-- Центральная область: список чатов + чат -->
+    <div class="chat-panel">
+
+      <!-- Список чатов -->
+      <div class="chat-list">
+        <div class="chat-list-header">Переписки</div>
+
+        <div class="chat-item active" onclick="selectChat(this, 'Команда продукта')">
+          <div class="chat-item-name">Команда продукта</div>
+          <div class="chat-item-preview">ИИ: Документ классифицирован ✓</div>
+          <div class="chat-item-meta">
+            <span>14:23</span>
+            <span class="chat-badge">3</span>
+          </div>
+        </div>
+
+        <div class="chat-item" onclick="selectChat(this, 'ML-сервис')">
+          <div class="chat-item-name">ML-сервис</div>
+          <div class="chat-item-preview">Анализ завершён, результаты готовы</div>
+          <div class="chat-item-meta"><span>13:05</span></div>
+        </div>
+
+        <div class="chat-item" onclick="selectChat(this, 'ИИ-ассистент')">
+          <div class="chat-item-name">🤖 ИИ-ассистент</div>
+          <div class="chat-item-preview">Чем могу помочь?</div>
+          <div class="chat-item-meta">
+            <span>12:47</span>
+            <span class="chat-badge">1</span>
+          </div>
+        </div>
+
+        <div class="chat-item" onclick="selectChat(this, 'Финансы')">
+          <div class="chat-item-name">Финансы</div>
+          <div class="chat-item-preview">Отчёт Q1 загружен</div>
+          <div class="chat-item-meta"><span>Вчера</span></div>
+        </div>
+
+        <div class="chat-item" onclick="selectChat(this, 'HR-адаптация')">
+          <div class="chat-item-name">HR-адаптация</div>
+          <div class="chat-item-preview">Добро пожаловать в команду!</div>
+          <div class="chat-item-meta"><span>Пн</span></div>
+        </div>
+      </div>
+
+      <!-- Основная область чата -->
+      <div class="chat-main">
+        <div class="chat-header">
+          <div>
+            <div class="chat-header-name" id="chat-title">Команда продукта</div>
+            <div class="chat-header-sub">5 участников · ИИ-агент активен</div>
+          </div>
+          <div class="chat-header-actions">
+            <button class="icon-btn" onclick="showToast('🔍 Поиск по диалогу')">🔍</button>
+            <button class="icon-btn" onclick="showToast('📎 Прикрепить файл')">📎</button>
+            <button class="icon-btn" onclick="showToast('⚙️ Настройки чата')">⚙️</button>
+          </div>
+        </div>
+
+        <!-- Сообщения -->
+        <div class="chat-messages" id="chat-messages">
+
+          <div class="msg in">
+            <div class="msg-bubble">Привет всем! Как дела с задачей по интеграции?</div>
+            <div class="msg-meta">Мария Кузнецова · 14:10</div>
+          </div>
+
+          <div class="msg out">
+            <div class="msg-bubble">Почти готово, осталось протестировать крайние кейсы</div>
+            <div class="msg-meta">14:12</div>
+          </div>
+
+          <div class="msg in">
+            <div class="msg-bubble">
+              Отлично! Документ с требованиями загружен в систему.
+              <div class="ml-tag">🧠 CLS-01: Техническая документация · 94%</div>
+            </div>
+            <div class="msg-meta">Алексей Смирнов · 14:18</div>
+          </div>
+
+          <div class="msg out">
+            <div class="msg-bubble">Принял, проверяю классификацию. Всё верно.</div>
+            <div class="msg-meta">14:20</div>
+          </div>
+
+          <div class="msg in" style="max-width:85%">
+            <div class="msg-bubble" style="background:rgba(0,51,160,0.06);border:1px solid rgba(0,51,160,0.15)">
+              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;">🤖 ИИ-ассистент · RAG-02</div>
+              На основе ваших документов: интеграция завершается. Рекомендую запустить нагрузочное тестирование
+              и проверить логи за последние 24 часа.
+            </div>
+            <div class="msg-meta">ИИ-агент · 14:22</div>
+          </div>
+
+        </div>
+
+        <!-- Composer — поле ввода -->
+        <div class="chat-composer">
+          <button class="composer-btn composer-btn-file" onclick="showToast('📁 Выберите файл для отправки')">📁</button>
+          <button class="composer-btn composer-btn-emoji" onclick="showToast('😊 Панель эмодзи')">😊</button>
+          <textarea class="composer-input" id="composer"
+                    placeholder="Напишите сообщение..."
+                    rows="1"
+                    onkeydown="handleComposerKey(event)"></textarea>
+          <button class="composer-btn composer-btn-send" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+
+    </div><!-- /chat-panel -->
+
+    <!-- Правая AI/ML панель -->
+    <div class="ai-panel">
+      <div class="ai-panel-title">🤖 AI / ML Панель</div>
+
+      <!-- Классификация -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">CLS-01</div>
+        <div class="ai-widget-title">Классификация диалога</div>
+        <div class="ai-widget-content">
+          Тема: <strong>Разработка / Интеграция</strong><br>
+          Приоритет: Высокий · Срочность: Средняя
+        </div>
+        <div class="ai-widget-tags">
+          <span class="ai-tag">интеграция</span>
+          <span class="ai-tag">тестирование</span>
+          <span class="ai-tag">API</span>
+        </div>
+      </div>
+
+      <!-- Семантический поиск -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">SEM-04</div>
+        <div class="ai-widget-title">Семантический поиск</div>
+        <div class="ai-widget-content">
+          Найдено 12 похожих диалогов · 3 релевантных документа
+        </div>
+        <div class="ai-widget-tags">
+          <span class="ai-tag" onclick="showToast('🔍 Открытие результатов поиска')">Показать →</span>
+        </div>
+      </div>
+
+      <!-- RAG-ответ -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">RAG-02</div>
+        <div class="ai-widget-title">ИИ-ответ по базе знаний</div>
+        <div class="ai-widget-content">
+          Ответ сформирован на основе 4 внутренних документов. Уверенность: 94%
+        </div>
+      </div>
+
+      <!-- Сводка -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">SUM-07</div>
+        <div class="ai-widget-title">Сводка диалога</div>
+        <div class="ai-widget-content">
+          Обсуждается интеграция модуля. Задача у Ивана. Дедлайн: сегодня.
+        </div>
+        <div class="ai-widget-tags">
+          <span class="ai-tag" onclick="showToast('📋 Копирование сводки')">Копировать</span>
+          <span class="ai-tag" onclick="showToast('📨 Отправка сводки')">Отправить</span>
+        </div>
+      </div>
+
+      <!-- Быстрые ответы -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">REP-03</div>
+        <div class="ai-widget-title">Быстрые ответы</div>
+        <div class="ai-widget-tags" style="flex-direction:column;align-items:stretch;">
+          <span class="ai-tag" style="text-align:left" onclick="insertReply('Принял, работаю над этим')">
+            ✦ Принял, работаю над этим
+          </span>
+          <span class="ai-tag" style="text-align:left" onclick="insertReply('Готово, проверяйте')">
+            ✦ Готово, проверяйте
+          </span>
+          <span class="ai-tag" style="text-align:left" onclick="insertReply('Нужно уточнение по задаче')">
+            ✦ Нужно уточнение
+          </span>
+        </div>
+      </div>
+
+      <!-- Статус системы -->
+      <div class="ai-widget">
+        <div class="ai-widget-code">SYS-00</div>
+        <div class="ai-widget-title">Статус системы</div>
+        <div class="ai-widget-content">
+          <div class="sys-status"><div class="sys-dot"></div> ML-движок: онлайн</div>
+          <div class="sys-status" style="margin-top:5px"><div class="sys-dot"></div> RAG-индекс: актуален</div>
+          <div class="sys-status" style="margin-top:5px"><div class="sys-dot"></div> Шифрование: активно</div>
+        </div>
+      </div>
+
+    </div><!-- /ai-panel -->
+
+  </div><!-- /app-layout -->
+</div><!-- /page-app -->
+
+
+<!-- ============================================================
+     JAVASCRIPT — навигация, логика форм, интерактив
+     ============================================================ -->
+<script>
+/* --- Управление темами --- */
+function setTheme(theme, clickedBtn) {
+  /* Применяем тему на documentElement */
+  document.documentElement.setAttribute('data-theme', theme);
+  /* Сохраняем выбор */
+  localStorage.setItem('nashelon-theme', theme);
+  /* Синхронизируем все переключатели */
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
+  });
+  /* Анимация перехода */
+  document.body.style.transition = 'background 0.5s ease, color 0.4s ease';
+  const names = { light: '☀️ Старая бумага', dark: '🌙 Тёмная' };
+  showToast(names[theme] + ' — тема активирована');
+}
+
+/* Восстанавливаем тему при загрузке */
+(function initTheme() {
+  const saved = localStorage.getItem('nashelon-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-theme') === saved);
+  });
+})();
+
+/* --- Навигация между страницами --- */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* --- Toast-уведомление --- */
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2800);
+}
+
+/* --- Вход в систему (демо) --- */
+function doLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  if (!email || !pass) {
+    showToast('⚠️ Заполните все поля');
+    return;
+  }
+  showToast('🔐 Выполняется вход...');
+  setTimeout(() => showPage('page-app'), 900);
+}
+
+/* --- Регистрация (демо) --- */
+function doRegister() {
+  const name    = document.getElementById('reg-name').value.trim();
+  const email   = document.getElementById('reg-email').value.trim();
+  const pass    = document.getElementById('reg-pass').value;
+  const pass2   = document.getElementById('reg-pass2').value;
+
+  if (!name || !email || !pass) {
+    showToast('⚠️ Заполните обязательные поля');
+    return;
+  }
+  if (pass !== pass2) {
+    showToast('⚠️ Пароли не совпадают');
+    return;
+  }
+  if (pass.length < 8) {
+    showToast('⚠️ Пароль слишком короткий');
+    return;
+  }
+  showToast('✅ Аккаунт создан! Добро пожаловать.');
+  setTimeout(() => showPage('page-app'), 1200);
+}
+
+/* --- Индикатор надёжности пароля --- */
+function checkStrength(val) {
+  const bars = [document.getElementById('s1'), document.getElementById('s2'), document.getElementById('s3')];
+  bars.forEach(b => { b.className = 'strength-bar'; });
+  if (val.length === 0) return;
+  if (val.length < 6) {
+    bars[0].classList.add('active-weak');
+  } else if (val.length < 10 || !/[A-Z]/.test(val) || !/\d/.test(val)) {
+    bars[0].classList.add('active-medium');
+    bars[1].classList.add('active-medium');
+  } else {
+    bars.forEach(b => b.classList.add('active-strong'));
+  }
+}
+
+/* --- Отправка сообщения в чате --- */
+function sendMessage() {
+  const input = document.getElementById('composer');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  const messages = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'msg out';
+  const now = new Date();
+  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  msg.innerHTML = `
+    <div class="msg-bubble">${escapeHTML(text)}</div>
+    <div class="msg-meta">${time}</div>
+  `;
+  messages.appendChild(msg);
+  input.value = '';
+  input.style.height = 'auto';
+  messages.scrollTop = messages.scrollHeight;
+
+  // Эмулируем ответ ИИ с задержкой
+  setTimeout(() => {
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'msg in';
+    aiMsg.style.maxWidth = '85%';
+    aiMsg.innerHTML = `
+      <div class="msg-bubble" style="background:rgba(0,51,160,0.06);border:1px solid rgba(0,51,160,0.15)">
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;">🤖 ИИ-ассистент</div>
+        Ваше сообщение обработано. Классификация: Общение/Задача.
+        Могу подготовить краткую сводку или найти связанные документы.
+      </div>
+      <div class="msg-meta">ИИ-агент · ${time}</div>
+    `;
+    messages.appendChild(aiMsg);
+    messages.scrollTop = messages.scrollHeight;
+  }, 1200);
+}
+
+/* --- Enter для отправки, Shift+Enter для переноса --- */
+function handleComposerKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+/* --- Вставка быстрого ответа в поле --- */
+function insertReply(text) {
+  const input = document.getElementById('composer');
+  input.value = text;
+  input.focus();
+  showToast('✍️ Ответ вставлен в поле');
+}
+
+/* --- Выбор чата --- */
+function selectChat(el, name) {
+  document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('chat-title').textContent = name;
+  showToast('💬 Открыт чат: ' + name);
+}
+
+/* --- Активная кнопка навигации --- */
+function setNavActive(btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* --- Безопасный вывод текста (XSS-защита) --- */
+function escapeHTML(str) {
+  return str.replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+/* --- Автовысота textarea --- */
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('composer');
+  if (ta) {
+    ta.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+  }
+});
+</script>
+
+<!--
+  ============================================================
+  ДИЗАЙН-КОНЦЕПЦИЯ «НашСлон»
+  ============================================================
+
+  ФИЛОСОФИЯ:
+  «НашСлон» — это сплав советской монументальной графики и
+  современного SaaS-продукта. Дизайн строится на трёх принципах:
+
+  1. КОНТРАСТ ЭПОХ
+     Тёмно-синий #0033A0 (советская монументальность) + кремовый
+     #F4EDE0 (архивная бумага) + красный #D52B1E (революционный
+     акцент) — цветовая система отсылает к брендбуку, но работает
+     как современный корпоративный продукт.
+
+  2. РЕТРО-ТИПОГРАФИКА + СОВРЕМЕННАЯ ФУНКЦИЯ
+     Georgia/serif для заголовков создаёт ощущение надёжности и
+     государственности. Trebuchet MS для интерфейса — читаемый,
+     нейтральный, рабочий.
+
+  3. СТРУКТУРА ИЗ МАКЕТОВ
+     Точное соблюдение логики wireframe: 260/480/350 для
+     диалоговой страницы, карточки AI-виджетов с кодами
+     CLS/SEM/RAG/SUM/REP/SYS — как в технической документации.
+
+  СТРАНИЦЫ:
+  - Лендинг: Hero + Feature Cards + Concept Bar
+  - Авторизация: 3-колоночная сетка (деко / форма / технический блок)
+  - Регистрация: центрированная карточка с индикатором пароля
+  - Приложение: 3-панельный лейаут (сайдбар / чат / AI-панель)
+  ============================================================
+-->
+
+</body>
+</html>
