@@ -1,13 +1,14 @@
 from rest_framework import permissions
 
 from chats.models import ChatMember
+from users.permissions import is_project_admin
 
 
 class IsMessageChatMember(permissions.BasePermission):
     """Allow message access only to participants of the related chat."""
 
     def has_object_permission(self, request, view, obj):
-        if request.user.is_staff or request.user.is_superuser:
+        if is_project_admin(request.user):
             return True
         return obj.chat.chat_members.filter(user=request.user).exists()
 
@@ -21,7 +22,7 @@ class CanWriteMessageInChat(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        if request.user.is_staff or request.user.is_superuser:
+        if is_project_admin(request.user):
             return True
 
         chat_id = request.data.get('chat')
@@ -33,7 +34,7 @@ class CanWriteMessageInChat(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        if request.user.is_staff or request.user.is_superuser:
+        if is_project_admin(request.user):
             return True
         if obj.sender_id == request.user.id:
             return True

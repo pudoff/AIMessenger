@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from users.permissions import is_project_admin
 from .models import Chat, ChatMember
 
 
@@ -14,7 +15,7 @@ class ChatMemberSerializer(serializers.ModelSerializer):
     def validate_chat(self, chat):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        if user and user.is_authenticated and not (user.is_staff or user.is_superuser):
+        if user and user.is_authenticated and not is_project_admin(user):
             if not chat.chat_members.filter(
                 user=user,
                 role__in=(ChatMember.Role.OWNER, ChatMember.Role.ADMIN),

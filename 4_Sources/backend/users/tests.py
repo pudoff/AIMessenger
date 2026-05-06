@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.core.management import CommandError, call_command
 from django.test import TestCase
+from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
