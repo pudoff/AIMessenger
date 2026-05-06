@@ -1,0 +1,34 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap'); */
+
+/* base & utilities */
+@import './base.css';
+@import './utilities.css';
+
+/* Components */
+@import './components/StoriesBar.css';
+@import './components/Logo.css';
+@import './components/SidebarNav.css';
+@import './components/ChatComposer.css';
+@import './components/MessageBubble.css';
+@import './components/Tag.css';
+@import './components/Button.css';
+@import './components/Avatar.css';
+@import './components/Badge.css';
+@import './components/Cards.css';
+@import './components/Common.css';
+@import './components/LegalModal.css';
+
+/* Layouts */
+@import './layouts/common-layout.css';
+@import './layouts/app-layout.css';
+@import './layouts/adminLayout.css';
+
+/* Pages */
+@import './pages/auth/AuthPages.css';
+@import './pages/assistant/AssistantPage.css';
+@import './pages/messenger/CommunitiesPage.css';
+@import './pages/messenger/ContactsPage.css';
+@import './pages/messenger/MessengerPage.css';
+@import './pages/admin/AdminPage.css';
+
+

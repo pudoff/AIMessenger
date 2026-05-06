@@ -1,0 +1,58 @@
+.contact-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.contact-profile__hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(126, 137, 217, 0.14), rgba(255, 255, 255, 0.92));
+  border: 1px solid var(--border);
+}
+
+.contact-profile__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-profile__head h2 {
+  margin: 0;
+}
+
+.contact-profile__head p,
+.contact-profile__head span {
+  color: var(--text-soft);
+}
+
+.contact-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.info-card,
+.contact-about {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border);
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-card span {
+  color: var(--text-soft);
+}
+
+.contact-about p {
+  color: var(--text-soft);
+}

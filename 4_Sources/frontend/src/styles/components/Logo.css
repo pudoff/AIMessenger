@@ -1,0 +1,33 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand--centered {
+  justify-content: center;
+}
+
+.brand--compact .brand__image {
+  width: 100%;
+  max-width: 210px;
+}
+
+.brand__image {
+  width: min(100%, 320px);
+  height: auto;
+}
+
+.brand__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.brand__subtitle {
+  color: var(--text-soft);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
