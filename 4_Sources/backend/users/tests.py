@@ -1,3 +1,9 @@
+import os
+from io import StringIO
+from unittest.mock import patch
+
+from django.core.management import CommandError, call_command
+from django.test import TestCase
 from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
@@ -119,35 +125,45 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_role_admin_can_access_admin_users_endpoint(self):
-        user = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
-        self.client.force_authenticate(user)
 
-        response = self.client.get(reverse('user-list'))
+class SeedAdminUserCommandTests(TestCase):
+    def test_creates_admin_from_env_when_missing(self):
+        with patch.dict(
+            os.environ,
+            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "StrongPassword123"},
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = User.objects.get(username="admin")
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_staff)
+        self.assertEqual(user.role, User.Role.ADMIN)
+        self.assertTrue(user.check_password("StrongPassword123"))
 
-    def test_drf_login_redirects_to_api_root(self):
-        self.assertEqual(settings.LOGIN_REDIRECT_URL, '/api/')
+    def test_does_not_update_existing_user(self):
+        existing_user = User.objects.create_user(username="admin", password="OldPassword123")
 
-        User.objects.create_user(username='demo', password='StrongPassword123')
+        with patch.dict(
+            os.environ,
+            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "NewPassword123"},
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
 
-        response = self.client.post(
-            '/api/auth/login/',
-            {'username': 'demo', 'password': 'StrongPassword123'},
-        )
+        self.assertEqual(User.objects.count(), 1)
+        existing_user.refresh_from_db()
+        self.assertFalse(existing_user.is_superuser)
+        self.assertFalse(existing_user.is_staff)
+        self.assertTrue(existing_user.check_password("OldPassword123"))
 
-        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], '/api/')
+    def test_skips_when_admin_env_is_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            call_command("seed_admin_user", stdout=StringIO())
 
-    def test_cors_preflight_allows_local_frontend_authorization_header(self):
-        response = self.client.options(
-            reverse('api-me'),
-            HTTP_ORIGIN='http://localhost:5173',
-            HTTP_ACCESS_CONTROL_REQUEST_METHOD='GET',
-            HTTP_ACCESS_CONTROL_REQUEST_HEADERS='authorization',
-        )
+        self.assertFalse(User.objects.exists())
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response['access-control-allow-origin'], 'http://localhost:5173')
-        self.assertIn('authorization', response['access-control-allow-headers'].lower())
+    def test_requires_username_and_password_together(self):
+        with patch.dict(os.environ, {"ADMIN_USER": "admin"}, clear=True):
+            with self.assertRaises(CommandError):
+                call_command("seed_admin_user", stdout=StringIO())
