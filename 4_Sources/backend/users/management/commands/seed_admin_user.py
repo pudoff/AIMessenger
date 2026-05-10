@@ -12,7 +12,7 @@ class Command(BaseCommand):
         admin_password = os.getenv("ADMIN_PASSWORD")
 
         if not admin_username and not admin_password:
-            self.stdout.write("Admin seed skipped: ADMIN_USER and ADMIN_PASSWORD arСe not set.")
+            self.stdout.write("Admin seed skipped: ADMIN_USER and ADMIN_PASSWORD are not set.")
             return
 
         if not admin_username or not admin_password:

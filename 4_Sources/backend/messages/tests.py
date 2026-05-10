@@ -103,6 +103,26 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('task_status', response.json())
 
+    def test_role_admin_can_see_and_update_any_message(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(admin)
+
+        list_response = self.client.get(reverse('message-list'))
+        update_response = self.client.patch(
+            reverse('message-detail', args=[self.foreign_message.id]),
+            {'text': 'Updated by role admin'},
+            format='json',
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in results(list_response)],
+            [self.message.id, self.foreign_message.id],
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.foreign_message.refresh_from_db()
+        self.assertEqual(self.foreign_message.text, 'Updated by role admin')
+
     def test_author_can_update_own_message(self):
         self.client.force_authenticate(self.owner)
 

@@ -22,9 +22,7 @@ function LoginPage() {
     const result = await login(form.login.trim(), form.password);
     
     if (result.success) {
-      // Редирект определяем после загрузки профиля в AuthContext
-      // Но можно сразу попробовать:
-      navigate('/app', { replace: true });
+      navigate(result.user?.role === 'admin' ? '/admin' : '/app', { replace: true });
     }
   };
 

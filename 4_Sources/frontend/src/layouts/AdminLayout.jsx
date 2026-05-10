@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 
 function AdminLayout() {
   const { logout, currentUser } = useAuth();
+  const fullName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim()
+    || currentUser?.username
+    || 'Администратор';
+  const initials = (fullName.slice(0, 2) || '??').toUpperCase();
 
   return (
     <div className="admin-shell">
@@ -16,10 +20,10 @@ function AdminLayout() {
           <div className="admin-menu__item">Системные события</div>
         </div>
         <div className="profile-card">
-          <div className="avatar avatar--primary">{currentUser?.name?.slice(0, 2).toUpperCase()}</div>
+          <div className="avatar avatar--primary">{initials}</div>
           <div className="profile-card__text">
-            <strong>{currentUser?.name}</strong>
-            <span>{currentUser?.position}</span>
+            <strong>{fullName}</strong>
+            <span>Администратор</span>
           </div>
         </div>
         <button className="secondary-button" type="button" onClick={logout}>

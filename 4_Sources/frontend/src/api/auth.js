@@ -1,5 +1,5 @@
 // src/api/auth.js
-const API_BASE = '/api'; 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Вспомогательная функция для запросов
 const request = async (endpoint, options = {}) => {

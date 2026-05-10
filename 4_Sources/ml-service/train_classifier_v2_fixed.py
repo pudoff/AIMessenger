@@ -51,18 +51,18 @@ class ChatMessageClassifier:
         random.seed(self.random_state)
 
         for text in toxic_df['text'].values:
-            # 1. Изменение регистра
+
             augmented_texts.append(text.upper())
             augmented_labels.append(3)
-            # 2. Пунктуация
+
             augmented_texts.append(text + random.choice(["!!!", "...", "??", "!!11"]))
             augmented_labels.append(3)
-            # 3. Вставка пробелов
+
             if len(text) > 5:
                 idx = random.randint(1, len(text)-2)
                 augmented_texts.append(text[:idx] + " " + text[idx:])
                 augmented_labels.append(3)
-            # 4. Замена слов на синонимы
+
             words = text.split()
             for orig, subs in self.synonyms.items():
                 if orig in words:

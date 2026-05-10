@@ -22,14 +22,14 @@ export function RequireAuth({ children }) {
 }
 
 export function RequireGuest({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { currentUser, isAuthenticated, loading } = useAuth();
 
   // 🔒 Ждём окончания проверки
   if (loading) return <AuthLoader />;
   
   // 🔒 Уже авторизован → редирект в приложение
   if (isAuthenticated) {
-    return <Navigate to="/app" replace />;
+    return <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/app'} replace />;
   }
 
   return children;

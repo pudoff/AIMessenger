@@ -100,6 +100,7 @@ function RegisterPage() {
     
     if (result.success) {
       setIsSubmitted(true);
+      navigate('/app', { replace: true });
     } else {
       // 👇 Распределяем ошибки бэкенда по полям
       const backendErrors = parseBackendErrors(result.errors || {});

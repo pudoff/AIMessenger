@@ -1,0 +1,14 @@
+{
+  "best_params": {
+    "C": "0.5",
+    "max_iter": "1000"
+  },
+  "n_train_samples": 1403051,
+  "n_test_samples": 350763,
+  "class_distribution_train": {
+    "3": 802888,
+    "0": 200378,
+    "2": 200223,
+    "1": 199562
+  }
+}

@@ -125,6 +125,19 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_role_admin_can_access_admin_users_endpoint(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        regular_user = User.objects.create_user(username='regular', password='pass')
+        self.client.force_authenticate(admin)
+
+        response = self.client.get(reverse('user-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in response.json()['results']],
+            [admin.id, regular_user.id],
+        )
+
 
 class SeedAdminUserCommandTests(TestCase):
     def test_creates_admin_from_env_when_missing(self):
