@@ -53,7 +53,7 @@ Response:
   "token": "0123456789abcdef..."
 }
 ```
- 
+  
 Дальше frontend отправляет:
 
 ```http
