@@ -1,0 +1,27 @@
+FROM node:24-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+RUN npm run build
+
+FROM nginx:1.27-alpine
+
+WORKDIR /app
+
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY entrypoint.sh /app/entrypoint.sh
+COPY --from=build /app/dist /usr/share/nginx/html
+
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 80
+
+ENTRYPOINT ["/app/entrypoint.sh"]

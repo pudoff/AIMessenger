@@ -1,0 +1,117 @@
+name: Docker build and push
+
+"on":
+  push:
+    branches:
+      - main
+    paths:
+      - "4_Sources/frontend/**"
+      - "4_Sources/backend/**"
+      - "4_Sources/ml-service/**"
+
+env:
+  IMAGE_NAME: magnificent8/ai-messenger
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      ml: ${{ steps.filter.outputs.ml }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - "4_Sources/frontend/**"
+            backend:
+              - "4_Sources/backend/**"
+            ml:
+              - "4_Sources/ml-service/**"
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: 4_Sources/frontend
+          file: 4_Sources/frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:frontend-latest
+            ${{ env.IMAGE_NAME }}:frontend-${{ github.sha }}
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: 4_Sources/backend
+          file: 4_Sources/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:backend-latest
+            ${{ env.IMAGE_NAME }}:backend-${{ github.sha }}
+
+  ml:
+    needs: changes
+    if: needs.changes.outputs.ml == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ml
+        uses: docker/build-push-action@v6
+        with:
+          context: 4_Sources/ml-service
+          file: 4_Sources/ml-service/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:ml-latest
+            ${{ env.IMAGE_NAME }}:ml-${{ github.sha }}
