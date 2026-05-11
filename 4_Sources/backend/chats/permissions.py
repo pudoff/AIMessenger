@@ -23,7 +23,7 @@ class IsChatMemberRecordVisible(permissions.BasePermission):
 
 
 class IsChatOwnerOrAdminForUnsafe(permissions.BasePermission):
-    """Restrict chat/member mutations to chat owner/admin or Django staff."""
+    """Restrict chat/member mutations to chat owner/admin or project admin."""
 
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:

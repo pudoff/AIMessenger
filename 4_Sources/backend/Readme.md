@@ -165,6 +165,38 @@ Admin summary:
 
 Response содержит `latest_registrations`, `created_chats`, `messages_last_24h`, `active_users_last_24h`.
 
+### Контакты и поиск пользователей
+
+Авторизованные пользователи могут искать других активных пользователей и вести личный список контактов.
+
+| Method | URL | Назначение |
+|---|---|---|
+| `GET` | `/api/user-search/?q=<text>` | Поиск активных пользователей по username, email, имени, фамилии или телефону. Текущий пользователь исключается из выдачи. |
+| `GET` | `/api/contacts/` | Список контактов текущего пользователя. Project admin видит все записи контактов. |
+| `POST` | `/api/contacts/` | Добавить пользователя в контакты: `{"contact": 2}`. |
+| `DELETE` | `/api/contacts/{id}/` | Удалить запись контакта. |
+| `POST` | `/api/contacts/{id}/direct-chat/` | Создать или переиспользовать личный чат с контактом. Возвращает `{"chat": 10, "created": true}`. |
+| `POST` | `/api/contacts/{id}/add-to-chat/` | Добавить контакт в групповой или корпоративный чат. Body: `{"chat": 10, "role": "member"}`. Добавлять участников может только owner/admin чата или project admin. |
+
+Contact response:
+
+```json
+{
+  "id": 1,
+  "owner": 1,
+  "contact": 2,
+  "contact_detail": {
+    "id": 2,
+    "username": "user2",
+    "email": "user2@example.com",
+    "first_name": "User",
+    "last_name": "Two",
+    "role": "user"
+  },
+  "created_at": "2026-05-11T08:00:00Z"
+}
+```
+
 ## Chats API
 
 Base URL: `/api/chats/`
@@ -433,6 +465,10 @@ Project admin: `is_staff`, `is_superuser` или `role = "admin"`. Он имее
   "detail": "No Chat matches the given query."
 }
 ```
+
+## Обновление классификации сообщений
+
+Классификация пересчитывается при `POST /api/messages/`, а также при `PATCH`/`PUT`, если изменился `Message.text`. Существующая запись `MessageClassification` обновляется вместе с новым `classified_at`.
 
 ## Security checklist
 

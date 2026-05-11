@@ -50,6 +50,8 @@ URL:
 - API: `http://127.0.0.1:8000/api/`
 - Admin: `http://127.0.0.1:8000/admin/`
 - Token login: `http://127.0.0.1:8000/api/auth/token/`
+- API контактов: `http://127.0.0.1:8000/api/contacts/`
+- API поиска пользователей: `http://127.0.0.1:8000/api/user-search/?q=<text>`
 
 Демо-пользователи после `seed_demo_data`:
 

@@ -1,7 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from .models import User
+from .models import Contact, User
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -121,3 +121,26 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'role',
         )
         read_only_fields = fields
+
+
+class ContactSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    contact_detail = PublicUserSerializer(source='contact', read_only=True)
+
+    class Meta:
+        model = Contact
+        fields = ('id', 'owner', 'contact', 'contact_detail', 'created_at')
+        read_only_fields = ('id', 'owner', 'contact_detail', 'created_at')
+
+    def validate_contact(self, contact):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            if contact.id == user.id:
+                raise serializers.ValidationError('You cannot add yourself to contacts.')
+            queryset = Contact.objects.filter(owner=user, contact=contact)
+            if self.instance:
+                queryset = queryset.exclude(id=self.instance.id)
+            if queryset.exists():
+                raise serializers.ValidationError('This user is already in your contacts.')
+        return contact

@@ -12,7 +12,7 @@ from rest_framework.test import APITestCase
 
 from chats.models import Chat, ChatMember
 from messages.models import Message
-from .models import User
+from .models import Contact, User
 
 
 class AuthApiTests(APITestCase):
@@ -212,6 +212,81 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('latest_registrations', response.json())
         self.assertIn('messages_last_24h', response.json())
+
+
+class ContactApiTests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass', email='owner@example.com')
+        self.contact = User.objects.create_user(
+            username='contact',
+            password='pass',
+            email='contact@example.com',
+            first_name='Contact',
+        )
+        self.other = User.objects.create_user(username='other', password='pass', email='other@example.com')
+
+    def test_user_can_search_other_active_users(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.get(reverse('user-search-list'), {'q': 'cont'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in response.json()['results']], [self.contact.id])
+
+    def test_user_can_add_contact_and_sees_only_own_contacts(self):
+        Contact.objects.create(owner=self.other, contact=self.owner)
+        self.client.force_authenticate(self.owner)
+
+        create_response = self.client.post(
+            reverse('contact-list'),
+            {'contact': self.contact.id},
+            format='json',
+        )
+        list_response = self.client.get(reverse('contact-list'))
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_response.json()['owner'], self.owner.id)
+        self.assertEqual(create_response.json()['contact_detail']['username'], 'contact')
+        self.assertEqual([item['contact'] for item in list_response.json()['results']], [self.contact.id])
+
+    def test_user_cannot_add_self_or_duplicate_contact(self):
+        self.client.force_authenticate(self.owner)
+
+        self_response = self.client.post(reverse('contact-list'), {'contact': self.owner.id}, format='json')
+        first_response = self.client.post(reverse('contact-list'), {'contact': self.contact.id}, format='json')
+        duplicate_response = self.client.post(reverse('contact-list'), {'contact': self.contact.id}, format='json')
+
+        self.assertEqual(self_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(duplicate_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_contact_action_creates_or_reuses_direct_chat(self):
+        contact = Contact.objects.create(owner=self.owner, contact=self.contact)
+        self.client.force_authenticate(self.owner)
+
+        first_response = self.client.post(reverse('contact-direct-chat', args=[contact.id]), {}, format='json')
+        second_response = self.client.post(reverse('contact-direct-chat', args=[contact.id]), {}, format='json')
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(first_response.json()['created'])
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(second_response.json()['created'])
+        self.assertEqual(first_response.json()['chat'], second_response.json()['chat'])
+
+    def test_contact_can_be_added_to_group_chat_by_owner(self):
+        contact = Contact.objects.create(owner=self.owner, contact=self.contact)
+        chat = Chat.objects.create(title='Group', chat_type=Chat.ChatType.GROUP, created_by=self.owner)
+        ChatMember.objects.create(chat=chat, user=self.owner, role=ChatMember.Role.OWNER)
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            reverse('contact-add-to-chat', args=[contact.id]),
+            {'chat': chat.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ChatMember.objects.filter(chat=chat, user=self.contact).exists())
 
 
 class SeedAdminUserCommandTests(TestCase):

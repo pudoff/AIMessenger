@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -26,6 +27,15 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         message = serializer.save(sender=self.request.user)
+        self._classify_message(message)
+
+    def perform_update(self, serializer):
+        old_text = serializer.instance.text
+        message = serializer.save()
+        if message.text != old_text:
+            self._classify_message(message)
+
+    def _classify_message(self, message):
         result = classify_text(message.text)
         MessageClassification.objects.update_or_create(
             message=message,
@@ -33,5 +43,6 @@ class MessageViewSet(viewsets.ModelViewSet):
                 'label': result['label'],
                 'confidence': result['confidence'],
                 'probabilities': result['probabilities'],
+                'classified_at': timezone.now(),
             },
         )

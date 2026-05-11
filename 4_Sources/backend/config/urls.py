@@ -21,10 +21,12 @@ from rest_framework.routers import DefaultRouter
 
 from chats.views import ChatMemberViewSet, ChatViewSet
 from messages.views import MessageViewSet
-from users.views import AdminEventsView, CurrentUserView, RegisterView, UserViewSet
+from users.views import AdminEventsView, ContactViewSet, CurrentUserView, RegisterView, UserSearchViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register('users', UserViewSet)
+router.register('user-search', UserSearchViewSet, basename='user-search')
+router.register('contacts', ContactViewSet, basename='contact')
 router.register('chats', ChatViewSet, basename='chat')
 router.register('chat-members', ChatMemberViewSet, basename='chat-member')
 router.register('messages', MessageViewSet, basename='message')
