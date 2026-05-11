@@ -8,6 +8,7 @@ name: Docker build and push
       - "4_Sources/frontend/**"
       - "4_Sources/backend/**"
       - "4_Sources/ml-service/**"
+      - "4_Sources/webhook/**"
 
 env:
   IMAGE_NAME: magnificent8/ai-messenger
@@ -19,6 +20,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       ml: ${{ steps.filter.outputs.ml }}
+      webhook: ${{ steps.filter.outputs.webhook }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +36,8 @@ jobs:
               - "4_Sources/backend/**"
             ml:
               - "4_Sources/ml-service/**"
+            webhook:
+              - "4_Sources/webhook/**"
 
   frontend:
     needs: changes
@@ -115,3 +119,30 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:ml-latest
             ${{ env.IMAGE_NAME }}:ml-${{ github.sha }}
+
+  webhook:
+    needs: changes
+    if: needs.changes.outputs.webhook == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push webhook
+        uses: docker/build-push-action@v6
+        with:
+          context: 4_Sources/webhook
+          file: 4_Sources/webhook/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:webhook-latest
+            ${{ env.IMAGE_NAME }}:webhook-${{ github.sha }}
