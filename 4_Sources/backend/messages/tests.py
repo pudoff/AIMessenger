@@ -85,6 +85,8 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         created = Message.objects.get(id=response.json()['id'])
         self.assertEqual(created.sender, self.member)
+        self.assertIn('classification', response.json())
+        self.assertTrue(hasattr(created, 'classification'))
 
     def test_task_status_is_allowed_only_for_task_messages(self):
         self.client.force_authenticate(self.member)
