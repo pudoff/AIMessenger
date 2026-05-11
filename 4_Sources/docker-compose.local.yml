@@ -39,6 +39,19 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    networks:
+      - backend
+    depends_on:
+      backend:
+        condition: service_started
+
   postgres:
     image: postgres:18.3
     restart: always
