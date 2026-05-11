@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import Contact, User
 
 
 @admin.register(User)
@@ -40,3 +40,10 @@ class UserAdmin(DjangoUserAdmin):
     list_display = ('username', 'email', 'phone_number', 'role', 'is_staff', 'is_active')
     list_filter = ('role', 'is_staff', 'is_active', 'accepted_user_agreement', 'accepted_privacy_policy')
     readonly_fields = ('user_agreement_accepted_at', 'privacy_policy_accepted_at')
+
+
+@admin.register(Contact)
+class ContactAdmin(admin.ModelAdmin):
+    list_display = ('owner', 'contact', 'created_at')
+    search_fields = ('owner__username', 'contact__username', 'contact__email')
+    list_filter = ('created_at',)
