@@ -16,3 +16,7 @@ local:
 		$(MAKE) lf; \
 	fi
 	docker compose -f docker-compose.local.yml ${OPTIONS}
+
+.PHONY: prod
+prod:
+	docker compose -f docker-compose.yml ${OPTIONS}
