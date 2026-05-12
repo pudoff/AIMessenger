@@ -10,35 +10,21 @@ http:
         browserXssFilter: true
         contentTypeNosniff: true
 
-    basic-auth:
-      basicAuth:
-        usersFile: /etc/traefik/usersfile
-
   routers:
-    traefik-dashboard:
-      rule: "Host(`traefik.DOMAIN.ru`)"
-      entryPoints:
-        - websecure
-      service: api@internal
-      middlewares:
-        - basic-auth
-      tls:
-        certResolver: traefik
 
     frontend:
-      rule: "Host(`DOMAIN.ru`)"
+      rule: "Host(`elephantaimessenger.ru`)"
       entryPoints:
         - websecure
       service: frontend
       tls:
         certResolver: traefik
       middlewares:
-        - basic-auth
         - rate-limiter
         - common-headers
 
     backend:
-      rule: "Host(`api.DOMAIN.ru`)"
+      rule: "Host(`api.elephantaimessenger.ru`)"
       entryPoints:
         - websecure
       service: backend
@@ -49,7 +35,7 @@ http:
         - common-headers
 
     webhook:
-      rule: "Host(`SUBDOMAIN.DOMAIN.ru`)"
+      rule: "Host(`4dd83a12-17cf-4fe7-8a9d-d63078438705.elephantaimessenger.ru`)"
       entryPoints:
         - websecure
       service: webhook
@@ -63,14 +49,14 @@ http:
     frontend:
       loadBalancer:
         servers:
-          - url: "http://frontend:4000"
+          - url: "http://frontend:80"
 
     backend:
       loadBalancer:
         servers:
           - url: "http://backend:8000"
 
-#    webhook:
-#      loadBalancer:
-#        servers:
-#          - url: "http://webhook:3000"
+    webhook:
+      loadBalancer:
+        servers:
+          - url: "http://webhook:3000"
