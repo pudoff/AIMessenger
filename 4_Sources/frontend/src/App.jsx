@@ -20,23 +20,23 @@ import { RequireAuth, RequireGuest, RequireRole } from './components/guards/Rout
 function App() {
   return (
     <Routes>
-      
+
       {/* Вход */}
-      <Route path="/" element={<Navigate to="/login" replace />}/>
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route
         path="/login"
         element={
           <RequireGuest>
             <LoginPage />
-          </RequireGuest>}/>
+          </RequireGuest>} />
 
       <Route
         path="/register"
         element={
           <RequireGuest>
             <RegisterPage />
-          </RequireGuest>}/>
-          
+          </RequireGuest>} />
+
       {/* Пользователь */}
       <Route
         path="/app"
@@ -46,16 +46,18 @@ function App() {
               <AppLayout />
             </RequireRole>
           </RequireAuth>}>
-        
+
         <Route index element={<MessengerPage />} />
         <Route path="direct" element={<DirectChatsPage />} />
+        <Route path="direct/:chatId" element={<DirectChatsPage />} />
         <Route path="groups" element={<GroupChatsPage />} />
+        <Route path="group/:chatId" element={<GroupChatsPage />} />
         <Route path="communities" element={<CommunitiesPage />} />
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="contacts/:contactId" element={<ContactsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
       </Route>
-      
+
       {/* Админ */}
       <Route
         path="/admin"
@@ -70,7 +72,7 @@ function App() {
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
-      
+
     </Routes>
   );
 }
