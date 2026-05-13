@@ -62,6 +62,8 @@ jobs:
           context: 4_Sources/frontend
           file: 4_Sources/frontend/Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=https://api.elephantaimessenger.ru
           tags: |
             ${{ env.IMAGE_NAME }}:frontend-latest
             ${{ env.IMAGE_NAME }}:frontend-${{ github.sha }}
