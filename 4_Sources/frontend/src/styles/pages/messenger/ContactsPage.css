@@ -1,58 +1,306 @@
-.contact-profile {
+/* Сетка для страницы контактов */
+.workspace--contacts {
   display: flex;
-  flex-direction: column;
   gap: 18px;
+  align-items: stretch;
+  min-height: calc(100vh - 100px);
+  width: 100%;
 }
 
-.contact-profile__hero {
+/* Базовые стили панелей */
+.panel {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+}
+
+/* Шапка карточки */
+.contacts-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 20px 20px 0;
+}
+.contacts-header__title { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+.contacts-header__subtitle { margin: 4px 0 0; color: var(--text-soft); font-size: 0.9rem; }
+
+/* Поиск */
+.contacts-search-box {
+  padding: 12px 16px;
+}
+.contacts-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(126, 137, 217, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  color: var(--text);
+  font: inherit;
+}
+.contacts-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(126, 137, 217, 0.15);
+}
+
+/* Список */
+.list-stack {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 12px;
+}
+
+/* Строка контакта */
+.contact-row {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 22px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(126, 137, 217, 0.14), rgba(255, 255, 255, 0.92));
-  border: 1px solid var(--border);
+  gap: 12px;
+  border-radius: 12px;
+  transition: background 0.15s;
+  position: relative;
 }
+.contact-row:hover { background: rgba(126, 137, 217, 0.08); }
+.contact-row--active { background: rgba(126, 137, 217, 0.15); }
 
-.contact-profile__head {
+.contact-row__link {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 12px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.contact-row__link:hover { background: transparent; } /* Чтобы hover работал на контейнер */
+
+.contact-row__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.contact-row__text {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.contact-row__text strong { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-row__text span { font-size: 0.85rem; color: var(--text-soft); }
+
+/* Кнопка добавления в строке */
+.contact-row__action {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(126, 137, 217, 0.15);
+  color: var(--accent-strong);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.contact-row__action:hover { background: rgba(126, 137, 217, 0.3); }
+.contact-row__action:disabled {
+  opacity: 0.5;
+  cursor: default;
+  background: transparent;
+  color: var(--success);
+}
+.contact-row__action--added {
+  background: transparent;
+  color: var(--success);
+}
+
+/* Аватары */
+.avatar {
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: rgba(126, 137, 217, 0.2);
+  color: var(--accent-strong);
+  flex-shrink: 0;
+}
+.avatar--circle { border-radius: 50%; }
+.avatar--xl { width: 80px; height: 80px; font-size: 1.5rem; }
+.avatar--primary { background: linear-gradient(135deg, var(--accent-strong), var(--accent)); color: white; }
+
+/* Пустое состояние и ошибки */
+.contacts-empty { padding: 40px; text-align: center; color: var(--text-soft); }
+.contacts-error { padding: 12px; color: var(--danger); text-align: center; font-size: 0.9rem; }
+
+/* Профиль */
+.contact-profile { padding: 20px; overflow-y: auto; flex: 1; }
+.contact-profile__hero { display: flex; gap: 20px; align-items: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.contact-profile__head h2 { margin: 0 0 8px; font-size: 1.5rem; }
+.contact-profile__head p { margin: 0 0 4px; color: var(--text-soft); }
+.contact-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.info-card { background: rgba(126, 137, 217, 0.08); padding: 16px; border-radius: 12px; }
+.info-card strong { display: block; margin-bottom: 8px; color: var(--text-soft); font-size: 0.85rem; }
+
+.btn-delete-contact {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-contact:hover {
+  background: rgba(220, 53, 69, 0.2);
+  border-color: #dc3545;
+}
+
+.btn-delete-contact:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* Состояния сообщений */
+.message--optimistic {
+  opacity: 0.7;
+}
+
+.message--error {
+  border-left: 3px solid var(--danger);
+  background: rgba(220, 53, 69, 0.05);
+}
+
+.message--error::after {
+  content: 'Не отправлено';
+  display: block;
+  font-size: 0.75rem;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* Пустое состояние чатов */
+.contacts-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.contacts-error {
+  padding: 12px;
+  color: var(--danger);
+  text-align: center;
+  font-size: 0.9rem;
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 8px;
+  margin: 12px;
+}
+
+/* Адаптив для списка чатов */
+@media (max-width: 768px) {
+  .panel--list-only {
+    width: 100%;
+  }
+  .panel--chat-only {
+    width: 100%;
+  }
+}
+
+/* Контейнер кнопок в шапке */
+.contacts-header__actions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+/* Кнопка "Написать" */
+.btn-write-contact {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.contact-profile__head h2 {
-  margin: 0;
+.btn-write-contact:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-.contact-profile__head p,
-.contact-profile__head span {
-  color: var(--text-soft);
+.btn-write-contact:active {
+  transform: translateY(0);
 }
 
-.contact-info-grid {
+/* Кнопка "Удалить" (обновлённая) */
+.btn-delete-contact {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-contact:hover {
+  background: rgba(220, 53, 69, 0.2);
+  border-color: #dc3545;
+}
+
+.btn-delete-contact:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* Состояния сообщений в чате */
+.message--optimistic { opacity: 0.7; }
+.message--error {
+  border-left: 3px solid var(--danger);
+  background: rgba(220, 53, 69, 0.05);
+}
+.message--error::after {
+  content: 'Не отправлено';
+  display: block;
+  font-size: 0.75rem;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* Адаптив для split-вида */
+.workspace--split {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 380px 1fr;
+  gap: 18px;
+  height: calc(100vh - 100px);
+  min-height: 0;
 }
 
-.info-card,
-.contact-about {
-  padding: 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--border);
-}
-
-.info-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.info-card span {
-  color: var(--text-soft);
-}
-
-.contact-about p {
-  color: var(--text-soft);
+@media (max-width: 1024px) {
+  .workspace--split {
+    grid-template-columns: 1fr;
+  }
+  .panel--list { display: none; }
+  .panel--list-only { display: flex; }
 }

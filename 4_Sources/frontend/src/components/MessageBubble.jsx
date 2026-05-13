@@ -5,7 +5,7 @@ function MessageBubble({ message, currentUserName = 'Вы' }) {
     return <div className="system-message">{message.text}</div>;
   }
 
-  const mine = message.author === currentUserName || message.author === 'Вы';
+  const mine = message.isOwn || message.author === currentUserName || message.author === 'Вы';
 
   return (
     <article className={`message ${mine ? 'message--mine' : ''}`}>
