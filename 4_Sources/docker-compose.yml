@@ -44,11 +44,6 @@ services:
 
   frontend:
     image: magnificent8/ai-messenger:frontend-latest
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: "https://api.elephantaimessenger.ru"
     container_name: frontend
     restart: always
     networks:
