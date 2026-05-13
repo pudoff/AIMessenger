@@ -22,5 +22,5 @@ prod:
 	docker compose -f docker-compose.yml ${OPTIONS}
 
 .PHONY: prod-pull
-prod:
+prod-pull:
 	docker compose -f docker-compose.yml ${OPTIONS} --pull always
