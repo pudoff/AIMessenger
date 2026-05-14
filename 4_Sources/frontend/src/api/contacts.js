@@ -1,5 +1,4 @@
-﻿// src/api/contacts.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+﻿import { API_BASE } from './config';
 
 // Вспомогательная функция с обработкой пустых ответов
 const request = async (endpoint, opts = {}) => {
@@ -42,11 +41,11 @@ export const contactsAPI = {
   // Удалить контакт по ID записи
   remove: (id) => request(`/contacts/${id}/`, { method: 'DELETE' }),
   
-  // Принимает id записи контакта
-  openDirect: (contactId) => request(`/contacts/${contactId}/direct-chat/`, { method: 'POST' }),
+  // Принимает userId (не id записи контакта!)
+  openDirect: (userId) => request(`/contacts/${userId}/direct-chat/`, { method: 'POST' }),
   
   // Добавить контакт в групповой чат
-  addToGroupChat: (contactId, chatData) => request(`/contacts/${contactId}/add-to-chat/`, {
+  addToGroupChat: (userId, chatData) => request(`/contacts/${userId}/add-to-chat/`, { 
     method: 'POST', 
     body: JSON.stringify(chatData) 
   }),

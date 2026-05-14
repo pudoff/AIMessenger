@@ -24,6 +24,10 @@ load_dotenv(BASE_DIR / '.env')
 def env_list(name, default=''):
     return [item.strip() for item in os.getenv(name, default).split(',') if item.strip()]
 
+
+def join_env_list(values):
+    return ','.join(values)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -156,10 +160,17 @@ AUTH_USER_MODEL = 'users.User'
 
 LOGIN_REDIRECT_URL = '/api/'
 
-CORS_ALLOWED_ORIGINS = env_list(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000',
-)
+DEFAULT_CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://elephantaimessenger.ru',
+    'https://api.elephantaimessenger.ru',
+]
+
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', join_env_list(CORS_ALLOWED_ORIGINS))
 
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
