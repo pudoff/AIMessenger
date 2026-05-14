@@ -1,53 +1,106 @@
 {
-  "best_params": {
-    "C": "0.5",
-    "max_iter": "1000"
+  "trained_at": "2026-05-14T07:48:16.663515+00:00",
+  "random_seed": 42,
+  "dataset_version": "c410be014022",
+  "dataset_size": 294899,
+  "dataset_columns": [
+    "text",
+    "label",
+    "class_name"
+  ],
+  "class_distribution": {
+    "offtopic": 112,
+    "question": 123290,
+    "statement": 67110,
+    "task": 104387
   },
-  "n_train_samples": 1406551,
-  "n_test_samples": 200000,
-  "class_distribution_train": {
-    "3": 806388,
-    "0": 200378,
-    "2": 200223,
-    "1": 199562
+  "n_train_samples": 235919,
+  "n_test_samples": 58980,
+  "taxonomy": {
+    "canonical_classes": [
+      "question",
+      "statement",
+      "task",
+      "offtopic"
+    ],
+    "legacy_mapping": {
+      "question": "question",
+      "task": "task",
+      "answer": "statement",
+      "statement": "statement",
+      "default": "statement",
+      "toxic": "offtopic",
+      "offtopic": "offtopic"
+    }
   },
+  "best_params": {},
+  "best_cv_score": null,
+  "test_accuracy": 1.0,
+  "macro_f1": 1.0,
+  "weighted_f1": 1.0,
   "classification_report": {
-    "0": {
+    "question": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 50095.0
+      "support": 24658.0
     },
-    "1": {
+    "statement": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 49890.0
+      "support": 13422.0
     },
-    "2": {
+    "task": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 50056.0
+      "support": 20878.0
     },
-    "3": {
+    "offtopic": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 49959.0
+      "support": 22.0
     },
     "accuracy": 1.0,
     "macro avg": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 200000.0
+      "support": 58980.0
     },
     "weighted avg": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 200000.0
+      "support": 58980.0
+    }
+  },
+  "per_class_metrics": {
+    "question": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24658.0
+    },
+    "statement": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 13422.0
+    },
+    "task": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20878.0
+    },
+    "offtopic": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 22.0
     }
   }
 }

@@ -1,0 +1,53 @@
+<<<<<<< HEAD
+// src/api/chats.js
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+=======
+import { API_BASE } from './config';
+>>>>>>> f7cc8e7431724f82eabb3c11f4709810156f4297
+
+const request = async (endpoint, opts = {}) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Token ${token}` }),
+      ...opts.headers,
+    },
+  });
+
+  // Обработка пустых ответов (204, DELETE)
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return null;
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || data.non_field_errors?.[0] || 'Ошибка запроса');
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+};
+
+export const chatsAPI = {
+  // Список чатов пользователя
+  getList: (page = 1) => request(`/chats/?page=${page}`),
+  
+  // Детали чата
+  getOne: (id) => request(`/chats/${id}/`),
+  
+  // Создать чат (групповой или личный)
+  create: (data) => request('/chats/', { method: 'POST', body: JSON.stringify(data) }),
+  
+  // Открыть/создать личный чат с контактом
+  openDirect: (contactId) => request(`/contacts/${contactId}/direct-chat/`, { method: 'POST' }),
+};
+
+export const messagesAPI = {
+  // Сообщения чата с пагинацией
+  getList: (chatId, page = 1, pageSize = 200) => request(`/messages/?chat=${chatId}&page=${page}&page_size=${pageSize}`),
+  
+  // Отправить сообщение
+  send: (data) => request('/messages/', { method: 'POST', body: JSON.stringify(data) }),
+};

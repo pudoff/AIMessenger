@@ -1,5 +1,5 @@
-,question,answer,task,toxic
-question,50095,0,0,0
-answer,0,49890,0,0
-task,0,0,50056,0
-toxic,0,0,0,49959
+,question,statement,task,offtopic
+question,24658,0,0,0
+statement,0,13422,0,0
+task,0,0,20878,0
+offtopic,0,0,0,22

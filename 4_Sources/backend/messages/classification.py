@@ -6,18 +6,24 @@ _predictor = None
 
 
 def _mock_predict(text):
-    lowered = (text or '').lower()
-    if '?' in lowered or any(word in lowered for word in ('как', 'что', 'когда', 'почему', 'зачем')):
-        label = 'question'
-    elif any(word in lowered for word in ('сделай', 'нужно', 'задача', 'дедлайн', 'todo')):
-        label = 'task'
+    lowered = (text or "").lower()
+    if "?" in lowered or any(word in lowered for word in ("как", "что", "когда", "почему", "зачем")):
+        label = "question"
+    elif any(word in lowered for word in ("сделай", "нужно", "задача", "дедлайн", "todo")):
+        label = "task"
     else:
-        label = 'default'
+        label = "statement"
 
     return {
-        'label': label,
-        'confidence': 0.6,
-        'probabilities': {label: 0.6},
+        "label": label,
+        "confidence": 0.6,
+        "probabilities": {
+            "question": 0.0,
+            "statement": 0.0,
+            "task": 0.0,
+            "offtopic": 0.0,
+            label: 0.6,
+        },
     }
 
 
@@ -26,12 +32,12 @@ def _load_predictor():
     if _predictor is not None:
         return _predictor
 
-    predictor_path = Path(__file__).resolve().parents[2] / 'ml-service' / 'predictor.py'
+    predictor_path = Path(__file__).resolve().parents[2] / "ml-service" / "predictor.py"
     if not predictor_path.exists():
         return None
 
     try:
-        spec = spec_from_file_location('aimessenger_ml_predictor', predictor_path)
+        spec = spec_from_file_location("aimessenger_ml_predictor", predictor_path)
         module = module_from_spec(spec)
         spec.loader.exec_module(module)
         _predictor = module.ChatPredictor()
@@ -50,11 +56,14 @@ def classify_text(text):
     except Exception:
         return _mock_predict(text)
 
-    probabilities = result.get('probabilities') or {}
-    label = result.get('class_name') or str(result.get('label', 'unknown'))
-    confidence = max(probabilities.values()) if probabilities else 0
+    probabilities = result.get("probabilities") or {}
+    label = result.get("class_name") or result.get("label") or "needs_review"
+    confidence = result.get("confidence")
+    if confidence is None:
+        confidence = max(probabilities.values()) if probabilities else 0
+
     return {
-        'label': label,
-        'confidence': confidence,
-        'probabilities': probabilities,
+        "label": label,
+        "confidence": float(confidence),
+        "probabilities": probabilities,
     }
