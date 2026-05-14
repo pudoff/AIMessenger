@@ -7,7 +7,7 @@ function AppLayout() {
     <div className="app-shell">
       <SidebarNav />
       <div className="app-shell__content">
-        {/* <StoriesBar /> */}
+        <StoriesBar />
         <Outlet />
       </div>
     </div>

@@ -7,7 +7,7 @@ from .models import Contact, User
 class PublicUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role')
         read_only_fields = fields
 
 
@@ -105,6 +105,35 @@ class RegisterSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
+class AdminEmailBroadcastSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=255)
+    message = serializers.CharField()
+    emails = serializers.ListField(
+        child=serializers.EmailField(),
+        required=False,
+        allow_empty=True,
+    )
+    user_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+    )
+
+    def get_recipients(self):
+        data = self.validated_data
+        recipients = list(data.get('emails') or [])
+        user_ids = data.get('user_ids') or []
+
+        users = User.objects.filter(is_active=True).exclude(email='')
+        if user_ids:
+            users = users.filter(id__in=user_ids)
+        elif recipients:
+            users = User.objects.none()
+
+        recipients.extend(users.values_list('email', flat=True))
+        return sorted(set(recipients))
+
+
 class CurrentUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -137,10 +166,10 @@ class ContactSerializer(serializers.ModelSerializer):
         user = getattr(request, 'user', None)
         if user and user.is_authenticated:
             if contact.id == user.id:
-                raise serializers.ValidationError('You cannot add yourself to contacts.')
+                raise serializers.ValidationError('Нельзя добавить себя в контакты.')
             queryset = Contact.objects.filter(owner=user, contact=contact)
             if self.instance:
                 queryset = queryset.exclude(id=self.instance.id)
             if queryset.exists():
-                raise serializers.ValidationError('This user is already in your contacts.')
+                raise serializers.ValidationError('Пользователь уже есть в ваших контактах.')
         return contact

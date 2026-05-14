@@ -5,12 +5,14 @@ import MessageBubble from '../../components/MessageBubble';
 import SectionHeader from '../../components/SectionHeader';
 import { messagesAPI } from '../../api/chats';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 // API utility for auth
 const getAuthToken = () => localStorage.getItem('auth_token');
 
 const apiRequest = async (endpoint, opts = {}) => {
   const token = getAuthToken();
-  const response = await fetch(`/api${endpoint}`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -76,7 +78,8 @@ const formatMessage = (m, myId) => ({
   isOwn: myId ? String(m.sender) === String(myId) : false,
   message_type: m.message_type,
   task_status: m.task_status,
-  classification: m.classification
+  classification: m.classification,
+  tag: m.classification?.label || m.message_type
 });
 
 export default function DirectChatsPage() {
@@ -89,6 +92,7 @@ export default function DirectChatsPage() {
   const [messages, setMessages] = useState([]);
   const [pendingMessages, setPendingMessages] = useState([]);
   const [chatMeta, setChatMeta] = useState({});
+  const [lastSelectedChatId, setLastSelectedChatId] = useState(() => localStorage.getItem('last_direct_chat_id'));
   const [hasLoadedChats, setHasLoadedChats] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -278,6 +282,7 @@ export default function DirectChatsPage() {
       isOwn: true,
       optimisticCreatedAt,
       created_at: optimisticCreatedAt,
+      tag: 'default',
     };
 
     // Оптимистичное обновление UI
@@ -334,6 +339,8 @@ export default function DirectChatsPage() {
 
   // Выбор чата
   const handleSelectChat = (id) => {
+    setLastSelectedChatId(String(id));
+    localStorage.setItem('last_direct_chat_id', String(id));
     setChatMeta((prev) => ({
       ...prev,
       [id]: {
@@ -359,55 +366,8 @@ export default function DirectChatsPage() {
   // Представление с открытым чатом
   if (chatId) {
     return (
-      <div className="workspace workspace--split">
-        <section className="panel panel--list">
-          <SectionHeader title="Личные сообщения" subtitle="Личные диалоги" />
-          <div className="list-stack">
-            {loading && <div className="contacts-empty">Загрузка...</div>}
-            {!loading && chats.length === 0 && (
-              <div className="contacts-empty">
-                Нет диалогов. <br />
-                <button
-                  className="primary-button"
-                  style={{ marginTop: '12px' }}
-                  type="button"
-                  onClick={() => navigate('/app/contacts')}
-                >
-                  Начать диалог
-                </button>
-              </div>
-            )}
-            {chats.map((chat) => (
-              <button
-                className={`chat-card chat-card--button ${String(chat.id) === chatId ? 'chat-card--active' : ''}`}
-                key={chat.id}
-                type="button"
-                onClick={() => handleSelectChat(chat.id)}
-              >
-                <div className="chat-card__top">
-                  <h3>{chat.name}</h3>
-                  <span className="status-text">{chat.status}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {chat.hasUnread && (
-                    <span style={{ background: '#ff4d4d', color: '#fff', borderRadius: '12px', padding: '2px 8px', fontSize: '12px' }}>
-                      Новое
-                    </span>
-                  )}
-                  {chat.isNewChat && (
-                    <span style={{ background: '#3b82f6', color: '#fff', borderRadius: '12px', padding: '2px 8px', fontSize: '12px' }}>
-                      Новый чат
-                    </span>
-                  )}
-                </div>
-                <p>{chat.preview}</p>
-                <small>{chat.position}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel panel--chat">
+      <div className="workspace workspace--messenger">
+        <section className="panel panel--chat panel--chat-only">
           <div className="chat-toolbar chat-toolbar--stack">
             <div className="chat-toolbar__head">
               <button
@@ -481,7 +441,7 @@ export default function DirectChatsPage() {
         <div className="list-stack">
           {chats.map((chat) => (
             <button
-              className={`chat-card chat-card--button ${String(chat.id) === chatId ? 'chat-card--active' : ''}`}
+              className={`chat-card chat-card--button ${String(chat.id) === String(lastSelectedChatId) ? 'chat-card--active' : ''}`}
               key={chat.id}
               type="button"
               onClick={() => handleSelectChat(chat.id)}

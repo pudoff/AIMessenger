@@ -43,11 +43,12 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     setError(null);
+    setLoading(true);
     try {
       const { token: newToken } = await authAPI.login(username, password);
       localStorage.setItem('auth_token', newToken);
-      setToken(newToken);
       const user = await authAPI.getMe();
+      setToken(newToken);
       setCurrentUser(user);
       return { success: true, user };
     } catch (err) {
@@ -56,6 +57,8 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       setError(err.message);
       return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -79,10 +79,20 @@ class ChatSerializer(serializers.ModelSerializer):
         direct_user_id = attrs.get('direct_user_id')
 
         if chat_type == Chat.ChatType.DIRECT and not self.instance and not direct_user_id:
-            raise serializers.ValidationError({'direct_user_id': 'Required for direct chats.'})
+            raise serializers.ValidationError({'direct_user_id': 'Укажите пользователя для личного чата.'})
         if direct_user_id and not User.objects.filter(id=direct_user_id).exists():
-            raise serializers.ValidationError({'direct_user_id': 'User does not exist.'})
+            raise serializers.ValidationError({'direct_user_id': 'Пользователь не найден.'})
+
+        participant_ids = attrs.get('participant_ids') or []
+        if participant_ids:
+            existing_ids = set(User.objects.filter(id__in=participant_ids).values_list('id', flat=True))
+            missing_ids = sorted(set(participant_ids) - existing_ids)
+            if missing_ids:
+                raise serializers.ValidationError({
+                    'participant_ids': f'Пользователи не найдены: {missing_ids}'
+                })
+
         if chat_type != Chat.ChatType.DIRECT and not self.instance and not attrs.get('title'):
-            raise serializers.ValidationError({'title': 'Required for group and corporate chats.'})
+            raise serializers.ValidationError({'title': 'Название обязательно для групповых и корпоративных чатов.'})
 
         return attrs

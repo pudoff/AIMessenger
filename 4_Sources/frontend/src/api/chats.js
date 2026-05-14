@@ -1,5 +1,5 @@
 // src/api/chats.js
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const request = async (endpoint, opts = {}) => {
   const token = localStorage.getItem('auth_token');

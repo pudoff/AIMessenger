@@ -21,7 +21,7 @@ from rest_framework.routers import DefaultRouter
 
 from chats.views import ChatMemberViewSet, ChatViewSet
 from messages.views import MessageViewSet
-from users.views import AdminEventsView, ContactViewSet, CurrentUserView, RegisterView, UserSearchViewSet, UserViewSet
+from users.views import AdminEmailBroadcastView, AdminEventsView, ContactViewSet, CurrentUserView, RegisterView, UserSearchViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register('users', UserViewSet)
@@ -39,4 +39,5 @@ urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='api-register'),
     path('api/me/', CurrentUserView.as_view(), name='api-me'),
     path('api/admin/events/', AdminEventsView.as_view(), name='api-admin-events'),
+    path('api/admin/email/broadcast/', AdminEmailBroadcastView.as_view(), name='api-admin-email-broadcast'),
 ]

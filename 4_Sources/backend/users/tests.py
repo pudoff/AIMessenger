@@ -2,8 +2,9 @@ import os
 from io import StringIO
 from unittest.mock import patch
 
+from django.core import mail
 from django.core.management import CommandError, call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.conf import settings
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
@@ -212,6 +213,50 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('latest_registrations', response.json())
         self.assertIn('messages_last_24h', response.json())
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='notify@nash-slon.local',
+)
+class AdminEmailBroadcastTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.user = User.objects.create_user(username='demo', password='pass', email='demo@example.com')
+
+    def test_regular_user_cannot_send_admin_email_broadcast(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse('api-admin-email-broadcast'),
+            {'subject': 'Новости', 'message': 'Текст письма'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_role_admin_can_send_email_broadcast(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse('api-admin-email-broadcast'),
+            {
+                'subject': 'Итоги недели',
+                'message': 'Краткие итоги проекта.',
+                'user_ids': [self.user.id],
+                'emails': ['external@example.com'],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['sent_count'], 1)
+        self.assertEqual(
+            sorted(response.json()['recipients']),
+            ['demo@example.com', 'external@example.com'],
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Итоги недели')
 
 
 class ContactApiTests(APITestCase):

@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import Count
 from django.db.models import Q
 from django.utils import timezone
@@ -13,7 +15,7 @@ from chats.models import Chat, ChatMember
 from messages.models import Message
 from .models import Contact, User
 from .permissions import IsProjectAdminUser, is_project_admin
-from .serializers import ContactSerializer, CurrentUserSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
+from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -101,22 +103,22 @@ class ContactViewSet(viewsets.ModelViewSet):
         role = request.data.get('role', ChatMember.Role.MEMBER)
 
         if role not in ChatMember.Role.values:
-            raise serializers.ValidationError({'role': 'Invalid chat member role.'})
+            raise serializers.ValidationError({'role': 'Недопустимая роль участника чата.'})
 
         try:
             chat = Chat.objects.get(id=chat_id)
         except (Chat.DoesNotExist, TypeError, ValueError):
-            raise serializers.ValidationError({'chat': 'Chat does not exist.'})
+            raise serializers.ValidationError({'chat': 'Чат не найден.'})
 
         if chat.chat_type not in (Chat.ChatType.GROUP, Chat.ChatType.CORPORATE):
-            raise serializers.ValidationError({'chat': 'Contacts can be added only to group or corporate chats.'})
+            raise serializers.ValidationError({'chat': 'Контакты можно добавлять только в групповые или корпоративные чаты.'})
 
         if not is_project_admin(request.user) and not chat.chat_members.filter(
             user=request.user,
             role__in=(ChatMember.Role.OWNER, ChatMember.Role.ADMIN),
         ).exists():
             return Response(
-                {'detail': 'You do not have permission to add members to this chat.'},
+                {'detail': 'У вас нет прав добавлять участников в этот чат.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -177,4 +179,28 @@ class AdminEventsView(views.APIView):
                 .annotate(messages_count=Count('messages'))
                 .count()
             ),
+        })
+
+
+
+class AdminEmailBroadcastView(views.APIView):
+    permission_classes = (IsProjectAdminUser,)
+
+    def post(self, request):
+        serializer = AdminEmailBroadcastSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipients = serializer.get_recipients()
+        if not recipients:
+            raise serializers.ValidationError({'recipients': 'Нет получателей с e-mail адресами.'})
+
+        sent_count = send_mail(
+            subject=serializer.validated_data['subject'],
+            message=serializer.validated_data['message'],
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=recipients,
+            fail_silently=False,
+        )
+        return Response({
+            'sent_count': sent_count,
+            'recipients': recipients,
         })

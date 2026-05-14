@@ -1,5 +1,5 @@
-// src/api/contacts.js
-const API_BASE = '/api'; // Использует прокси Vite
+﻿// src/api/contacts.js
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Вспомогательная функция с обработкой пустых ответов
 const request = async (endpoint, opts = {}) => {
@@ -42,11 +42,11 @@ export const contactsAPI = {
   // Удалить контакт по ID записи
   remove: (id) => request(`/contacts/${id}/`, { method: 'DELETE' }),
   
-  // Принимает userId (не id записи контакта!)
-  openDirect: (userId) => request(`/contacts/${userId}/direct-chat/`, { method: 'POST' }),
+  // Принимает id записи контакта
+  openDirect: (contactId) => request(`/contacts/${contactId}/direct-chat/`, { method: 'POST' }),
   
   // Добавить контакт в групповой чат
-  addToGroupChat: (userId, chatData) => request(`/contacts/${userId}/add-to-chat/`, { 
+  addToGroupChat: (contactId, chatData) => request(`/contacts/${contactId}/add-to-chat/`, {
     method: 'POST', 
     body: JSON.stringify(chatData) 
   }),
