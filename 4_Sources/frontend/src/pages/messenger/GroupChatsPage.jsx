@@ -5,6 +5,10 @@ import MessageBubble from '../../components/MessageBubble';
 import SectionHeader from '../../components/SectionHeader';
 import { chatsAPI, messagesAPI } from '../../api/chats';
 import { contactsAPI } from '../../api/contacts';
+import ChatPageShell from '../../components/chat/ChatPageShell';
+import ChatHeader from '../../components/chat/ChatHeader';
+import ChatList from '../../components/chat/ChatList';
+import ChatRoom from '../../components/chat/ChatRoom';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -359,134 +363,103 @@ function GroupChatsPage() {
     const selectedGroup = groups.find(g => String(g.id) === chatId);
 
     return (
-      <div className="workspace workspace--messenger">
-        <section className="panel panel--chat panel--chat-only">
-          <div className="chat-toolbar chat-toolbar--stack">
-            <div className="chat-toolbar__head">
-              <button className="secondary-button secondary-button--back" type="button" onClick={() => navigate('/app/groups')}>
-                Назад к списку
-              </button>
-              <div>
-                <strong>{selectedGroup?.name || 'Групповой чат'}</strong>
-                <p>{selectedGroup?.description || ''}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="messages-feed">
-            {loadingMessages && messages.length === 0 && <div className="contacts-empty">Загрузка...</div>}
-            {messageError && <div className="contacts-error">{messageError}</div>}
-            {!loadingMessages && messages.length === 0 && (
-              <div className="contacts-empty" style={{ padding: '40px' }}>
-                Начните обсуждение — напишите первое сообщение
-              </div>
-            )}
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
-              />
-            ))}
-            <div ref={endRef} />
-          </div>
-
-          <ChatComposer
-            placeholder={`Сообщение в ${selectedGroup?.name || 'группу'}`}
-            onSend={handleSend}
-            disabled={loadingMessages || isSending}
-          />
-        </section>
-      </div>
+      <ChatPageShell
+        left={null}
+        right={(
+          <>
+            <ChatHeader title={selectedGroup?.name || 'Групповой чат'} subtitle={selectedGroup?.description || ''} onBack={() => navigate('/app/groups')} />
+            <ChatRoom
+              messages={messages}
+              loadingMessages={loadingMessages}
+              messageError={messageError}
+              onSend={handleSend}
+              placeholder={`Сообщение в ${selectedGroup?.name || 'группу'}`}
+              endRef={endRef}
+              composerDisabled={loadingMessages || isSending}
+            />
+          </>
+        )}
+        split={false}
+      />
     );
   }
 
 // 🔹 РЕЖИМ СПИСКА ГРУПП (если chatId нет)
-return (
-  <div className="workspace workspace--split">
-    <section className="panel panel--list panel--list-only">
-      {/* Заголовок с кнопкой */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'flex-start', 
-        justifyContent: 'space-between', 
-        gap: '16px',
-        marginBottom: '20px',
-        padding: '0 20px'
-      }}>
-        <div>
-          <h1 style={{ 
-            margin: '0 0 8px', 
-            fontSize: '1.8rem',
-            fontWeight: '700'
+  return (
+    <ChatPageShell
+      left={(
+        <section className="panel panel--list panel--list-only">
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'flex-start', 
+            justifyContent: 'space-between', 
+            gap: '16px',
+            marginBottom: '20px',
+            padding: '0 20px'
           }}>
-            Групповые чаты
-          </h1>
-          <p style={{ 
-            margin: '0', 
-            color: 'var(--text-soft)',
-            fontSize: '0.95rem'
-          }}>
-            Рабочие группы и проектные обсуждения
-          </p>
-        </div>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => {
-            setShowCreateForm(true);
-            loadContactsForCreate();
-          }}
-          style={{ 
-            whiteSpace: 'nowrap',
-            padding: '10px 20px',
-            height: 'fit-content',
-            alignSelf: 'flex-start'
-          }}
-        >
-          Создать группу
-        </button>
-      </div>
-
-      <div className="list-stack" style={{ padding: '0 20px' }}>
-        {loading && <div className="contacts-empty">Загрузка...</div>}
-        {error && <div className="contacts-error">{error}</div>}
-        {!loading && !error && groups.length === 0 && (
-          <div className="contacts-empty">
-            Нет групповых чатов. <br />
+            <div>
+              <h1 style={{ 
+                margin: '0 0 8px', 
+                fontSize: '1.8rem',
+                fontWeight: '700'
+              }}>
+                Групповые чаты
+              </h1>
+              <p style={{ 
+                margin: '0', 
+                color: 'var(--text-soft)',
+                fontSize: '0.95rem'
+              }}>
+                Рабочие группы и проектные обсуждения
+              </p>
+            </div>
             <button
-              className="primary-button"
-              style={{ marginTop: '12px' }}
               type="button"
+              className="primary-button"
               onClick={() => {
                 setShowCreateForm(true);
                 loadContactsForCreate();
               }}
+              style={{ 
+                whiteSpace: 'nowrap',
+                padding: '10px 20px',
+                height: 'fit-content',
+                alignSelf: 'flex-start'
+              }}
             >
-              Создать первую группу
+              Создать группу
             </button>
           </div>
-        )}
-        {groups.map((group) => (
-          <button
-            className={`chat-card chat-card--button ${String(group.id) === String(lastSelectedGroupId) ? 'chat-card--active' : ''}`}
-            key={group.id}
-            type="button"
-            onClick={() => handleSelectGroup(group.id)}
-          >
-            <div className="chat-card__top">
-              <h3>{group.name}</h3>
-              <span className="badge badge--soft">{group.members}</span>
-            </div>
-            <p>{group.description}</p>
-            <small>{group.members} участников</small>
-          </button>
-        ))}
-      </div>
-    </section>
 
-  </div>
-);
+          <ChatList
+            items={groups}
+            selectedId={lastSelectedGroupId}
+            onSelect={handleSelectGroup}
+            loading={loading}
+            error={error}
+            emptyNode={(
+              <div className="contacts-empty">
+                Нет групповых чатов. <br />
+                <button
+                  className="primary-button"
+                  style={{ marginTop: '12px' }}
+                  type="button"
+                  onClick={() => {
+                    setShowCreateForm(true);
+                    loadContactsForCreate();
+                  }}
+                >
+                  Создать первую группу
+                </button>
+              </div>
+            )}
+          />
+        </section>
+      )}
+      right={null}
+      split={true}
+    />
+  );
 }
 
 export default GroupChatsPage;

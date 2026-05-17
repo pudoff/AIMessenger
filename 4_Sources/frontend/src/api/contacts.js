@@ -1,32 +1,4 @@
-﻿import { API_BASE } from './config';
-
-// Вспомогательная функция с обработкой пустых ответов
-const request = async (endpoint, opts = {}) => {
-  const token = localStorage.getItem('auth_token');
-  
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  // 204 No Content или пустой ответ — не парсим JSON
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || 'Ошибка запроса');
-  }
-  
-  // Безопасный парсинг
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+﻿import { request } from './client';
 
 export const contactsAPI = {
   // Список моих контактов

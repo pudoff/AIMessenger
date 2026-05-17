@@ -3,6 +3,9 @@ import ChatComposer from '../../components/ChatComposer';
 import MessageBubble from '../../components/MessageBubble';
 import { assistantQuickActions } from '../../data/assistant';
 import { mainChats, mainMessages, mainWorkspace } from '../../data/appChats';
+import ChatPageShell from '../../components/chat/ChatPageShell';
+import ChatList from '../../components/chat/ChatList';
+import ChatRoom from '../../components/chat/ChatRoom';
 
 function MessengerPage() {
   const [messages, setMessages] = useState(mainMessages);
@@ -27,70 +30,54 @@ function MessengerPage() {
   };
 
   return (
-    <div className="workspace workspace--messenger">
-      {!selectedChatId ? (
-        <section className="panel panel--list panel--list-only">
-        <div className="search-box">
-          <input
-            type="search"
-            className="search-box__input"
-            placeholder="Поиск по чатам"
-            aria-label="Поиск по чатам"
-          />
-        </div>
-        
-          <div className="list-stack">
-            {mainChats.map((chat) => (
-              <button
-                className={`chat-card chat-card--button ${chat.id === lastSelectedChatId ? 'chat-card--active' : ''}`}
-                key={chat.id}
-                type="button"
-                onClick={() => {
-                  setSelectedChatId(chat.id);
-                  setLastSelectedChatId(chat.id);
-                }}
-              >
-                <div className="chat-card__top">
-                  <h3>{chat.name}</h3>
-                  {chat.unread > 0 && <span className="badge">{chat.unread}</span>}
+    <>
+      <ChatPageShell
+        left={(
+          <>
+            <div className="search-box">
+              <input
+                type="search"
+                className="search-box__input"
+                placeholder="Поиск по чатам"
+                aria-label="Поиск по чатам"
+              />
+            </div>
+            <ChatList
+              items={mainChats}
+              selectedId={lastSelectedChatId}
+              onSelect={(id) => { setSelectedChatId(id); setLastSelectedChatId(id); }}
+            />
+          </>
+        )}
+        right={(
+          selectedChatId ? (
+            <>
+              <div className="chat-toolbar">
+                <div className="chat-toolbar__head">
+                  <button className="secondary-button secondary-button--back" type="button" onClick={() => setSelectedChatId(null)}>
+                    Назад к чатам
+                  </button>
+                  <div>
+                    <strong>{selectedChat.name}</strong>
+                    <p>{selectedChat.description}</p>
+                  </div>
                 </div>
-                <p>{chat.description}</p>
-                <small>{chat.meta}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="panel panel--chat panel--chat-only">
-          <div className="chat-toolbar">
-            <div className="chat-toolbar__head">
-              <button className="secondary-button secondary-button--back" type="button" onClick={() => setSelectedChatId(null)}>
-                Назад к чатам
-              </button>
-              <div>
-                <strong>{selectedChat.name}</strong>
-                <p>{selectedChat.description}</p>
+
+                <div className="avatars">
+                  {mainWorkspace.participants.map((item) => (
+                    <div key={item.id} className="avatar" title={item.name}>
+                      {item.initials}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="avatars">
-              {mainWorkspace.participants.map((item) => (
-                <div key={item.id} className="avatar" title={item.name}>
-                  {item.initials}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="messages-feed">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-          </div>
-
-          <ChatComposer placeholder={`Напишите сообщение в чат «${selectedChat.name}»`} onSend={handleSend} />
-        </section>
-      )}
+              <ChatRoom messages={messages} onSend={handleSend} placeholder={`Напишите сообщение в чат «${selectedChat.name}»`} />
+            </>
+          ) : null
+        )}
+        split={true}
+      />
 
       <aside className={`floating-insights ${isInsightsOpen ? 'floating-insights--open' : ''}`}>
         {isInsightsOpen ? (
@@ -139,7 +126,7 @@ function MessengerPage() {
           </button>
         )}
       </aside>
-    </div>
+    </>
   );
 }
 

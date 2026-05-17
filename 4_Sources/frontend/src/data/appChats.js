@@ -1,5 +1,5 @@
 export const mainWorkspace = {
-  title: 'Проект ТелеграфЪ',
+  title: 'Проект "Наш слон"',
   description: 'Рабочее пространство команды разработки интеллектуального мессенджера',
   participants: [
     { id: 1, name: 'Елена Ковалева', initials: 'ЕК' },

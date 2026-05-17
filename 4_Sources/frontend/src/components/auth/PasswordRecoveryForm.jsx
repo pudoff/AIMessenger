@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MOCK_USERS } from '../data/users'; // Для демо-проверки
+import { MOCK_USERS } from '../../data/users'; // Для демо-проверки
 
 function PasswordRecoveryForm({ onSubmit, onCancel, onBack }) {
   const [email, setEmail] = useState('');

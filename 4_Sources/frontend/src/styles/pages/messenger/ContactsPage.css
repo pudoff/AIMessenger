@@ -1,6 +1,7 @@
 /* Сетка для страницы контактов */
 .workspace--contacts {
-  display: flex;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
   min-height: calc(100vh - 100px);
@@ -218,6 +219,35 @@
   }
   .panel--chat-only {
     width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workspace--contacts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .contacts-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .contacts-header__actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .contact-profile__hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .contact-info-grid {
+    grid-template-columns: 1fr;
   }
 }
 

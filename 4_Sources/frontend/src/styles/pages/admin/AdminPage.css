@@ -41,3 +41,28 @@
   border-radius: 14px;
   font-size: 0.9rem;
 }
+
+@media (max-width: 1024px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-workspace-panel {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .data-table th,
+  .data-table td {
+    padding: 12px 10px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .admin-page .form-success {
+    font-size: 0.85rem;
+  }
+}

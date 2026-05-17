@@ -60,7 +60,7 @@ function SidebarNav() {
         </div>
         <div className="profile-card__text">
           <strong>{fullName}</strong>
-          <span>{displayRole}</span>
+          {/* <span>{displayRole}</span> */}
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
 import logoAuth from '../../assets/logo_new.png';
-import PasswordRecoveryForm from '../../components/PasswordRecoveryForm';
+import PasswordRecoveryForm from '../../components/auth/PasswordRecoveryForm';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -78,7 +78,7 @@ function LoginPage() {
                 disabled={loading}
                 required
               />
-              <button
+              {/* <button
                 type="button"
                 className="toggle-password-btn"
                 onClick={() => setShowPassword(prev => !prev)}
@@ -86,7 +86,7 @@ function LoginPage() {
                 disabled={loading}
               >
                 {showPassword ? '⚫' : '👁️'}
-              </button>
+              </button> */}
             </div>
           </label>
 
@@ -106,7 +106,7 @@ function LoginPage() {
           <button 
             className="primary-button auth-form__submit" 
             type="submit"
-            disabled={loading || !form.login.trim() || !form.password}
+            disabled={loading}
           >
             {loading ? 'Вход...' : 'Войти'}
           </button>

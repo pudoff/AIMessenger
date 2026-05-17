@@ -6,7 +6,7 @@ import { LEGAL_CONTENT } from '../../data/legalContent';
 import { validateField, parseBackendErrors, PASSWORD_REQUIREMENTS } from '../../utils/validation'; //  импорт
 
 import Logo from '../../components/Logo';
-import LegalModal from '../../components/LegalModal';
+import LegalModal from '../../components/auth/LegalModal';
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -406,7 +406,7 @@ function RegisterPage() {
             disabled={!isFormValid || loading}
             aria-busy={loading}
           >
-            {loading ? 'Регистрация...' : 'Отправить ссылку на email'}
+            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
 
           <div className="auth-form__footer">

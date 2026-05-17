@@ -1,31 +1,4 @@
-import { API_BASE } from './config';
-
-// Вспомогательная функция для запросов
-const request = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Token ${token}` }),
-    ...options.headers
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers
-  });
-
-  const data = await response.json().catch(() => ({}));
-  
-  if (!response.ok) {
-    const error = new Error(data.detail || data.non_field_errors?.[0] || 'Ошибка сервера');
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-  
-  return data;
-};
+import { request } from './client';
 
 export const authAPI = {
   // 🔐 Логин: получить токен

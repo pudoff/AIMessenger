@@ -1,29 +1,4 @@
-import { API_BASE } from './config';
-
-const request = async (endpoint, opts = {}) => {
-  const token = localStorage.getItem('auth_token');
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  // Обработка пустых ответов (204, DELETE)
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || 'Ошибка запроса');
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import { request } from './client';
 
 export const chatsAPI = {
   // Список чатов пользователя

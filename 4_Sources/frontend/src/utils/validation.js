@@ -77,6 +77,5 @@ export const PASSWORD_REQUIREMENTS = [
   { test: (val) => /[a-z]/.test(val) && /[A-Z]/.test(val), text: 'Заглавные и строчные буквы' },
   { test: (val) => /\d/.test(val), text: 'Хотя бы одна цифра' },
   { test: (val) => !/^\d+$/.test(val), text: 'Не только цифры' },
-  { test: (val) => !/(password|qwerty|123456)/i.test(val), text: 'Не очевидный пароль' },
 ];
 
