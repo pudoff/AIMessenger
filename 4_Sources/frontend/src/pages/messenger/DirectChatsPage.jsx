@@ -129,9 +129,15 @@ export default function DirectChatsPage() {
     initUser();
   }, []);
 
-  // Автоскролл к последнему сообщению
+  // Автоскролл к последнему сообщению только при новых сообщениях
+  const prevMessagesLengthRef = useRef(0);
+  
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Скроллим вниз только если количество сообщений увеличилось (новые сообщения)
+    if (messages.length > prevMessagesLengthRef.current && messages.length > 0) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
   // Синхронизация рефа для актуальных pending-сообщений

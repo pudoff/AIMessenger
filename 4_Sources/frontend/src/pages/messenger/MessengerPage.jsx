@@ -33,21 +33,21 @@ function MessengerPage() {
     <>
       <ChatPageShell
         left={(
-          <>
-            <div className="search-box">
-              <input
-                type="search"
-                className="search-box__input"
-                placeholder="Поиск по чатам"
-                aria-label="Поиск по чатам"
-              />
-            </div>
-            <ChatList
-              items={mainChats}
-              selectedId={lastSelectedChatId}
-              onSelect={(id) => { setSelectedChatId(id); setLastSelectedChatId(id); }}
-            />
-          </>
+          <ChatList
+            items={mainChats}
+            selectedId={lastSelectedChatId}
+            onSelect={(id) => { setSelectedChatId(id); setLastSelectedChatId(id); }}
+            topNode={(
+              <div className="search-box">
+                <input
+                  type="search"
+                  className="search-box__input"
+                  placeholder="Поиск по чатам"
+                  aria-label="Поиск по чатам"
+                />
+              </div>
+            )}
+          />
         )}
         right={(
           selectedChatId ? (

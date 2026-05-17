@@ -27,10 +27,23 @@
   width: 100%;
   min-width: 0;
   grid-column: 1 / -1;
+  height: calc(100vh - 48px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
 }
 
 .workspace--split {
   grid-template-columns: 340px minmax(0, 1fr);
+}
+
+.workspace--split .panel--list,
+.workspace--split .panel--chat,
+.workspace--split .panel--list-only {
+  height: calc(100vh - 96px);
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
 }
 
 .workspace--contacts {

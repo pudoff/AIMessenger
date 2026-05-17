@@ -1,68 +1,257 @@
-﻿.admin-workspace-panel {
-  margin-bottom: 18px;
-  padding: 22px;
+﻿.admin-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: var(--text);
+  height: auto; 
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
+/* Панель рабочего пространства */
+.admin-workspace-panel {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 8px;
+}
+
+.workspace-summary-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.avatars {
+  display: flex;
+}
+
+.avatars .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 2px solid var(--bg-card, #fff);
+  margin-left: -8px;
+}
+
+.avatars .avatar:first-child {
+  margin-left: 0;
+}
+
+/* Сетка метрик */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.metric-card span {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.metric-card strong {
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+/* Основная сетка админки */
 .admin-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
-  margin-top: 8px;
+  grid-template-columns: 1.5fr 1fr; 
+  gap: 24px;
+  align-items: start;
 }
 
 .admin-grid .panel:last-child {
   grid-column: 1 / -1;
 }
 
+/* Панели */
+.panel {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  min-height: 200px; 
+  height: 100%; 
+}
+
+.panel__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Поисковик */
+.search-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-input, #f9fafb);
+  color: var(--text);
+  font-size: 0.9rem;
+  width: 200px;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Таблицы - Критично для скролла */
 .table-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  width: 100%;
+  max-height: 400px; 
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.95rem;
 }
 
 .data-table th,
 .data-table td {
   text-align: left;
-  padding: 14px 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .data-table th {
+  background: var(--bg-input, #f9fafb);
   color: var(--text-soft);
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.admin-page .form-success {
-  padding: 12px 14px;
-  color: #2f6f45;
-  background: rgba(106, 157, 123, 0.14);
-  border-radius: 14px;
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: rgba(0,0,0,0.02);
+}
+
+/* Лог действий */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.activity-item {
+  padding: 12px 16px;
+  background: var(--bg-input, #f9fafb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+}
+
+/* Статусы форм (если нет в глобале) */
+.form-success {
+  padding: 12px 16px;
+  color: #166534;
+  background: #dcfce7;
+  border-radius: 8px;
   font-size: 0.9rem;
 }
 
+.form-error {
+  padding: 12px 16px;
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Адаптивность */
 @media (max-width: 1024px) {
   .admin-grid {
     grid-template-columns: 1fr;
   }
-
-  .admin-workspace-panel {
-    padding: 18px;
+  
+  .admin-grid .panel:last-child {
+    grid-column: 1;
+  }
+  
+  .table-wrap {
+    max-height: 300px;
   }
 }
 
 @media (max-width: 768px) {
+  .admin-page {
+    padding: 16px;
+  }
+  
+  .panel {
+    padding: 16px;
+  }
+  
+  .search-input {
+    width: 100%;
+  }
+  
+  .panel__title--between {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
   .data-table th,
   .data-table td {
-    padding: 12px 10px;
-  }
-
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  .admin-page .form-success {
+    padding: 10px 12px;
     font-size: 0.85rem;
   }
 }

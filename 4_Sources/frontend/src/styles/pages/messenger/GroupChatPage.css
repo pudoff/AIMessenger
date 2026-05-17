@@ -43,6 +43,11 @@
   flex-direction: column;
   gap: 8px;
   padding-right: 4px;
+  min-height: 0;
+}
+
+.panel--list-only .list-stack {
+  margin-top: 12px;
 }
 
 /* Карточка чата */
