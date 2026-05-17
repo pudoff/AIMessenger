@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, Navigate, useParams, useNavigate } from 'react-router-dom';
 import SectionHeader from '../../components/SectionHeader';
 import { contactsAPI } from '../../api/contacts';
-import { chatsAPI } from '../../api/chats'; // 👈 Импорт для поиска чата
 
 // Форматеры (без изменений)
 const formatContact = (c) => ({
@@ -102,48 +101,18 @@ function ContactsPage() {
 
   const handleStartChat = async () => {
     if (!selectedContact) return;
-    
-    try {
-      const chat = await contactsAPI.openDirect(selectedContact.id);
-      let finalChatId;
-      
-      if (chat?.id) {
-        finalChatId = chat.id;
-      } else {
-        const findChat = async (attempt = 0) => {
-          const allChats = await chatsAPI.getList();
-          const list = Array.isArray(allChats?.results) ? allChats.results : Array.isArray(allChats) ? allChats : [];
 
-          const found = list.find(c => {
-            if (c.chat_type !== 'direct') return false;
-            const members = c.members || [];
-            return members.some(m => {
-              const memberId = m.user || m.user_detail?.id;
-              return String(memberId) === String(selectedContact.userId);
-            });
-          });
-          
-          if (!found && attempt === 0) {
-            await new Promise(res => setTimeout(res, 500));
-            return findChat(1);
-          }
-          
-          return found;
-        };
-        
-        const foundChat = await findChat();
-        if (!foundChat) {
-          throw new Error('Чат не найден в списке');
-        }
-        
-        finalChatId = foundChat.id;
+    try {
+      const result = await contactsAPI.openDirect(selectedContact.id);
+      const finalChatId = result?.chat;
+      if (!finalChatId) {
+        throw new Error('Бэкенд не вернул идентификатор чата');
       }
-      
-      navigate(`/app/direct/${finalChatId}`, { 
+
+      navigate(`/app/direct/${finalChatId}`, {
         replace: true,
         state: { contactName: selectedContact.fullName, contactInitials: selectedContact.initials }
       });
-      
     } catch (err) {
       alert(err.message || 'Не удалось открыть чат');
     }

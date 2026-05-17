@@ -33,3 +33,30 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Contact(models.Model):
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='contacts',
+    )
+    contact = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='in_contact_lists',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['owner', 'contact'], name='unique_user_contact'),
+            models.CheckConstraint(
+                condition=~models.Q(owner=models.F('contact')),
+                name='prevent_self_contact',
+            ),
+        ]
+        ordering = ['contact__username']
+
+    def __str__(self):
+        return f'{self.owner} -> {self.contact}'

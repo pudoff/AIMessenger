@@ -1,0 +1,128 @@
+name: aimessenger
+
+services:
+  traefik:
+    image: traefik:3.6.9
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/traefik/static.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/traefik/dynamic.yml:/etc/traefik/conf.d/dynamic.yml:ro
+      - aimessenger_traefik_acme:/etc/traefik/acme
+    networks:
+      - backend
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+      webhook:
+        condition: service_started
+
+  backend:
+    image: magnificent8/ai-messenger:backend-latest
+    container_name: backend
+    restart: always
+    volumes:
+      - ./.env:/app/.env:ro
+      - aimessenger_static_data:/app/staticfiles
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ML_CELERY_QUEUE: ml
+    entrypoint: /app/entrypoint.sh
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    image: magnificent8/ai-messenger:frontend-latest
+    container_name: frontend
+    restart: always
+    networks:
+      - backend
+    depends_on:
+      backend:
+        condition: service_started
+
+  ml-worker:
+    image: magnificent8/ai-messenger:ml-latest
+    container_name: ml-worker
+    restart: always
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_QUEUE: ml
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  webhook:
+    image: magnificent8/ai-messenger:webhook-latest
+    container_name: webhook
+    restart: always
+    volumes:
+      - ./.env:/app/.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18.3
+    restart: always
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - aimessenger_postgres_data:/var/lib/postgresql/18/main
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 1s
+      retries: 10
+      start_period: 5s
+      start_interval: 1s
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  aimessenger_postgres_data:
+  aimessenger_static_data:
+  aimessenger_traefik_acme:
+
+networks:
+  backend:
+    driver: bridge

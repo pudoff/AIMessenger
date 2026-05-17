@@ -1,5 +1,4 @@
-// src/api/contacts.js
-const API_BASE = '/api'; // Использует прокси Vite
+﻿import { API_BASE } from './config';
 
 // Вспомогательная функция с обработкой пустых ответов
 const request = async (endpoint, opts = {}) => {

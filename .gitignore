@@ -1,3 +1,41 @@
-/4_Sources/frontend/node_modules
-/4_Sources/backend
-4_Sources/frontend/src/.env
+# Local environment files. Keep examples tracked.
+.env
+.env.*
+!.env.example
+!*.env.example
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+
+# Node / frontend
+node_modules/
+.vite/
+/4_Sources/frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker / local runtime
+docker-compose.override.yml
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

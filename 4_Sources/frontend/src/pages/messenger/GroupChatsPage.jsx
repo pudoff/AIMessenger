@@ -6,12 +6,14 @@ import SectionHeader from '../../components/SectionHeader';
 import { chatsAPI, messagesAPI } from '../../api/chats';
 import { contactsAPI } from '../../api/contacts';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 // API utility for auth
 const getAuthToken = () => localStorage.getItem('auth_token');
 
 const apiRequest = async (endpoint, opts = {}) => {
   const token = getAuthToken();
-  const response = await fetch(`/api${endpoint}`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -58,13 +60,15 @@ const formatMessage = (m, myId) => ({
   isOwn: myId ? String(m.sender) === String(myId) : false,
   message_type: m.message_type,
   task_status: m.task_status,
-  classification: m.classification
+  classification: m.classification,
+  tag: m.classification?.label || m.message_type
 });
 
 function GroupChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
+  const [lastSelectedGroupId, setLastSelectedGroupId] = useState(() => localStorage.getItem('last_group_chat_id'));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -202,6 +206,7 @@ function GroupChatsPage() {
       isOwn: true,
       optimisticCreatedAt,
       created_at: optimisticCreatedAt,
+      tag: 'default',
     };
 
     setMessages(prev => [...prev, optimisticMessage]);
@@ -241,6 +246,8 @@ function GroupChatsPage() {
 
   // Выбор группы
   const handleSelectGroup = (id) => {
+    setLastSelectedGroupId(String(id));
+    localStorage.setItem('last_group_chat_id', String(id));
     navigate(`/app/group/${id}`);
   };
 
@@ -259,6 +266,8 @@ function GroupChatsPage() {
       const newGroup = await chatsAPI.create(groupData);
       const formatted = formatGroup(newGroup);
       setGroups(prev => [formatted, ...prev]);
+      setLastSelectedGroupId(String(newGroup.id));
+      localStorage.setItem('last_group_chat_id', String(newGroup.id));
       setShowCreateForm(false);
       setCreateForm({ title: '', description: '', participantIds: [] });
       navigate(`/app/group/${newGroup.id}`);
@@ -345,69 +354,13 @@ function GroupChatsPage() {
     );
   }
 
-  // 🔹 РЕЖИМ ЧАТА ГРУППЫ (если chatId есть)
+  // Режим выбранного группового чата
   if (chatId) {
     const selectedGroup = groups.find(g => String(g.id) === chatId);
-    
-    return (
-      <div className="workspace workspace--split">
-        {/* Левая панель: список групп */}
-        <section className="panel panel--list">
-          <SectionHeader
-            title="Групповые чаты"
-            subtitle="Рабочие группы и проектные обсуждения"
-            actions={
-              <button
-                type="button"
-                className="primary-button primary-button--small"
-                onClick={() => {
-                  setShowCreateForm(true);
-                  loadContactsForCreate();
-                }}
-              >
-                Создать группу
-              </button>
-            }
-          />
-          <div className="list-stack">
-            {loading && <div className="contacts-empty">Загрузка...</div>}
-            {error && <div className="contacts-empty">{error}</div>}
-            {!loading && !error && groups.length === 0 && (
-              <div className="contacts-empty">
-                Нет групповых чатов. <br />
-                <button
-                  className="primary-button"
-                  style={{ marginTop: '12px' }}
-                  type="button"
-                  onClick={() => {
-                    setShowCreateForm(true);
-                    loadContactsForCreate();
-                  }}
-                >
-                  Создать первую группу
-                </button>
-              </div>
-            )}
-            {groups.map((group) => (
-              <button
-                className={`chat-card chat-card--button ${String(group.id) === chatId ? 'chat-card--active' : ''}`}
-                key={group.id}
-                type="button"
-                onClick={() => handleSelectGroup(group.id)}
-              >
-                <div className="chat-card__top">
-                  <h3>{group.name}</h3>
-                  <span className="badge badge--soft">{group.members}</span>
-                </div>
-                <p>{group.description}</p>
-                <small>{group.members} участников</small>
-              </button>
-            ))}
-          </div>
-        </section>
 
-        {/* Правая панель: чат */}
-        <section className="panel panel--chat">
+    return (
+      <div className="workspace workspace--messenger">
+        <section className="panel panel--chat panel--chat-only">
           <div className="chat-toolbar chat-toolbar--stack">
             <div className="chat-toolbar__head">
               <button className="secondary-button secondary-button--back" type="button" onClick={() => navigate('/app/groups')}>
@@ -516,7 +469,7 @@ return (
         )}
         {groups.map((group) => (
           <button
-            className={`chat-card chat-card--button`}
+            className={`chat-card chat-card--button ${String(group.id) === String(lastSelectedGroupId) ? 'chat-card--active' : ''}`}
             key={group.id}
             type="button"
             onClick={() => handleSelectGroup(group.id)}
@@ -532,20 +485,6 @@ return (
       </div>
     </section>
 
-    <section className="panel panel--chat">
-      <div className="chat-toolbar chat-toolbar--stack">
-        <div className="chat-toolbar__head">
-          <strong>Выберите группу</strong>
-          <p>Для начала общения</p>
-        </div>
-      </div>
-
-      <div className="messages-feed">
-        <div className="messages-empty">
-          Выберите групповой чат слева или создайте новый.
-        </div>
-      </div>
-    </section>
   </div>
 );
 }

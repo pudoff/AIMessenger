@@ -1,5 +1,4 @@
-// src/api/auth.js
-const API_BASE = '/api'; 
+import { API_BASE } from './config';
 
 // Вспомогательная функция для запросов
 const request = async (endpoint, options = {}) => {

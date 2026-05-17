@@ -3,7 +3,25 @@ from django.db import models
 
 
 class Chat(models.Model):
+    class ChatType(models.TextChoices):
+        DIRECT = 'direct', 'Direct'
+        GROUP = 'group', 'Group'
+        CORPORATE = 'corporate', 'Corporate'
+
     title = models.CharField(max_length=255)
+    chat_type = models.CharField(
+        max_length=20,
+        choices=ChatType.choices,
+        default=ChatType.GROUP,
+    )
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_chats',
+    )
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through='ChatMember',

@@ -1,4 +1,4 @@
-.admin-workspace-panel {
+﻿.admin-workspace-panel {
   margin-bottom: 18px;
   padding: 22px;
 }
@@ -32,4 +32,12 @@
 .data-table th {
   color: var(--text-soft);
   font-weight: 700;
+}
+
+.admin-page .form-success {
+  padding: 12px 14px;
+  color: #2f6f45;
+  background: rgba(106, 157, 123, 0.14);
+  border-radius: 14px;
+  font-size: 0.9rem;
 }

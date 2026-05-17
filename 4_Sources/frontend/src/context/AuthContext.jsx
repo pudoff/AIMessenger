@@ -43,15 +43,22 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     setError(null);
+    setLoading(true);
     try {
       const { token: newToken } = await authAPI.login(username, password);
       localStorage.setItem('auth_token', newToken);
+      const user = await authAPI.getMe();
       setToken(newToken);
-      // Профиль загрузится автоматически через useEffect
-      return { success: true };
+      setCurrentUser(user);
+      return { success: true, user };
     } catch (err) {
+      localStorage.removeItem('auth_token');
+      setToken(null);
+      setCurrentUser(null);
       setError(err.message);
       return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
     }
   };
 

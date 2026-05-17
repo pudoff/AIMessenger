@@ -18,13 +18,10 @@ function LoginPage() {
     event.preventDefault();
     clearError();
     
-    // Бэкенд принимает username (логин или email)
     const result = await login(form.login.trim(), form.password);
     
     if (result.success) {
-      // Редирект определяем после загрузки профиля в AuthContext
-      // Но можно сразу попробовать:
-      navigate('/app', { replace: true });
+      navigate(result.user?.role === 'admin' ? '/admin' : '/app', { replace: true });
     }
   };
 
@@ -54,14 +51,14 @@ function LoginPage() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            <span>Логин или почта</span>
+            <span>Логин</span>
             <input
               value={form.login}
               onChange={(e) => {
                 setForm(prev => ({ ...prev, login: e.target.value }));
                 clearError();
               }}
-              placeholder="Введите логин или почту"
+              placeholder="Введите логин"
               disabled={loading}
               required
             />

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Message(models.Model):
@@ -36,3 +37,21 @@ class Message(models.Model):
 
     def __str__(self):
         return f'{self.sender}: {self.text[:50]}'
+
+
+class MessageClassification(models.Model):
+    message = models.OneToOneField(
+        Message,
+        on_delete=models.CASCADE,
+        related_name='classification',
+    )
+    label = models.CharField(max_length=50)
+    confidence = models.FloatField(default=0)
+    probabilities = models.JSONField(default=dict, blank=True)
+    classified_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-classified_at']
+
+    def __str__(self):
+        return f'{self.message_id}: {self.label} ({self.confidence:.2f})'

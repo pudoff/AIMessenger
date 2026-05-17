@@ -2,17 +2,30 @@ import os
 from io import StringIO
 from unittest.mock import patch
 
+from django.core import mail
 from django.core.management import CommandError, call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.conf import settings
 from django.urls import reverse
+from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import User
+from chats.models import Chat, ChatMember
+from messages.models import Message
+from .models import Contact, User
 
 
 class AuthApiTests(APITestCase):
+    def test_api_root_is_available_for_authenticated_user(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+
+        response = self.client.get('/api/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('chats', response.json())
+
     def test_user_can_register(self):
         response = self.client.post(
             reverse('api-register'),
@@ -43,6 +56,32 @@ class AuthApiTests(APITestCase):
         self.assertTrue(user.check_password('StrongPassword123'))
         self.assertIsNotNone(user.user_agreement_accepted_at)
         self.assertIsNotNone(user.privacy_policy_accepted_at)
+
+    def test_user_can_login_with_token_endpoint(self):
+        user = User.objects.create_user(username='demo', password='StrongPassword123')
+
+        response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'demo', 'password': 'StrongPassword123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['token'], Token.objects.get(user=user).key)
+
+    def test_me_accepts_token_authentication(self):
+        user = User.objects.create_user(username='demo', password='StrongPassword123')
+        token = Token.objects.create(user=user)
+
+        response = self.client.get(reverse('api-me'), HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['username'], 'demo')
+
+    def test_invalid_token_is_rejected(self):
+        response = self.client.get(reverse('api-me'), HTTP_AUTHORIZATION='Token invalid-token')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_cannot_register_without_required_profile_fields(self):
         response = self.client.post(
@@ -125,6 +164,175 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_role_admin_can_access_admin_users_endpoint(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        regular_user = User.objects.create_user(username='regular', password='pass')
+        self.client.force_authenticate(admin)
+
+        response = self.client.get(reverse('user-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in response.json()['results']],
+            [admin.id, regular_user.id],
+        )
+
+    def test_role_admin_can_filter_and_block_users(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        regular_user = User.objects.create_user(username='regular', password='pass')
+        self.client.force_authenticate(admin)
+
+        list_response = self.client.get(reverse('user-list'), {'role': User.Role.USER, 'status': 'active'})
+        patch_response = self.client.patch(
+            reverse('user-detail', args=[regular_user.id]),
+            {'is_active': False, 'role': User.Role.ADMIN},
+            format='json',
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in list_response.json()['results']], [regular_user.id])
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        regular_user.refresh_from_db()
+        self.assertFalse(regular_user.is_active)
+        self.assertEqual(regular_user.role, User.Role.ADMIN)
+
+    def test_regular_user_cannot_access_admin_events(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+
+        response = self.client.get(reverse('api-admin-events'))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_role_admin_can_access_admin_events(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(admin)
+
+        response = self.client.get(reverse('api-admin-events'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('latest_registrations', response.json())
+        self.assertIn('messages_last_24h', response.json())
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='notify@nash-slon.local',
+)
+class AdminEmailBroadcastTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.user = User.objects.create_user(username='demo', password='pass', email='demo@example.com')
+
+    def test_regular_user_cannot_send_admin_email_broadcast(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse('api-admin-email-broadcast'),
+            {'subject': 'Новости', 'message': 'Текст письма'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_role_admin_can_send_email_broadcast(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            reverse('api-admin-email-broadcast'),
+            {
+                'subject': 'Итоги недели',
+                'message': 'Краткие итоги проекта.',
+                'user_ids': [self.user.id],
+                'emails': ['external@example.com'],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['sent_count'], 1)
+        self.assertEqual(
+            sorted(response.json()['recipients']),
+            ['demo@example.com', 'external@example.com'],
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Итоги недели')
+
+
+class ContactApiTests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass', email='owner@example.com')
+        self.contact = User.objects.create_user(
+            username='contact',
+            password='pass',
+            email='contact@example.com',
+            first_name='Contact',
+        )
+        self.other = User.objects.create_user(username='other', password='pass', email='other@example.com')
+
+    def test_user_can_search_other_active_users(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.get(reverse('user-search-list'), {'q': 'cont'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in response.json()['results']], [self.contact.id])
+
+    def test_user_can_add_contact_and_sees_only_own_contacts(self):
+        Contact.objects.create(owner=self.other, contact=self.owner)
+        self.client.force_authenticate(self.owner)
+
+        create_response = self.client.post(
+            reverse('contact-list'),
+            {'contact': self.contact.id},
+            format='json',
+        )
+        list_response = self.client.get(reverse('contact-list'))
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_response.json()['owner'], self.owner.id)
+        self.assertEqual(create_response.json()['contact_detail']['username'], 'contact')
+        self.assertEqual([item['contact'] for item in list_response.json()['results']], [self.contact.id])
+
+    def test_user_cannot_add_self_or_duplicate_contact(self):
+        self.client.force_authenticate(self.owner)
+
+        self_response = self.client.post(reverse('contact-list'), {'contact': self.owner.id}, format='json')
+        first_response = self.client.post(reverse('contact-list'), {'contact': self.contact.id}, format='json')
+        duplicate_response = self.client.post(reverse('contact-list'), {'contact': self.contact.id}, format='json')
+
+        self.assertEqual(self_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(duplicate_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_contact_action_creates_or_reuses_direct_chat(self):
+        contact = Contact.objects.create(owner=self.owner, contact=self.contact)
+        self.client.force_authenticate(self.owner)
+
+        first_response = self.client.post(reverse('contact-direct-chat', args=[contact.id]), {}, format='json')
+        second_response = self.client.post(reverse('contact-direct-chat', args=[contact.id]), {}, format='json')
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(first_response.json()['created'])
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(second_response.json()['created'])
+        self.assertEqual(first_response.json()['chat'], second_response.json()['chat'])
+
+    def test_contact_can_be_added_to_group_chat_by_owner(self):
+        contact = Contact.objects.create(owner=self.owner, contact=self.contact)
+        chat = Chat.objects.create(title='Group', chat_type=Chat.ChatType.GROUP, created_by=self.owner)
+        ChatMember.objects.create(chat=chat, user=self.owner, role=ChatMember.Role.OWNER)
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(
+            reverse('contact-add-to-chat', args=[contact.id]),
+            {'chat': chat.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ChatMember.objects.filter(chat=chat, user=self.contact).exists())
+
 
 class SeedAdminUserCommandTests(TestCase):
     def test_creates_admin_from_env_when_missing(self):
@@ -167,3 +375,30 @@ class SeedAdminUserCommandTests(TestCase):
         with patch.dict(os.environ, {"ADMIN_USER": "admin"}, clear=True):
             with self.assertRaises(CommandError):
                 call_command("seed_admin_user", stdout=StringIO())
+
+
+class SeedDemoDataCommandTests(TestCase):
+    def test_seed_demo_data_is_idempotent(self):
+        call_command('seed_demo_data', stdout=StringIO())
+        first_counts = (
+            User.objects.count(),
+            Chat.objects.count(),
+            ChatMember.objects.count(),
+            Message.objects.count(),
+        )
+
+        call_command('seed_demo_data', stdout=StringIO())
+
+        self.assertEqual(
+            first_counts,
+            (
+                User.objects.count(),
+                Chat.objects.count(),
+                ChatMember.objects.count(),
+                Message.objects.count(),
+            ),
+        )
+        self.assertTrue(User.objects.filter(username='admin', role=User.Role.ADMIN).exists())
+        self.assertTrue(Chat.objects.filter(chat_type=Chat.ChatType.DIRECT).exists())
+        self.assertTrue(Chat.objects.filter(chat_type=Chat.ChatType.CORPORATE).exists())
+        self.assertTrue(Message.objects.filter(message_type=Message.MessageType.TASK).exists())
