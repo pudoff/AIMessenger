@@ -1,36 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SectionHeader from '../../components/SectionHeader';
 import { adminAPI } from '../../api/admin';
 
 function AdminBroadcast() {
-  const [emailForm, setEmailForm] = useState({ subject: '', message: '', emails: '' });
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '', userIds: [] });
   const [emailStatus, setEmailStatus] = useState(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Загрузка списка пользователей при монтировании
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await adminAPI.getUsers(1); // Получаем первую страницу
+        console.log('Полный ответ от API getUsers:', data);
+
+        // Обрабатываем разные форматы ответа
+        let usersList = [];
+        if (Array.isArray(data)) {
+          usersList = data;
+        } else if (data && data.results && Array.isArray(data.results)) {
+          usersList = data.results;
+        } else if (data && data.users && Array.isArray(data.users)) {
+          usersList = data.users;
+        }
+
+        console.log('Обработанный список пользователей:', usersList);
+        setUsers(usersList);
+      } catch (error) {
+        console.error('Не удалось загрузить пользователей:', error);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  const filteredUsers = users.filter(user => {
+    const query = searchTerm.toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return username.includes(query) || email.includes(query);
+  });
+
+  const toggleUser = (userId) => {
+    setEmailForm(prev => ({
+      ...prev,
+      userIds: prev.userIds.includes(userId)
+        ? prev.userIds.filter(id => id !== userId)
+        : [...prev.userIds, userId]
+    }));
+  };
+
+  const removeUser = (userId) => {
+    setEmailForm(prev => ({
+      ...prev,
+      userIds: prev.userIds.filter(id => id !== userId)
+    }));
+  };
 
   const handleEmailSubmit = async (event) => {
     event.preventDefault();
     setEmailStatus(null);
     setIsSendingEmail(true);
 
-    const emails = emailForm.emails
-      .split(/[\n,;]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
     try {
       const result = await adminAPI.sendBroadcast({
         subject: emailForm.subject.trim(),
         message: emailForm.message.trim(),
-        ...(emails.length ? { emails } : {}),
+        ...(emailForm.userIds.length ? { user_ids: emailForm.userIds } : {}),
       });
-      setEmailStatus({ type: 'success', text: `Письмо отправлено. Получателей: ${result.recipients?.length || 0}` });
-      setEmailForm({ subject: '', message: '', emails: '' });
+      setEmailStatus({ type: 'success', text: `Письмо отправлено. Получателей: ${result.recipients?.length || emailForm.userIds.length}` });
+      setEmailForm({ subject: '', message: '', userIds: [] });
+      setSearchTerm('');
     } catch (error) {
       setEmailStatus({ type: 'error', text: error.message || 'Не удалось отправить письмо' });
     } finally {
       setIsSendingEmail(false);
     }
   };
+
+  const selectedCount = emailForm.userIds.length;
+  const selectedUsers = users.filter(u => emailForm.userIds.includes(u.id));
 
   return (
     <div className="admin-page">
@@ -60,15 +111,70 @@ function AdminBroadcast() {
               required
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="email-recipients">Получатели</label>
-            <textarea
-              id="email-recipients"
-              value={emailForm.emails}
-              onChange={(event) => setEmailForm((prev) => ({ ...prev, emails: event.target.value }))}
-              placeholder="Оставьте пустым, чтобы отправить всем активным пользователям с e-mail"
-              rows={3}
-            />
+            <label>Получатели</label>
+
+            {/* Отображение выбранных пользователей */}
+            {selectedCount > 0 && (
+              <div className="selected-users-list">
+                {selectedUsers.map(user => (
+                  <span key={user.id} className="user-tag">
+                    {user.username || user.email}
+                    <button type="button" onClick={() => removeUser(user.id)} className="remove-tag">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Поле поиска с выпадающим списком */}
+            <div className="user-select-wrapper" style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setDropdownOpen(true);
+                }}
+                onFocus={() => setDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                placeholder={selectedCount === 0 ? "Начните вводить имя или email..." : "Добавить еще пользователей"}
+                className="user-search-input"
+              />
+
+              {dropdownOpen && filteredUsers.length > 0 && (
+                <div className="user-dropdown">
+                  {filteredUsers.map(user => {
+                    const isSelected = emailForm.userIds.includes(user.id);
+                    return (
+                      <div
+                        key={user.id}
+                        className={`user-option ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleUser(user.id)}
+                      >
+                        <div className="user-option-info">
+                          <span className="user-option-name">{user.username}</span>
+                          <span className="user-option-email">{user.email}</span>
+                        </div>
+                        {isSelected && <span className="checkmark">✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {dropdownOpen && searchTerm && filteredUsers.length === 0 && (
+                <div className="user-dropdown">
+                  <div className="user-option disabled">Пользователи не найдены</div>
+                </div>
+              )}
+            </div>
+
+            <small className="form-hint">
+              {selectedCount === 0
+                ? "Оставьте пустым, чтобы отправить всем активным пользователям"
+                : `Выбрано пользователей: ${selectedCount}`}
+            </small>
           </div>
           {emailStatus && (
             <div className={emailStatus.type === 'success' ? 'form-success' : 'form-error'}>
