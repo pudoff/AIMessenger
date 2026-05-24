@@ -12,6 +12,7 @@ function LoginPage() {
   
   const [form, setForm] = useState({ login: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
