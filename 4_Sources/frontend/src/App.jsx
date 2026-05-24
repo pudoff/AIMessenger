@@ -13,7 +13,10 @@ import MessengerPage from './pages/messenger/MessengerPage';
 import DirectChatsPage from './pages/messenger/DirectChatsPage';
 import GroupChatsPage from './pages/messenger/GroupChatsPage';
 import ContactsPage from './pages/messenger/ContactsPage';
-import AdminPage from './pages/admin/AdminPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminChats from './pages/admin/AdminChats';
+import AdminBroadcast from './pages/admin/AdminBroadcast';
 import AssistantPage from './pages/assistant/AssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -69,6 +72,7 @@ function App() {
         <Route path="groups" element={<GroupChatsPage />} />
         <Route path="group/:chatId" element={<GroupChatsPage />} />
         <Route path="communities" element={<CommunitiesPage />} />
+        <Route path="community/:communityId" element={<CommunitiesPage />} />
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="contacts/:contactId" element={<ContactsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
@@ -84,7 +88,10 @@ function App() {
             </RequireRole>
           </RequireAuth>}>
 
-        <Route index element={<AdminPage />} />
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="chats" element={<AdminChats />} />
+        <Route path="broadcast" element={<AdminBroadcast />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

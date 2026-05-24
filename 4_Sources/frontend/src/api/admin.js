@@ -1,36 +1,61 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+import { request } from './client';
 
-const request = async (endpoint, opts = {}) => {
-  const token = localStorage.getItem('auth_token');
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
+// Получение статистики по пользователям (общее количество)
+const getUsersStats = async () => {
+  const data = await request('/users/');
+  return { total: data?.count ?? 0 };
+};
 
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
+// Получение статистики по чатам
+const getChatsStats = async () => {
+  const [allChats, corporateChats] = await Promise.all([
+    request('/chats/'),
+    request('/chats/?type=corporate')
+  ]);
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.detail || data.non_field_errors?.[0] || 'Ошибка запроса');
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
+  const activeCount = Array.isArray(allChats?.results) ? allChats.results.length : (Array.isArray(allChats) ? allChats.length : 0);
+  const corporateCount = Array.isArray(corporateChats?.results) ? corporateChats.results.length : (Array.isArray(corporateChats) ? corporateChats.length : 0);
 
-  return data;
+  return {
+    active: activeCount,
+    corporate: corporateCount
+  };
 };
 
 export const adminAPI = {
-  getUsers: (page = 1) => request(`/users/?page=${page}`),
-  getEvents: () => request('/admin/events/'),
+  // Пользователи
+  getUsers: async (page = 1) => {
+    const data = await request(`/users/?page=${page}`);
+    return Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+  },
+  updateUser: (id, data) => request(`/users/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  getUsersStats,
+  getChatsStats,
+
+  // События
+  getEvents: async () => {
+    const data = await request('/admin/events/');
+    return data || {};
+  },
+
+  // Рассылка
   sendBroadcast: (payload) => request('/admin/email/broadcast/', {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+
+  // Корпоративные чаты
+  createCorporateChat: (data) => request('/chats/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Получение корпоративных чатов
+  getCorporateChats: async () => {
+    const data = await request('/chats/?type=corporate');
+    return Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+  },
 };

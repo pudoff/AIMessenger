@@ -5,14 +5,245 @@
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.metric-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-card span {
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.metric-card strong {
+  font-size: 1.5rem;
+  color: var(--text);
 }
 
 .admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 16px;
   margin-top: 8px;
 }
 
 .admin-grid .panel:last-child {
   grid-column: 1 / -1;
+}
+
+.admin-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 24px 0;
+}
+
+.admin-menu__item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.admin-menu__item:hover {
+  background: rgba(111, 106, 157, 0.1);
+  color: var(--text);
+}
+
+.admin-menu__item--active {
+  background: rgba(106, 106, 157, 0.15);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Стили для выбора пользователей в рассылке */
+.selected-users-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.user-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.remove-tag {
+  background: none;
+  border: none;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.remove-tag:hover {
+  opacity: 0.7;
+}
+
+.user-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.user-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  visibility: visible;
+}
+
+.user-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-option:last-child {
+  border-bottom: none;
+}
+
+.user-option:hover {
+  background: var(--accent-soft);
+}
+
+.user-option.selected {
+  background: var(--panel-muted);
+}
+
+.user-option.disabled {
+  cursor: default;
+  color: var(--text-soft);
+}
+
+.user-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-option-name {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.user-option-email {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.checkmark {
+  color: var(--success);
+  font-weight: bold;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+/* Стили для селекта ролей */
+.role-select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Статусы */
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-active {
+  background: rgba(106, 157, 123, 0.15);
+  color: var(--success);
+}
+
+.status-inactive {
+  background: rgba(185, 109, 109, 0.15);
+  color: var(--danger);
 }

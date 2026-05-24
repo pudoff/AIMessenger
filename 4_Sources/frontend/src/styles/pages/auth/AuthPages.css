@@ -196,6 +196,39 @@
 }
 
 /* Адаптив: на мобильных имя/фамилия в столбик */
+@media (max-width: 1024px) {
+  .auth-card {
+    width: min(100%, 520px);
+    padding: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-page {
+    padding: 16px;
+  }
+
+  .auth-card {
+    width: 100%;
+    padding: 26px;
+    border-radius: 24px;
+  }
+
+  .auth-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form__footer {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .auth-form__footer-link {
+    word-break: keep-all;
+  }
+}
+
 @media (max-width: 520px) {
   .auth-form__row {
     grid-template-columns: 1fr;
@@ -387,4 +420,35 @@ button.auth-form__footer-link {
 /* Плавный скролл к ошибке */
 html {
   scroll-behavior: smooth;
+}
+
+/* Стили для формы восстановления пароля */
+.auth-form--recovery {
+  text-align: left;
+  padding: 0 8px;
+  margin-top: 24px;
+}
+
+.auth-form__actions-center {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.auth-form__actions-center .secondary-button {
+  flex: 1;
+}
+
+.auth-form__back-link {
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  flex: 1;
+}
+
+.auth-form__info-text {
+  color: var(--text-soft);
+  margin-bottom: 24px;
 }

@@ -12,7 +12,7 @@ function buildStorySvg(title, subtitle, colorA, colorB) {
       <rect width="1080" height="1920" fill="url(#g)" />
       <circle cx="870" cy="260" r="180" fill="rgba(255,255,255,0.14)" />
       <circle cx="170" cy="1520" r="210" fill="rgba(255,255,255,0.12)" />
-      <text x="96" y="220" fill="white" font-size="56" font-family="Arial" opacity="0.9">ТелеграфЪ • история</text>
+      <text x="96" y="220" fill="white" font-size="56" font-family="Arial" opacity="0.9">"Наш Слон" • история</text>
       <text x="96" y="930" fill="white" font-size="104" font-family="Arial" font-weight="700">${title}</text>
       <text x="96" y="1060" fill="white" font-size="56" font-family="Arial" opacity="0.94">${subtitle}</text>
       <text x="96" y="1650" fill="white" font-size="42" font-family="Arial" opacity="0.88">Обновление из ленты историй</text>

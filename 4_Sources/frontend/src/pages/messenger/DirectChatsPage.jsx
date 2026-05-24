@@ -4,6 +4,10 @@ import ChatComposer from '../../components/ChatComposer';
 import MessageBubble from '../../components/MessageBubble';
 import SectionHeader from '../../components/SectionHeader';
 import { messagesAPI } from '../../api/chats';
+import ChatPageShell from '../../components/chat/ChatPageShell';
+import ChatHeader from '../../components/chat/ChatHeader';
+import ChatList from '../../components/chat/ChatList';
+import ChatRoom from '../../components/chat/ChatRoom';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -85,7 +89,12 @@ const formatMessage = (m, myId) => ({
 export default function DirectChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const tabFromQuery = queryParams.get('tab');
+  const savedTab = sessionStorage.getItem('messenger_active_tab') || 'direct';
+  const backTab = tabFromQuery || savedTab;
 
   const [myId, setMyId] = useState(null);
   const [chats, setChats] = useState([]);
@@ -98,7 +107,7 @@ export default function DirectChatsPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState(null);
   const [messageError, setMessageError] = useState(null);
-  const [isSending, setIsSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const pollRef = useRef(null);
   const chatPollRef = useRef(null);
@@ -125,9 +134,15 @@ export default function DirectChatsPage() {
     initUser();
   }, []);
 
-  // Автоскролл к последнему сообщению
+  // Автоскролл к последнему сообщению только при новых сообщениях
+  const prevMessagesLengthRef = useRef(0);
+  
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Скроллим вниз только если количество сообщений увеличилось (новые сообщения)
+    if (messages.length > prevMessagesLengthRef.current && messages.length > 0) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
   // Синхронизация рефа для актуальных pending-сообщений
@@ -269,7 +284,7 @@ export default function DirectChatsPage() {
 
   // Отправка сообщения
   const handleSend = async (text) => {
-    if (!chatId || !text.trim() || !myId || isSending) return;
+    if (!chatId || !text.trim() || !myId) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimisticCreatedAt = new Date().toISOString();
@@ -288,7 +303,6 @@ export default function DirectChatsPage() {
     // Оптимистичное обновление UI
     setMessages(prev => [...prev, optimisticMessage]);
     setPendingMessages(prev => [...prev, optimisticMessage]);
-    setIsSending(true);
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
@@ -332,8 +346,6 @@ export default function DirectChatsPage() {
       setMessages(prev =>
         prev.map(m => m.id === tempId ? { ...m, error: true, isOwn: true } : m)
       );
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -354,108 +366,96 @@ export default function DirectChatsPage() {
 
   // Получить данные выбранного чата
   const selectedChat = chats.find(c => String(c.id) === chatId) ||
-    (chatId && state ? {
+    (chatId && location.state ? {
       id: chatId,
-      name: state.contactName || 'Диалог',
+      name: location.state.contactName || 'Диалог',
       position: '',
       status: 'Онлайн',
       preview: '',
-      initials: state.contactInitials || '?'
+      initials: location.state.contactInitials || '?'
     } : null);
 
   // Представление с открытым чатом
   if (chatId) {
     return (
-      <div className="workspace workspace--messenger">
-        <section className="panel panel--chat panel--chat-only">
-          <div className="chat-toolbar chat-toolbar--stack">
-            <div className="chat-toolbar__head">
-              <button
-                className="secondary-button secondary-button--back"
-                type="button"
-                onClick={() => navigate('/app/direct')}
-              >
-                Назад к списку
-              </button>
-              <div>
-                <strong>{selectedChat?.name}</strong>
-                <p>{selectedChat?.position}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="messages-feed">
-            {loadingMessages && messages.length === 0 && (
-              <div className="contacts-empty">Загрузка сообщений...</div>
-            )}
-            {messageError && (
-              <div className="contacts-error">{messageError}</div>
-            )}
-            {!loadingMessages && messages.length === 0 && (
-              <div className="contacts-empty" style={{ padding: '40px' }}>
-                Начните диалог — напишите первое сообщение
-              </div>
-            )}
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
-              />
-            ))}
-            <div ref={endRef} />
-          </div>
-
-          <ChatComposer
-            placeholder={`Сообщение для ${selectedChat?.name}`}
-            onSend={handleSend}
-            disabled={loadingMessages || isSending}
-          />
-        </section>
-      </div>
+      <ChatPageShell
+        left={null}
+        right={(
+          <section className="panel panel--chat-only" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <ChatHeader title={selectedChat?.name} subtitle={selectedChat?.position} onBack={() => navigate('/app/direct')} compact />
+            <ChatRoom
+              messages={messages}
+              loadingMessages={loadingMessages}
+              messageError={messageError}
+              onSend={handleSend}
+              placeholder={`Сообщение для ${selectedChat?.name}`}
+              endRef={endRef}
+              composerDisabled={loadingMessages}
+            />
+          </section>
+        )}
+        split={false}
+      />
     );
   }
 
+  const filteredChats = chats.filter(chat =>
+    searchQuery.trim() === '' ||
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Представление только со списком чатов
   return (
-    <div className="workspace workspace--split">
-      <section className="panel panel--list panel--list-only">
-        <SectionHeader title="Личные сообщения" subtitle="Личные диалоги с участниками команды" />
-        {loading && <div className="contacts-empty">Загрузка...</div>}
-        {error && <div className="contacts-error">{error}</div>}
-        {!loading && chats.length === 0 && (
-          <div className="contacts-empty" style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <h3>У вас пока нет личных чатов</h3>
-            <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
-              Начните диалог через страницу контактов
-            </p>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => navigate('/app/contacts')}
-            >
-              Перейти к контактам
-            </button>
+    <ChatPageShell
+      left={(
+        <section className="panel panel--list panel--list-only">
+          <SectionHeader title="Личные сообщения" subtitle="Личные диалоги с участниками команды" />
+          <div className="chat-search-wrapper">
+            <input
+              type="text"
+              placeholder="Поиск чатов..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="chat-search-input"
+            />
           </div>
-        )}
-        <div className="list-stack">
-          {chats.map((chat) => (
-            <button
-              className={`chat-card chat-card--button ${String(chat.id) === String(lastSelectedChatId) ? 'chat-card--active' : ''}`}
-              key={chat.id}
-              type="button"
-              onClick={() => handleSelectChat(chat.id)}
-            >
-              <div className="chat-card__top">
-                <h3>{chat.name}</h3>
-                <span className="status-text">{chat.status}</span>
+          <ChatList
+            items={filteredChats}
+            selectedId={lastSelectedChatId}
+            onSelect={handleSelectChat}
+            loading={loading}
+            error={error}
+            emptyNode={(
+              <div className="contacts-empty contacts-empty--large">
+                {searchQuery ? (
+                  <>
+                    <h3>Ничего не найдено</h3>
+                    <p className="contacts-empty__text">
+                      По запросу «{searchQuery}» чатов не найдено
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3>У вас пока нет личных чатов</h3>
+                    <p className="contacts-empty__text">
+                      Начните диалог через страницу контактов
+                    </p>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => navigate('/app/contacts')}
+                    >
+                      Перейти к контактам
+                    </button>
+                  </>
+                )}
               </div>
-              <p>{chat.preview}</p>
-              <small>{chat.position}</small>
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
+            )}
+          />
+        </section>
+      )}
+      right={null}
+      split={true}
+    />
   );
 }

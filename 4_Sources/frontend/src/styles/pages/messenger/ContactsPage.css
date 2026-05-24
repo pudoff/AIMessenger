@@ -1,6 +1,7 @@
 /* Сетка для страницы контактов */
 .workspace--contacts {
-  display: flex;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
   min-height: calc(100vh - 100px);
@@ -17,6 +18,15 @@
   background: var(--panel);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.panel--list-only {
+  background: var(--panel);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 22px;
 }
 
 /* Шапка карточки */
@@ -56,7 +66,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   padding: 0 12px 12px;
 }
 
@@ -218,6 +228,35 @@
   }
   .panel--chat-only {
     width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workspace--contacts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .contacts-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .contacts-header__actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .contact-profile__hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .contact-info-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
 import logoAuth from '../../assets/logo_new.png';
+import PasswordRecoveryForm from '../../components/auth/PasswordRecoveryForm';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -23,10 +24,25 @@ function LoginPage() {
     }
   };
 
+  if (isRecoveryMode) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <Logo hideText />
+          <PasswordRecoveryForm
+            onSubmit={(email) => console.log('[DEMO] Reset to:', email)}
+            onBack={() => setIsRecoveryMode(false)}
+            onCancel={() => setIsRecoveryMode(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Logo src={logoAuth} hideText />
+        <Logo hideText />
         <div className="auth-card__heading">
           <h1>Вход в систему</h1>
           <p>Авторизуйтесь, чтобы перейти в рабочее пространство "Наш слон".</p>
@@ -61,7 +77,7 @@ function LoginPage() {
                 disabled={loading}
                 required
               />
-              <button
+              {/* <button
                 type="button"
                 className="toggle-password-btn"
                 onClick={() => setShowPassword(prev => !prev)}
@@ -69,27 +85,16 @@ function LoginPage() {
                 disabled={loading}
               >
                 {showPassword ? '⚫' : '👁️'}
-              </button>
+              </button> */}
             </div>
           </label>
-
-          {/* <div style={{ textAlign: 'right', marginTop: '-8px' }}>
-            <button
-              type="button"
-              className="auth-form__forgot-link"
-              onClick={() => setIsRecoveryMode(true)}
-              disabled={loading}
-            >
-              Забыли пароль?
-            </button>
-          </div> */}
 
           {error && <div className="form-error">{error}</div>}
 
           <button 
             className="primary-button auth-form__submit" 
             type="submit"
-            disabled={loading || !form.login.trim() || !form.password}
+            disabled={loading}
           >
             {loading ? 'Вход...' : 'Войти'}
           </button>

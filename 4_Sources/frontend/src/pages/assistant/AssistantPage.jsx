@@ -35,6 +35,8 @@ function buildAssistantAnswer(question) {
 function AssistantPage() {
   const [question, setQuestion] = useState('');
   const [cards, setCards] = useState(assistantDefaultCards);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -43,29 +45,52 @@ function AssistantPage() {
       return;
     }
 
-    const answer = buildAssistantAnswer(trimmed);
+    setLoading(true);
+    setError(null);
 
-    setCards((prev) => [
-      {
-        id: Date.now(),
-        title: `Запрос: ${trimmed}`,
-        text: answer.text
-      },
-      ...prev
-    ]);
+    // Имитация задержки запроса к API
+    setTimeout(() => {
+      try {
+        const answer = buildAssistantAnswer(trimmed);
 
-    setQuestion('');
+        setCards((prev) => [
+          {
+            id: Date.now(),
+            title: `Запрос: ${trimmed}`,
+            text: answer.text
+          },
+          ...prev
+        ]);
+
+        setQuestion('');
+      } catch (err) {
+        setError('Не удалось получить ответ от ассистента');
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
   };
 
   const handleQuickAction = (action) => {
-    setCards((prev) => [
-      {
-        id: Date.now(),
-        title: action,
-        text: buildAssistantAnswer(action).text
-      },
-      ...prev
-    ]);
+    setLoading(true);
+    setError(null);
+
+    setTimeout(() => {
+      try {
+        setCards((prev) => [
+          {
+            id: Date.now(),
+            title: action,
+            text: buildAssistantAnswer(action).text
+          },
+          ...prev
+        ]);
+      } catch (err) {
+        setError('Не удалось получить ответ от ассистента');
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
   };
 
   return (
@@ -85,21 +110,53 @@ function AssistantPage() {
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="Спросите ассистента, кто отвечает, какие есть задачи или попросите резюме"
+          disabled={loading}
         />
-        <button className="primary-button" type="submit">
-          Спросить
+        <button className="primary-button" type="submit" disabled={loading || !question.trim()}>
+          {loading ? 'Загрузка...' : 'Спросить'}
         </button>
       </form>
 
+      {error && (
+        <div className="contacts-error">
+          {error}
+          <button 
+            type="button" 
+            className="secondary-button" 
+            onClick={() => setError(null)}
+            style={{ marginLeft: '10px' }}
+          >
+            Повторить
+          </button>
+        </div>
+      )}
+
       <div className="actions-grid actions-grid--wide">
         {assistantQuickActions.map((action) => (
-          <button className="secondary-button secondary-button--soft" key={action} type="button" onClick={() => handleQuickAction(action)}>
+          <button 
+            className="secondary-button secondary-button--soft" 
+            key={action} 
+            type="button" 
+            onClick={() => handleQuickAction(action)}
+            disabled={loading}
+          >
             {action}
           </button>
         ))}
       </div>
 
       <section className="assistant-cards">
+        {loading && cards.length === 0 && (
+          <div className="contacts-empty">Загрузка ответа...</div>
+        )}
+        {!loading && cards.length === 0 && (
+          <div className="contacts-empty contacts-empty--large">
+            <h3>Нет истории запросов</h3>
+            <p className="contacts-empty__text">
+              Задайте вопрос или выберите быстрый запрос выше
+            </p>
+          </div>
+        )}
         {cards.map((card) => (
           <article className="insight-card insight-card--large" key={card.id}>
             <strong>{card.title}</strong>

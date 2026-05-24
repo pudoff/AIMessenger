@@ -6,7 +6,7 @@ import { LEGAL_CONTENT } from '../../data/legalContent';
 import { validateField, parseBackendErrors, PASSWORD_REQUIREMENTS } from '../../utils/validation'; //  импорт
 
 import Logo from '../../components/Logo';
-import LegalModal from '../../components/LegalModal';
+import LegalModal from '../../components/auth/LegalModal';
 
 function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -78,7 +78,6 @@ function RegisterPage() {
     setFieldErrors(newErrors);
     
     if (hasError) {
-      // Прокрутка к первой ошибке
       const firstErrorField = Object.keys(newErrors)[0];
       const element = document.querySelector(`[name="${firstErrorField}"]`);
       element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -102,16 +101,9 @@ function RegisterPage() {
     if (result.success) {
       setIsSubmitted(true);
     } else {
-      // 👇 Распределяем ошибки бэкенда по полям
       const backendErrors = parseBackendErrors(result.errors || {});
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));
       
-      // Если есть ошибки не по полям (non_field_errors) — показываем глобально
-      if (result.errors?.non_field_errors) {
-        // Можно добавить в globalError, но у нас он уже есть через useAuth
-      }
-      
-      // Фокус на первое поле с ошибкой
       const firstBackendError = Object.keys(backendErrors)[0];
       if (firstBackendError) {
         const element = document.querySelector(`[name="${firstBackendError}"]`);
@@ -440,7 +432,7 @@ function RegisterPage() {
             disabled={!isFormValid || loading}
             aria-busy={loading}
           >
-            {loading ? 'Регистрация...' : 'Отправить ссылку на email'}
+            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
 
           <div className="auth-form__footer">

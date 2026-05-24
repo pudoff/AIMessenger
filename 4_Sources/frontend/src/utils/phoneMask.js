@@ -7,7 +7,7 @@ export const formatPhone = (value) => {
   let cleaned = digits;
   if (cleaned.startsWith('8')) cleaned = cleaned.slice(1);
   if (cleaned.startsWith('7')) cleaned = cleaned.slice(1);
-  cleaned = cleaned.slice(0, 10); // Ограничиваем 10 цифрами
+  cleaned = cleaned.slice(0, 10); 
   
   // Формируем маску по шагам
   if (cleaned.length === 0) return '';
