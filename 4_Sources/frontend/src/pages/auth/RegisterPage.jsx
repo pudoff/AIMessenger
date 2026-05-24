@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'; //  добавили useEffect
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { formatPhone, cleanPhone } from '../../utils/phoneMask';
 import { LEGAL_CONTENT } from '../../data/legalContent';
@@ -9,8 +9,9 @@ import Logo from '../../components/Logo';
 import LegalModal from '../../components/LegalModal';
 
 function RegisterPage() {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, loading, error: globalError, clearError } = useAuth();
+  const registrationStatus = searchParams.get('registration');
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', birthDate: '', username: '',
@@ -100,7 +101,6 @@ function RegisterPage() {
     
     if (result.success) {
       setIsSubmitted(true);
-      navigate('/app', { replace: true });
     } else {
       // 👇 Распределяем ошибки бэкенда по полям
       const backendErrors = parseBackendErrors(result.errors || {});
@@ -128,6 +128,28 @@ function RegisterPage() {
     form.email.trim() && form.password && form.confirmPassword &&
     form.password === form.confirmPassword &&
     form.accepted_user_agreement && form.accepted_privacy_policy;
+
+  if (isSubmitted) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <Logo hideText />
+          <div className="auth-card__heading">
+            <h1>Проверьте почту</h1>
+            <p>Мы отправили ссылку для завершения регистрации на <strong>{form.email}</strong>.</p>
+          </div>
+          <div className="auth-form">
+            <div className="form-success">
+              Перейдите по ссылке из письма. После подтверждения аккаунта вы сможете войти в мессенджер.
+            </div>
+            <Link to="/login" className="secondary-button">
+              Перейти ко входу
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────
   //  Экран успеха
@@ -170,6 +192,18 @@ function RegisterPage() {
           <h1>Регистрация</h1>
           <p>Заполните данные, чтобы перейти в рабочее пространство "Наш слон".</p>
         </div>
+
+        {registrationStatus === 'confirmed' && (
+          <div className="form-success">
+            Регистрация подтверждена. Теперь вы можете войти в мессенджер.
+          </div>
+        )}
+
+        {registrationStatus === 'invalid' && (
+          <div className="form-error">
+            Ссылка подтверждения недействительна или уже была использована.
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate> {/*  noValidate отключаем браузерную валидацию */}
           

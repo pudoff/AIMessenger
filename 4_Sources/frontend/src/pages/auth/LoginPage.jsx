@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
 import logoAuth from '../../assets/logo_new.png';
-import PasswordRecoveryForm from '../../components/PasswordRecoveryForm';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -12,7 +11,6 @@ function LoginPage() {
   
   const [form, setForm] = useState({ login: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -24,21 +22,6 @@ function LoginPage() {
       navigate(result.user?.role === 'admin' ? '/admin' : '/app', { replace: true });
     }
   };
-
-  if (isRecoveryMode) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <Logo src={logoAuth} hideText />
-          <PasswordRecoveryForm
-            onSubmit={(email) => console.log('[DEMO] Reset to:', email)}
-            onBack={() => setIsRecoveryMode(false)}
-            onCancel={() => setIsRecoveryMode(false)}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">
@@ -114,6 +97,10 @@ function LoginPage() {
           <div className="auth-form__footer">
             <span>Нету аккаунта? </span>
             <Link to="/register" className="auth-form__footer-link">Зарегистрироваться</Link>
+          </div>
+          <div className="auth-form__footer">
+            <span>Забыли пароль? </span>
+            <Link to="/forgot-password" className="auth-form__footer-link">Восстановить доступ</Link>
           </div>
         </form>
       </div>

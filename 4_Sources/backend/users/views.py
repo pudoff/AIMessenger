@@ -2,8 +2,15 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.db import transaction
 from django.db.models import Count
 from django.db.models import Q
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.html import format_html
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils import timezone
 from rest_framework import generics, views, viewsets
 from rest_framework.decorators import action
@@ -15,7 +22,14 @@ from chats.models import Chat, ChatMember
 from messages.models import Message
 from .models import Contact, User
 from .permissions import IsProjectAdminUser, is_project_admin
-from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
+from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
+from .tokens import email_confirmation_token
+
+
+def frontend_url(path):
+    if path.startswith(('http://', 'https://')):
+        return path
+    return f'{settings.FRONTEND_BASE_URL}{path}'
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -136,6 +150,134 @@ class ContactViewSet(viewsets.ModelViewSet):
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = (AllowAny,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            user = serializer.save()
+            self.send_confirmation_email(request, user)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                **serializer.data,
+                'detail': 'Письмо для подтверждения регистрации отправлено на email.',
+            },
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    def send_confirmation_email(self, request, user):
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_confirmation_token.make_token(user)
+        path = reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
+        confirmation_url = request.build_absolute_uri(path)
+
+        plain_message = (
+            'Добрый день!\n\n'
+            'Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+            f'зарегистрироваться ({confirmation_url})\n\n'
+            'Если это не вы, просто удалите сообщение.'
+        )
+        html_message = format_html(
+            '<p>Добрый день!</p>'
+            '<p>Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+            '<a href="{}">зарегистрироваться</a></p>'
+            '<p>Если это не вы, просто удалите сообщение.</p>',
+            confirmation_url,
+        )
+
+        send_mail(
+            subject='Подтверждение регистрации в мессенджере "Наш Слон"',
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+            html_message=html_message,
+        )
+
+
+class ConfirmRegistrationView(views.APIView):
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def get(self, request, uidb64, token):
+        user = self.get_user(uidb64)
+        if user and email_confirmation_token.check_token(user, token):
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
+            return redirect(frontend_url(settings.REGISTRATION_CONFIRM_REDIRECT_PATH))
+
+        return redirect(frontend_url(settings.REGISTRATION_CONFIRM_INVALID_REDIRECT_PATH))
+
+    @staticmethod
+    def get_user(uidb64):
+        try:
+            user_id = force_str(urlsafe_base64_decode(uidb64))
+            return User.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return None
+
+
+class PasswordResetRequestView(views.APIView):
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        if user:
+            self.send_reset_email(request, user)
+
+        return Response({
+            'detail': 'Если пользователь с таким email существует, письмо для восстановления пароля будет отправлено.',
+        })
+
+    def send_reset_email(self, request, user):
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_path = settings.PASSWORD_RESET_FRONTEND_PATH.format(uidb64=uidb64, token=token)
+        reset_url = frontend_url(reset_path)
+
+        plain_message = (
+            'Добрый день!\n\n'
+            'Для восстановления доступа к мессенджеру "Наш Слон" перейдите по ссылке: '
+            f'восстановить доступ ({reset_url})\n\n'
+            'Если это не вы, просто удалите сообщение.'
+        )
+        html_message = format_html(
+            '<p>Добрый день!</p>'
+            '<p>Для восстановления доступа к мессенджеру "Наш Слон" перейдите по ссылке: '
+            '<a href="{}">восстановить доступ</a></p>'
+            '<p>Если это не вы, просто удалите сообщение.</p>',
+            reset_url,
+        )
+
+        send_mail(
+            subject='Восстановление доступа к мессенджеру "Наш Слон"',
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+            html_message=html_message,
+        )
+
+
+class PasswordResetConfirmView(views.APIView):
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Ваш пароль успешно изменен.'})
 
 
 class CurrentUserView(generics.RetrieveAPIView):

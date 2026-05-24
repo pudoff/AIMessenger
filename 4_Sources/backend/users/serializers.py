@@ -1,4 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 
 from .models import Contact, User
@@ -102,7 +105,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        return User.objects.create_user(is_active=False, **validated_data)
 
 
 class AdminEmailBroadcastSerializer(serializers.Serializer):
@@ -132,6 +135,39 @@ class AdminEmailBroadcastSerializer(serializers.Serializer):
 
         recipients.extend(users.values_list('email', flat=True))
         return sorted(set(recipients))
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Пароли не совпадают.'})
+
+        try:
+            user_id = force_str(urlsafe_base64_decode(attrs['uidb64']))
+            user = User.objects.get(pk=user_id, is_active=True)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({'token': 'Ссылка восстановления недействительна.'})
+
+        if not default_token_generator.check_token(user, attrs['token']):
+            raise serializers.ValidationError({'token': 'Ссылка восстановления недействительна.'})
+
+        attrs['user'] = user
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['password'])
+        user.save(update_fields=['password'])
+        return user
 
 
 class CurrentUserSerializer(serializers.ModelSerializer):

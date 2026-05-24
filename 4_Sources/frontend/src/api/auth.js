@@ -43,6 +43,23 @@ export const authAPI = {
     }),
   
   // 👤 Получить данные текущего пользователя
+  requestPasswordReset: (email) =>
+    request('/password-reset/', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }),
+
+  confirmPasswordReset: ({ uidb64, token, password, confirmPassword }) =>
+    request('/password-reset/confirm/', {
+      method: 'POST',
+      body: JSON.stringify({
+        uidb64,
+        token,
+        password,
+        confirm_password: confirmPassword
+      })
+    }),
+
   getMe: () => request('/me/'),
   
   // 🚪 Выход (просто удаляем токен на клиенте)
