@@ -64,13 +64,19 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     setError(null);
+    setLoading(true);
     try {
-      await authAPI.register(userData);
-      // После успешной регистрации — сразу логиним
-      return await login(userData.username, userData.password);
+      const data = await authAPI.register(userData);
+      // Ждем подтверждения email, поэтому не авторизуем пользователя сразу.
+      localStorage.removeItem('auth_token');
+      setToken(null);
+      setCurrentUser(null);
+      return { success: true, data };
     } catch (err) {
       setError(err.message);
       return { success: false, message: err.message, errors: err.data };
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -110,6 +110,16 @@
   text-align: left;
 }
 
+.form-success {
+  padding: 12px 14px;
+  color: #23614d;
+  background: rgba(66, 166, 123, 0.14);
+  border: 1px solid rgba(66, 166, 123, 0.25);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
 /*  Кнопка отправки  */
 .auth-form__submit {
   width: 100%;

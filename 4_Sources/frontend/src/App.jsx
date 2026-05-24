@@ -5,6 +5,8 @@ import AdminLayout from './layouts/AdminLayout';
 
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 import CommunitiesPage from './pages/messenger/CommunitiesPage';
 import MessengerPage from './pages/messenger/MessengerPage';
@@ -41,6 +43,20 @@ function App() {
           </RequireGuest>} />
 
       {/* Пользователь */}
+      <Route
+        path="/forgot-password"
+        element={
+          <RequireGuest>
+            <ForgotPasswordPage />
+          </RequireGuest>} />
+
+      <Route
+        path="/reset-password/:uidb64/:token"
+        element={
+          <RequireGuest>
+            <ResetPasswordPage />
+          </RequireGuest>} />
+
       <Route
         path="/app"
         element={

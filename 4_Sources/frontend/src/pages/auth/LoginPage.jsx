@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
+import logoAuth from '../../assets/logo_new.png';
 import PasswordRecoveryForm from '../../components/auth/PasswordRecoveryForm';
 
 function LoginPage() {
@@ -11,7 +12,6 @@ function LoginPage() {
   
   const [form, setForm] = useState({ login: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -102,6 +102,10 @@ function LoginPage() {
           <div className="auth-form__footer">
             <span>Нету аккаунта? </span>
             <Link to="/register" className="auth-form__footer-link">Зарегистрироваться</Link>
+          </div>
+          <div className="auth-form__footer">
+            <span>Забыли пароль? </span>
+            <Link to="/forgot-password" className="auth-form__footer-link">Восстановить доступ</Link>
           </div>
         </form>
       </div>
