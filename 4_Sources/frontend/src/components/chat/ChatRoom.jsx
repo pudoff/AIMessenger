@@ -14,15 +14,7 @@ export default function ChatRoom({
   return (
     <section className="panel panel--chat panel--chat-only">
       <div className="messages-feed">
-        {loadingMessages && messages.length === 0 && (
-          <div className="contacts-empty">Загрузка сообщений...</div>
-        )}
         {messageError && <div className="contacts-error">{messageError}</div>}
-        {!loadingMessages && messages.length === 0 && (
-          <div className="contacts-empty" style={{ padding: '40px' }}>
-            Начните диалог — напишите первое сообщение
-          </div>
-        )}
 
         {messages.map((msg) => (
           <MessageBubble
@@ -31,6 +23,17 @@ export default function ChatRoom({
             className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
           />
         ))}
+
+        {!messageError && messages.length === 0 && (
+          <div className="contacts-empty contacts-empty--chat">
+            Начните диалог — напишите первое сообщение
+          </div>
+        )}
+
+        {loadingMessages && messages.length === 0 && !messageError && (
+          <div className="contacts-empty">Загрузка сообщений...</div>
+        )}
+
         <div ref={endRef} />
       </div>
 

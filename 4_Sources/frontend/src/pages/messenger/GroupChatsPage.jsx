@@ -79,6 +79,7 @@ function GroupChatsPage() {
   const [createForm, setCreateForm] = useState({ title: '', description: '', participantIds: [] });
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Для чата группы
   const [messages, setMessages] = useState([]);
@@ -203,7 +204,7 @@ function GroupChatsPage() {
 
   // Отправка сообщения
   const handleSend = async (text) => {
-    if (!chatId || !text.trim() || !myId || isSending) return;
+    if (!chatId || !text.trim() || !myId) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimisticCreatedAt = new Date().toISOString();
@@ -221,7 +222,6 @@ function GroupChatsPage() {
 
     setMessages(prev => [...prev, optimisticMessage]);
     setPendingMessages(prev => [...prev, optimisticMessage]);
-    setIsSending(true);
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
@@ -249,8 +249,6 @@ function GroupChatsPage() {
       setMessages(prev =>
         prev.map(m => m.id === tempId ? { ...m, error: true, isOwn: true } : m)
       );
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -390,65 +388,66 @@ function GroupChatsPage() {
     );
   }
 
-// 🔹 РЕЖИМ СПИСКА ГРУПП (если chatId нет)
+  const filteredGroups = groups.filter(group =>
+    searchQuery.trim() === '' ||
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <ChatPageShell
       left={(
         <section className="panel panel--list panel--list-only">
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'flex-start', 
-            justifyContent: 'space-between', 
-            gap: '16px',
-            marginBottom: '20px',
-            padding: '0 20px'
-          }}>
+          <div className="groups-page-header">
             <div>
-              <h1 style={{ 
-                margin: '0 0 8px', 
-                fontSize: '1.8rem',
-                fontWeight: '700'
-              }}>
+              <h1 className="groups-page-header__title">
                 Групповые чаты
               </h1>
-              <p style={{ 
-                margin: '0', 
-                color: 'var(--text-soft)',
-                fontSize: '0.95rem'
-              }}>
+              <p className="groups-page-header__subtitle">
                 Рабочие группы и проектные обсуждения
               </p>
             </div>
             <button
               type="button"
-              className="primary-button"
+              className="primary-button groups-page-header__button"
               onClick={() => {
                 setShowCreateForm(true);
                 loadContactsForCreate();
-              }}
-              style={{ 
-                whiteSpace: 'nowrap',
-                padding: '10px 20px',
-                height: 'fit-content',
-                alignSelf: 'flex-start'
               }}
             >
               Создать группу
             </button>
           </div>
 
+          <div className="chat-search-wrapper">
+            <input
+              type="text"
+              placeholder="Поиск групп..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="chat-search-input"
+            />
+          </div>
+
           <ChatList
-            items={groups}
+            items={filteredGroups}
             selectedId={lastSelectedGroupId}
             onSelect={handleSelectGroup}
             loading={loading}
             error={error}
             emptyNode={(
               <div className="contacts-empty">
-                Нет групповых чатов. <br />
+                {searchQuery ? (
+                  <>
+                    Нет групп по запросу «{searchQuery}». <br />
+                  </>
+                ) : (
+                  <>
+                    Нет групповых чатов. <br />
+                  </>
+                )}
                 <button
-                  className="primary-button"
-                  style={{ marginTop: '12px' }}
+                  className="primary-button contacts-empty__button"
                   type="button"
                   onClick={() => {
                     setShowCreateForm(true);

@@ -26,7 +26,11 @@ function AdminChats() {
 
         if (chatList.length) {
           setChats(chatList.map(formatChat));
+        } else {
+          // Список пуст, но не ошибка
+          setChats([]);
         }
+        setError('');
       } catch (err) {
         console.error('Ошибка загрузки чатов:', err);
         setError('Не удалось загрузить чаты');
@@ -55,15 +59,14 @@ function AdminChats() {
       const chatList = await adminAPI.getCorporateChats();
       if (chatList.length) {
         setChats(chatList.map(formatChat));
+      } else {
+        setChats([]);
       }
     } catch (err) {
       console.error('Ошибка создания чата:', err);
       alert('Не удалось создать чат');
     }
   };
-
-  if (loading) return <div className="loading">Загрузка чатов...</div>;
-  if (error) return <div className="error">{error}</div>;
 
   return (
     <div className="admin-page">
@@ -73,32 +76,38 @@ function AdminChats() {
         <article className="panel">
           <div className="panel__title">Список корпоративных чатов</div>
           <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Название</th>
-                  <th>Участников</th>
-                  <th>Дата создания</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chats.length === 0 ? (
+            {loading ? (
+              <div className="contacts-empty">Загрузка чатов...</div>
+            ) : error ? (
+              <div className="contacts-error">{error}</div>
+            ) : (
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>
-                      Корпоративные чаты отсутствуют
-                    </td>
+                    <th>Название</th>
+                    <th>Участников</th>
+                    <th>Дата создания</th>
                   </tr>
-                ) : (
-                  chats.map((chat) => (
-                    <tr key={chat.id}>
-                      <td>{chat.title}</td>
-                      <td>{chat.members_count}</td>
-                      <td>{new Date(chat.created_at).toLocaleDateString()}</td>
+                </thead>
+                <tbody>
+                  {chats.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="data-table__empty-cell">
+                        Корпоративные чаты отсутствуют
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    chats.map((chat) => (
+                      <tr key={chat.id}>
+                        <td>{chat.title}</td>
+                        <td>{chat.members_count}</td>
+                        <td>{new Date(chat.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </article>
 

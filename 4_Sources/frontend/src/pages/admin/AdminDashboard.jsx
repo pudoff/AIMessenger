@@ -1,197 +1,119 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import SectionHeader from '../../components/SectionHeader';
+import { mainWorkspace } from '../../data/appChats';
 import { adminAPI } from '../../api/admin';
 
-function AdminBroadcast() {
-  const [emailForm, setEmailForm] = useState({ subject: '', message: '', userIds: [] });
-  const [emailStatus, setEmailStatus] = useState(null);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+function AdminDashboard() {
+  const [metrics, setMetrics] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [isWorkspaceVisible, setIsWorkspaceVisible] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Загрузка списка пользователей при монтировании
   useEffect(() => {
-    const loadUsers = async () => {
+    let mounted = true;
+
+    const loadDashboardData = async () => {
       try {
-        const data = await adminAPI.getUsers({ limit: 1000, offset: 0 });
-        console.log('Полный ответ от API getUsers:', data);
+        // Загружаем события и общую статистику параллельно
+        const [events, usersData, chatsData] = await Promise.all([
+          adminAPI.getEvents(),
+          adminAPI.getUsersStats(),
+          adminAPI.getChatsStats()
+        ]);
 
-        // Обрабатываем разные форматы ответа
-        let usersList = [];
-        if (Array.isArray(data)) {
-          usersList = data;
-        } else if (data && data.results && Array.isArray(data.results)) {
-          usersList = data.results;
-        } else if (data && data.users && Array.isArray(data.users)) {
-          usersList = data.users;
-        }
+        if (!mounted) return;
 
-        console.log('Обработанный список пользователей:', usersList);
-        setUsers(usersList);
-      } catch (error) {
-        console.error('Не удалось загрузить пользователей:', error);
+        // Формируем метрики из данных бэкенда
+        const backendMetrics = [
+          { id: 'users', label: 'Пользователи', value: usersData.total ?? 0 },
+          { id: 'active', label: 'Активные чаты', value: chatsData.active ?? 0 },
+          { id: 'groups', label: 'Корпоративные чаты', value: chatsData.corporate ?? 0 },
+          { id: 'messages', label: 'Сообщения за сутки', value: events.messages_last_24h ?? 0 }
+        ];
+        setMetrics(backendMetrics);
+
+        // Формируем ленту действий
+        const registrations = (events.latest_registrations || []).map((user) => (
+          `Зарегистрирован пользователь ${user.username}`
+        ));
+        const chats = (events.created_chats || []).map((chat) => (
+          `Создан чат «${chat.title}»`
+        ));
+        const counters = [
+          `Сообщений за сутки: ${events.messages_last_24h ?? 0}`,
+          `Активных пользователей за сутки: ${events.active_users_last_24h ?? 0}`,
+        ];
+        setActions([...counters, ...registrations, ...chats]);
+      } catch (err) {
+        console.error('Ошибка загрузки данных дашборда:', err);
+        setError('Не удалось загрузить данные');
+      } finally {
+        setLoading(false);
       }
     };
-    loadUsers();
+
+    loadDashboardData();
+    return () => { mounted = false; };
   }, []);
 
-  const filteredUsers = users.filter(user => {
-    const query = searchTerm.toLowerCase();
-    const username = (user.username || '').toLowerCase();
-    const email = (user.email || '').toLowerCase();
-    return username.includes(query) || email.includes(query);
-  });
-
-  const toggleUser = (userId) => {
-    setEmailForm(prev => ({
-      ...prev,
-      userIds: prev.userIds.includes(userId)
-        ? prev.userIds.filter(id => id !== userId)
-        : [...prev.userIds, userId]
-    }));
-  };
-
-  const removeUser = (userId) => {
-    setEmailForm(prev => ({
-      ...prev,
-      userIds: prev.userIds.filter(id => id !== userId)
-    }));
-  };
-
-  const handleEmailSubmit = async (event) => {
-    event.preventDefault();
-    setEmailStatus(null);
-    setIsSendingEmail(true);
-
-    try {
-      const result = await adminAPI.sendBroadcast({
-        subject: emailForm.subject.trim(),
-        message: emailForm.message.trim(),
-        ...(emailForm.userIds.length ? { user_ids: emailForm.userIds } : {}),
-      });
-      setEmailStatus({ type: 'success', text: `Письмо отправлено. Получателей: ${result.recipients?.length || emailForm.userIds.length}` });
-      setEmailForm({ subject: '', message: '', userIds: [] });
-      setSearchTerm('');
-    } catch (error) {
-      setEmailStatus({ type: 'error', text: error.message || 'Не удалось отправить письмо' });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
-
-  const selectedCount = emailForm.userIds.length;
-  const selectedUsers = users.filter(u => emailForm.userIds.includes(u.id));
+  if (loading) return <div className="loading">Загрузка...</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div className="admin-page">
-      <SectionHeader title="E-mail рассылка" subtitle="Отправка уведомлений пользователям" />
+      <SectionHeader title="Панель администратора" subtitle="Мониторинг пользователей, чатов и системных действий" />
 
-      <article className="panel">
-        <div className="panel__title">Форма рассылки</div>
-        <form className="form-stack" onSubmit={handleEmailSubmit}>
-          <div className="form-group">
-            <label htmlFor="email-subject">Тема письма</label>
-            <input
-              id="email-subject"
-              value={emailForm.subject}
-              onChange={(event) => setEmailForm((prev) => ({ ...prev, subject: event.target.value }))}
-              placeholder="Например: Итоги недели"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="email-message">Текст письма</label>
-            <textarea
-              id="email-message"
-              value={emailForm.message}
-              onChange={(event) => setEmailForm((prev) => ({ ...prev, message: event.target.value }))}
-              placeholder="Введите сообщение для пользователей"
-              rows={5}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Получатели</label>
-
-            {/* Отображение выбранных пользователей */}
-            {selectedCount > 0 && (
-              <div className="selected-users-list">
-                {selectedUsers.map(user => (
-                  <span key={user.id} className="user-tag">
-                    {user.username || user.email}
-                    <button type="button" onClick={() => removeUser(user.id)} className="remove-tag">&times;</button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Поле поиска с выпадающим списком */}
-            <div className="user-select-wrapper" style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setDropdownOpen(true);
-                }}
-                onFocus={() => setDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-                placeholder={selectedCount === 0 ? "Начните вводить имя или email..." : "Добавить еще пользователей"}
-                className="user-search-input"
-              />
-
-              {dropdownOpen && filteredUsers.length > 0 && (
-                <div className="user-dropdown">
-                  {filteredUsers.map(user => {
-                    const isSelected = emailForm.userIds.includes(user.id);
-                    return (
-                      <div
-                        key={user.id}
-                        className={`user-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleUser(user.id)}
-                      >
-                        <div className="user-option-info">
-                          <span className="user-option-name">{user.username}</span>
-                          <span className="user-option-email">{user.email}</span>
-                        </div>
-                        {isSelected && <span className="checkmark">✓</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {dropdownOpen && searchTerm && filteredUsers.length === 0 && (
-                <div className="user-dropdown">
-                  <div className="user-option disabled">Пользователи не найдены</div>
-                </div>
-              )}
-            </div>
-
-            <small className="form-hint">
-              {selectedCount === 0
-                ? "Оставьте пустым, чтобы отправить всем активным пользователям"
-                : `Выбрано пользователей: ${selectedCount}`}
-            </small>
-          </div>
-          {emailStatus && (
-            <div className={emailStatus.type === 'success' ? 'form-success' : 'form-error'}>
-              {emailStatus.text}
-            </div>
-          )}
+      <section className="panel admin-workspace-panel">
+        <div className="panel__title panel__title--between">
+          <span>Рабочее пространство проекта</span>
           <button
-            className="primary-button"
-            type="submit"
-            disabled={isSendingEmail || !emailForm.subject.trim() || !emailForm.message.trim()}
+            className="secondary-button"
+            type="button"
+            onClick={() => setIsWorkspaceVisible((prev) => !prev)}
           >
-            {isSendingEmail ? 'Отправка...' : 'Отправить рассылку'}
+            {isWorkspaceVisible ? 'Скрыть' : 'Показать'}
           </button>
-        </form>
-      </article>
+        </div>
+
+        {isWorkspaceVisible && (
+          <div className="workspace-summary-card">
+            <div>
+              <strong>{mainWorkspace.title}</strong>
+              <p>{mainWorkspace.description}</p>
+            </div>
+            <div className="avatars">
+              {mainWorkspace.participants.map((item) => (
+                <div key={item.id} className="avatar" title={item.name}>
+                  {item.initials}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="metrics-grid">
+        {metrics.map((metric) => (
+          <article className="metric-card" key={metric.id}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <section className="panel">
+        <div className="panel__title">Последние действия</div>
+        <div className="activity-feed">
+          {actions.map((action, index) => (
+            <div className="activity-item" key={`${action}-${index}`}>
+              {action}
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
 
-export default AdminBroadcast;
+export default AdminDashboard;

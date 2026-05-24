@@ -1,132 +1,274 @@
-import { useState } from 'react';
-import ChatComposer from '../../components/ChatComposer';
-import MessageBubble from '../../components/MessageBubble';
-import { assistantQuickActions } from '../../data/assistant';
-import { mainChats, mainMessages, mainWorkspace } from '../../data/appChats';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatList from '../../components/chat/ChatList';
-import ChatRoom from '../../components/chat/ChatRoom';
+import SectionHeader from '../../components/SectionHeader';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+// API utility for auth
+const getAuthToken = () => localStorage.getItem('auth_token');
+
+const apiRequest = async (endpoint, opts = {}) => {
+  const token = getAuthToken();
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Token ${token}` }),
+      ...opts.headers,
+    },
+  });
+
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return null;
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+};
+
+// Получение текущего пользователя
+const getCurrentUser = async () => {
+  try {
+    const user = await apiRequest('/me/');
+    return user?.id;
+  } catch (e) {
+    console.error('Не удалось получить текущего пользователя:', e);
+    return null;
+  }
+};
+
+// Форматирование личного чата
+const formatDirectChat = (c, myId) => {
+  const members = c.members || [];
+  const other = members.find(m => String(m.user) !== String(myId));
+  const detail = other?.user_detail || {};
+  const name = [detail.first_name, detail.last_name].filter(Boolean).join(' ').trim() || detail.username || 'Чат';
+
+  return {
+    id: String(c.id),
+    name,
+    position: detail.role === 'admin' ? 'Администратор' : 'Участник',
+    status: 'Онлайн',
+    preview: c.last_message?.text || 'Нет сообщений',
+    initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    chat_type: 'direct',
+    last_message: c.last_message,
+  };
+};
+
+// Форматирование группы
+const formatGroup = (g) => ({
+  id: String(g.id),
+  name: g.title,
+  description: g.description || 'Групповой чат',
+  members: g.members_count || 0,
+  preview: g.last_message?.text || 'Нет сообщений',
+  position: `Участников: ${g.members_count || 0}`,
+  chat_type: 'group',
+});
+
+// Форматирование сообщества
+const formatCommunity = (c) => ({
+  id: String(c.id),
+  name: c.title,
+  description: c.description || 'Корпоративное сообщество',
+  members: c.members_count || 0,
+  category: 'Корпоративное',
+  preview: 'Сообщество',
+  position: `${c.members_count || 0} участников`,
+  chat_type: 'corporate',
+});
 
 function MessengerPage() {
-  const [messages, setMessages] = useState(mainMessages);
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
-  const [selectedChatId, setSelectedChatId] = useState(null);
-  const [lastSelectedChatId, setLastSelectedChatId] = useState(mainChats[0]?.id ?? null);
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allChats, setAllChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [myId, setMyId] = useState(null);
 
-  const selectedChat = mainChats.find((chat) => chat.id === selectedChatId) || mainChats[0];
-
-  const handleSend = (text) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        type: 'message',
-        tag: 'Обычное',
-        author: 'Вы',
-        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-        text
+  // Инициализация: получение ID текущего пользователя
+  useEffect(() => {
+    const initUser = async () => {
+      try {
+        const userId = await getCurrentUser();
+        if (!userId) {
+          setError('Не удалось определить текущего пользователя. Проверьте авторизацию.');
+          setLoading(false);
+          return;
+        }
+        setMyId(userId);
+      } catch (e) {
+        setError('Ошибка при получении профиля: ' + e.message);
+        setLoading(false);
       }
-    ]);
+    };
+    initUser();
+  }, []);
+
+  // Загрузка всех чатов
+  useEffect(() => {
+    if (!myId) return;
+
+    const fetchAllChats = async () => {
+      try {
+        const [directRes, groupRes, corporateRes] = await Promise.all([
+          apiRequest('/chats/?type=direct'),
+          apiRequest('/chats/?type=group'),
+          apiRequest('/chats/?type=corporate'),
+        ]);
+
+        const directList = (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId));
+        const groupList = (groupRes?.results || groupRes || []).map(formatGroup);
+        const corporateList = (corporateRes?.results || corporateRes || []).map(formatCommunity);
+
+        const all = [...directList, ...groupList, ...corporateList].sort((a, b) => {
+          const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
+          const bTime = b.last_message?.created_at ? new Date(b.last_message.created_at).getTime() : 0;
+          return bTime - aTime;
+        });
+
+        console.log('[MessengerPage] Загружено чатов:', { direct: directList.length, group: groupList.length, corporate: corporateList.length, total: all.length });
+        setAllChats(all);
+        setError(null);
+      } catch (e) {
+        console.error('Ошибка загрузки чатов:', e);
+        setError('Не удалось загрузить чаты: ' + e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllChats();
+
+    // Опрос для обновления каждые 5 секунд
+    const pollInterval = setInterval(fetchAllChats, 5000);
+    return () => clearInterval(pollInterval);
+  }, [myId]);
+
+  // Фильтрация по поиску
+  const filteredChats = allChats.filter(chat => {
+    // Фильтр по поиску
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        chat.name.toLowerCase().includes(query) ||
+        (chat.description && chat.description.toLowerCase().includes(query)) ||
+        (chat.preview && chat.preview.toLowerCase().includes(query))
+      );
+    }
+    return true;
+  });
+
+  const handleSelectChat = (chatId) => {
+    console.log('[MessengerPage.handleSelectChat] Получен ID:', chatId, 'Всего чатов:', allChats.length);
+    
+    // chatId приходит просто ID, ищем тип чата
+    const foundChat = allChats.find(c => String(c.id) === String(chatId));
+    
+    if (!foundChat) {
+      console.error('[MessengerPage.handleSelectChat] Чат не найден:', chatId);
+      return;
+    }
+
+    const chatType = foundChat.chat_type;
+    console.log('[MessengerPage.handleSelectChat] Найден чат:', { id: chatId, type: chatType, name: foundChat.name });
+
+    let url = '';
+    // Навигация в зависимости от типа чата с replace
+    if (chatType === 'direct') {
+      url = `/app/direct/${chatId}`;
+      navigate(url, { replace: true });
+    } else if (chatType === 'group') {
+      url = `/app/group/${chatId}`;
+      navigate(url, { replace: true });
+    } else if (chatType === 'corporate') {
+      url = `/app/community/${chatId}`;
+      navigate(url, { replace: true });
+    } else {
+      console.error('[MessengerPage.handleSelectChat] Неизвестный тип чата:', chatType);
+      url = `/app/direct/${chatId}`;
+      navigate(url, { replace: true });
+    }
+    
+    console.log('[MessengerPage.handleSelectChat] Переход по адресу:', url);
   };
 
   return (
-    <>
-      <ChatPageShell
-        left={(
-          <ChatList
-            items={mainChats}
-            selectedId={lastSelectedChatId}
-            onSelect={(id) => { setSelectedChatId(id); setLastSelectedChatId(id); }}
-            topNode={(
-              <div className="search-box">
+    <ChatPageShell
+      left={(
+        <ChatList
+          topNode={(
+            <>
+              <SectionHeader
+                title="Мессенджер"
+                subtitle="Все ваши чаты в одном месте"
+              />
+
+              {/* Поиск */}
+              <div className="chat-search-wrapper">
                 <input
-                  type="search"
-                  className="search-box__input"
-                  placeholder="Поиск по чатам"
-                  aria-label="Поиск по чатам"
+                  type="text"
+                  placeholder="Поиск чатов..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="chat-search-input"
                 />
               </div>
-            )}
-          />
-        )}
-        right={(
-          selectedChatId ? (
-            <>
-              <div className="chat-toolbar">
-                <div className="chat-toolbar__head">
-                  <button className="secondary-button secondary-button--back" type="button" onClick={() => setSelectedChatId(null)}>
-                    Назад к чатам
-                  </button>
-                  <div>
-                    <strong>{selectedChat.name}</strong>
-                    <p>{selectedChat.description}</p>
-                  </div>
-                </div>
-
-                <div className="avatars">
-                  {mainWorkspace.participants.map((item) => (
-                    <div key={item.id} className="avatar" title={item.name}>
-                      {item.initials}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <ChatRoom messages={messages} onSend={handleSend} placeholder={`Напишите сообщение в чат «${selectedChat.name}»`} />
             </>
-          ) : null
-        )}
-        split={true}
-      />
-
-      <aside className={`floating-insights ${isInsightsOpen ? 'floating-insights--open' : ''}`}>
-        {isInsightsOpen ? (
-          <div className="panel panel--insights panel--insights-floating">
-            <div className="panel__title panel__title--between">
-              <span>AI-ассистент и аналитика</span>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setIsInsightsOpen(false)}
-                aria-label="Свернуть AI-панель"
-              >
-                ×
-              </button>
+          )}
+          items={filteredChats}
+          selectedId={null}
+          onSelect={handleSelectChat}
+          loading={loading}
+          error={error}
+          emptyNode={(
+            <div className="contacts-empty contacts-empty--large">
+              {searchQuery ? (
+                <>
+                  <h3>Ничего не найдено</h3>
+                  <p className="contacts-empty__text">
+                    По запросу «{searchQuery}» чатов не найдено
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>У вас пока нет чатов</h3>
+                  <p className="contacts-empty__text">
+                    Начните диалог через страницу контактов или создайте группу
+                  </p>
+                  <div className="chat-search-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => navigate('/app/contacts')}
+                    >
+                      Контакты
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => navigate('/app/groups')}
+                    >
+                      Группы
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="insight-card">
-              <strong>Текущий контекст</strong>
-              <p>В обсуждении выделены маршруты, авторизация и админ-панель.</p>
-            </div>
-            <div className="insight-card">
-              <strong>Теги в беседе</strong>
-              <div className="tag-row">
-                <span className="tag tag--question">Вопрос</span>
-                <span className="tag tag--task">Задача</span>
-                <span className="tag tag--default">Обычное</span>
-              </div>
-            </div>
-            <div className="panel__title panel__title--small">Быстрые действия</div>
-            <div className="actions-grid">
-              {assistantQuickActions.map((action) => (
-                <button className="secondary-button secondary-button--soft" key={action} type="button">
-                  {action}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <button
-            className="ai-fab"
-            type="button"
-            onClick={() => setIsInsightsOpen(true)}
-            aria-label="Открыть AI-ассистента"
-          >
-            <span className="ai-fab__icon">AI</span>
-            <span className="ai-fab__label">Ассистент</span>
-          </button>
-        )}
-      </aside>
-    </>
+          )}
+        />
+      )}
+      right={null}
+      split={true}
+    />
   );
 }
 

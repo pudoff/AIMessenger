@@ -90,17 +90,6 @@ function LoginPage() {
             </div>
           </label>
 
-          {/* <div style={{ textAlign: 'right', marginTop: '-8px' }}>
-            <button
-              type="button"
-              className="auth-form__forgot-link"
-              onClick={() => setIsRecoveryMode(true)}
-              disabled={loading}
-            >
-              Забыли пароль?
-            </button>
-          </div> */}
-
           {error && <div className="form-error">{error}</div>}
 
           <button 

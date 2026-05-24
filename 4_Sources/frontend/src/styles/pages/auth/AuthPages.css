@@ -411,3 +411,34 @@ button.auth-form__footer-link {
 html {
   scroll-behavior: smooth;
 }
+
+/* Стили для формы восстановления пароля */
+.auth-form--recovery {
+  text-align: left;
+  padding: 0 8px;
+  margin-top: 24px;
+}
+
+.auth-form__actions-center {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.auth-form__actions-center .secondary-button {
+  flex: 1;
+}
+
+.auth-form__back-link {
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  flex: 1;
+}
+
+.auth-form__info-text {
+  color: var(--text-soft);
+  margin-bottom: 24px;
+}

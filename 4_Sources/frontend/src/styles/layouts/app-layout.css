@@ -31,6 +31,11 @@
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
+  background: var(--panel);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 22px;
 }
 
 .workspace--split {

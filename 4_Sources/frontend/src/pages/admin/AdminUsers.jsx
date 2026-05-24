@@ -44,7 +44,12 @@ function AdminUsers() {
           const formattedUsers = list.map(formatUser);
           setUsers(formattedUsers);
           setFilteredUsers(formattedUsers);
+        } else {
+          // Список пуст, но не ошибка
+          setUsers([]);
+          setFilteredUsers([]);
         }
+        setError('');
       } catch (err) {
         console.error('Ошибка загрузки пользователей:', err);
         setError('Не удалось загрузить пользователей');
@@ -80,9 +85,6 @@ function AdminUsers() {
     }
   };
 
-  if (loading) return <div className="loading">Загрузка пользователей...</div>;
-  if (error) return <div className="error">{error}</div>;
-
   return (
     <div className="admin-page">
       <SectionHeader title="Управление пользователями" subtitle="Просмотр, редактирование ролей и блокировка пользователей" />
@@ -99,53 +101,59 @@ function AdminUsers() {
           />
         </div>
         <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Имя</th>
-                <th>Email</th>
-                <th>Роль</th>
-                <th>Статус</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length === 0 ? (
+          {loading ? (
+            <div className="contacts-empty">Загрузка пользователей...</div>
+          ) : error ? (
+            <div className="contacts-error">{error}</div>
+          ) : (
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
-                    {searchQuery ? 'Пользователи не найдены' : 'Список пользователей пуст'}
-                  </td>
+                  <th>Имя</th>
+                  <th>Email</th>
+                  <th>Роль</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
                 </tr>
-              ) : (
-                filteredUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleChangeUserRole(user.id, e.target.value)}
-                        className="role-select"
-                      >
-                        <option value="user">Пользователь</option>
-                        <option value="admin">Администратор</option>
-                      </select>
-                    </td>
-                    <td>{user.is_active ? 'Активен' : 'Заблокирован'}</td>
-                    <td>
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => handleToggleUserStatus(user.id, user.is_active)}
-                      >
-                        {user.is_active ? 'Заблокировать' : 'Разблокировать'}
-                      </button>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="data-table__empty-cell">
+                      {searchQuery ? 'Пользователи не найдены' : 'Список пользователей пуст'}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.name}</td>
+                      <td>{user.email}</td>
+                      <td>
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleChangeUserRole(user.id, e.target.value)}
+                          className="role-select"
+                        >
+                          <option value="user">Пользователь</option>
+                          <option value="admin">Администратор</option>
+                        </select>
+                      </td>
+                      <td>{user.is_active ? 'Активен' : 'Заблокирован'}</td>
+                      <td>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => handleToggleUserStatus(user.id, user.is_active)}
+                        >
+                          {user.is_active ? 'Заблокировать' : 'Разблокировать'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </article>
     </div>

@@ -63,7 +63,8 @@ function ContactsPage() {
       try {
         const data = await contactsAPI.search(searchQuery);
         const list = Array.isArray(data) ? data : data.results || [];
-        setSearchResults(list.map(formatSearchResult));
+        const filtered = list.filter(u => u.role !== 'admin');
+        setSearchResults(filtered.map(formatSearchResult));
       } catch (err) { console.error(err); }
       finally { setSearching(false); }
     }, 300);

@@ -35,8 +35,8 @@ function PasswordRecoveryForm({ onSubmit, onCancel, onBack }) {
         <h1>✅ Проверьте почту</h1>
         <p>Если аккаунт с адресом <strong>{email}</strong> существует, мы отправили ссылку для сброса пароля.</p>
         
-        <div className="auth-form" style={{ textAlign: 'left', padding: '0 8px', marginTop: '24px' }}>
-          <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
+        <div className="auth-form auth-form--recovery">
+          <p className="auth-form__info-text">
             Ссылка действительна 30 минут. Если письмо не пришло, проверьте папку «Спам».
           </p>
           
@@ -44,7 +44,6 @@ function PasswordRecoveryForm({ onSubmit, onCancel, onBack }) {
             className="secondary-button" 
             type="button" 
             onClick={onBack}
-            style={{ width: '100%' }}
           >
             Вернуться ко входу
           </button>
@@ -85,29 +84,20 @@ function PasswordRecoveryForm({ onSubmit, onCancel, onBack }) {
           Отправить ссылку
         </button>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+        <div className="auth-form__actions-center">
           {onCancel && (
             <button 
               type="button" 
               className="secondary-button" 
               onClick={onCancel}
-              style={{ flex: 1 }}
             >
               Отмена
             </button>
           )}
           <button 
             type="button" 
-            className="auth-form__footer-link" 
+            className="auth-form__back-link" 
             onClick={onBack}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: 'var(--text-soft)', 
-              cursor: 'pointer', 
-              font: 'inherit',
-              flex: 1
-            }}
           >
             ← Назад ко входу
           </button>

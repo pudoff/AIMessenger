@@ -56,6 +56,7 @@ function App() {
         <Route path="groups" element={<GroupChatsPage />} />
         <Route path="group/:chatId" element={<GroupChatsPage />} />
         <Route path="communities" element={<CommunitiesPage />} />
+        <Route path="community/:communityId" element={<CommunitiesPage />} />
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="contacts/:contactId" element={<ContactsPage />} />
         <Route path="assistant" element={<AssistantPage />} />

@@ -266,7 +266,7 @@ function AdminPage() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
+                    <td colSpan="5" className="data-table__empty-cell">
                       {searchQuery ? 'Пользователи не найдены' : 'Список пользователей пуст'}
                     </td>
                   </tr>
@@ -317,7 +317,7 @@ function AdminPage() {
               <tbody>
                 {chats.length === 0 ? (
                   <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>
+                    <td colSpan="3" className="data-table__empty-cell">
                       Корпоративные чаты отсутствуют
                     </td>
                   </tr>
