@@ -10,7 +10,7 @@ export const adminUsers = [
   { id: 2, name: 'Илья Петров', role: 'Пользователь', status: 'Активен' },
   { id: 3, name: 'Мария Волкова', role: 'Модератор', status: 'Активен' },
   { id: 4, name: 'Дмитрий Соколов', role: 'Пользователь', status: 'Ожидает' },
-  { id: 5, name: 'Администратор ТелеграфЪ', role: 'Администратор', status: 'Активен' }
+  { id: 5, name: 'Администратор "Наш Слон"', role: 'Администратор', status: 'Активен' }
 ];
 
 export const adminActionsFeed = [
