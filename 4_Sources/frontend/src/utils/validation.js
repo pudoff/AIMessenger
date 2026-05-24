@@ -37,7 +37,7 @@ export const validateField = (name, value, form = {}) => {
     case 'password':
       if (!value) return 'Это поле обязательно';
       if (value.length < 8) return 'Минимум 8 символов';
-      // Дополнительные проверки (бэкенд тоже их делает, но покажем сразу)
+      // Дополнительные проверки 
       if (/^\d+$/.test(value)) return 'Пароль не должен состоять только из цифр';
       if (value.toLowerCase().includes('password') || value.toLowerCase().includes('qwerty')) {
         return 'Пароль слишком простой';

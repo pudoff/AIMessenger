@@ -381,8 +381,8 @@ export default function DirectChatsPage() {
       <ChatPageShell
         left={null}
         right={(
-          <>
-            <ChatHeader title={selectedChat?.name} subtitle={selectedChat?.position} onBack={() => navigate('/app/direct')} />
+          <section className="panel panel--chat-only" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <ChatHeader title={selectedChat?.name} subtitle={selectedChat?.position} onBack={() => navigate('/app/direct')} compact />
             <ChatRoom
               messages={messages}
               loadingMessages={loadingMessages}
@@ -392,7 +392,7 @@ export default function DirectChatsPage() {
               endRef={endRef}
               composerDisabled={loadingMessages}
             />
-          </>
+          </section>
         )}
         split={false}
       />

@@ -40,6 +40,29 @@
   color: var(--text-soft);
 }
 
+/* Компактная кнопка "Назад" */
+.chat-toolbar .secondary-button--back {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  border-radius: 10px;
+}
+
+/* Уменьшаем отступы тулбара для компактности */
+.chat-toolbar--compact {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  gap: 12px;
+}
+
+.chat-toolbar--compact .chat-toolbar__head {
+  gap: 10px;
+}
+
+.chat-toolbar--compact .secondary-button--back {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
 .section-header .search-box {
   flex: 1;          
   min-width: 0;      

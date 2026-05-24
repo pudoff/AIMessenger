@@ -12,8 +12,8 @@ export default function ChatRoom({
   composerDisabled = false,
 }) {
   return (
-    <section className="panel panel--chat panel--chat-only">
-      <div className="messages-feed">
+    <section className="panel panel--chat panel--chat-only" style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: 0 }}>
+      <div className="messages-feed" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {messageError && <div className="contacts-error">{messageError}</div>}
 
         {messages.map((msg) => (

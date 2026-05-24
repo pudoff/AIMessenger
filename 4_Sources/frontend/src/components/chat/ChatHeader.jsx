@@ -1,8 +1,8 @@
 import React from 'react';
 
-export default function ChatHeader({ title, subtitle, onBack, backLabel = 'Назад к списку', avatars }) {
+export default function ChatHeader({ title, subtitle, onBack, backLabel = 'Назад к списку', avatars, compact = false }) {
   return (
-    <div className="chat-toolbar">
+    <div className={`chat-toolbar${compact ? ' chat-toolbar--compact' : ''}`}>
       <div className="chat-toolbar__head">
         {onBack && (
           <button className="secondary-button secondary-button--back" type="button" onClick={onBack}>

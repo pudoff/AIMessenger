@@ -7,6 +7,14 @@
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border);
   border-radius: 20px;
+  flex-shrink: 0;
+}
+
+/* В режиме только чата уменьшаем отступ composer'а и делаем его фиксированным */
+.panel--chat-only .composer {
+  margin-top: 8px;
+  padding: 8px;
+  flex-shrink: 0;
 }
 
 .composer__input {

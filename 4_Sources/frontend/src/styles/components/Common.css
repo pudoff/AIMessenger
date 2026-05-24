@@ -61,7 +61,7 @@
   flex-direction: column;
   gap: 14px;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   padding-right: 6px;
 }

@@ -370,8 +370,8 @@ function GroupChatsPage() {
       <ChatPageShell
         left={null}
         right={(
-          <>
-            <ChatHeader title={selectedGroup?.name || 'Групповой чат'} subtitle={selectedGroup?.description || ''} onBack={() => navigate('/app/groups')} />
+          <section className="panel panel--chat-only" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <ChatHeader title={selectedGroup?.name || 'Групповой чат'} subtitle={selectedGroup?.description || ''} onBack={() => navigate('/app/groups')} compact />
             <ChatRoom
               messages={messages}
               loadingMessages={loadingMessages}
@@ -381,7 +381,7 @@ function GroupChatsPage() {
               endRef={endRef}
               composerDisabled={loadingMessages || isSending}
             />
-          </>
+          </section>
         )}
         split={false}
       />

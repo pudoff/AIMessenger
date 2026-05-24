@@ -77,7 +77,6 @@ function RegisterPage() {
     setFieldErrors(newErrors);
     
     if (hasError) {
-      // Прокрутка к первой ошибке
       const firstErrorField = Object.keys(newErrors)[0];
       const element = document.querySelector(`[name="${firstErrorField}"]`);
       element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -102,16 +101,9 @@ function RegisterPage() {
       setIsSubmitted(true);
       navigate('/app', { replace: true });
     } else {
-      // 👇 Распределяем ошибки бэкенда по полям
       const backendErrors = parseBackendErrors(result.errors || {});
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));
       
-      // Если есть ошибки не по полям (non_field_errors) — показываем глобально
-      if (result.errors?.non_field_errors) {
-        // Можно добавить в globalError, но у нас он уже есть через useAuth
-      }
-      
-      // Фокус на первое поле с ошибкой
       const firstBackendError = Object.keys(backendErrors)[0];
       if (firstBackendError) {
         const element = document.querySelector(`[name="${firstBackendError}"]`);

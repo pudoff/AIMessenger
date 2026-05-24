@@ -2,14 +2,23 @@ import { NavLink } from 'react-router-dom';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
 
+// Импортируем иконки из assets
+import chatIcon from '../assets/icons_final/01_chat.png';
+import directIcon from '../assets/icons_final/09_users.png';
+import groupsIcon from '../assets/icons_final/09_users.png';
+import communitiesIcon from '../assets/icons_final/03_network.png';
+import contactsIcon from '../assets/icons_final/08_contacts.png';
+import assistantIcon from '../assets/icons_final/04_assistant.png';
+import settingsIcon from '../assets/icons_final/06_settings.png';
+
 const items = [
-  { to: '/app', label: 'Чаты', icon: '💬' },
-  { to: '/app/direct', label: 'Личные сообщения', icon: '👤' },
-  { to: '/app/groups', label: 'Корпоративные чаты', icon: '🏢' },
-  { to: '/app/communities', label: 'Сообщества', icon: '🌐' },
-  { to: '/app/contacts', label: 'Контакты', icon: '📇' },
-  { to: '/app/assistant', label: 'AI-ассистент', icon: '✦' },
-  { label: 'Настройки', icon: '⚙️', disabled: true }
+  { to: '/app', label: 'Чаты', icon: chatIcon },
+  { to: '/app/direct', label: 'Личные сообщения', icon: directIcon },
+  { to: '/app/groups', label: 'Корпоративные чаты', icon: groupsIcon },
+  { to: '/app/communities', label: 'Сообщества', icon: communitiesIcon },
+  { to: '/app/contacts', label: 'Контакты', icon: contactsIcon },
+  { to: '/app/assistant', label: 'AI-ассистент', icon: assistantIcon },
+  { label: 'Настройки', icon: settingsIcon, disabled: true }
 ];
 
 function SidebarNav() {
@@ -35,7 +44,9 @@ function SidebarNav() {
         {items.map((item) =>
           item.disabled ? (
             <div key={item.label} className="shell-nav__item">
-              <span className="shell-nav__icon" aria-hidden="true">{item.icon}</span>
+              <span className="shell-nav__icon" aria-hidden="true">
+                <img src={item.icon} alt={item.label} style={{ width: '100%', height: 'auto' }} />
+              </span>
               <span>{item.label}</span>
             </div>
           ) : (
@@ -47,7 +58,9 @@ function SidebarNav() {
                 `shell-nav__item ${isActive ? 'shell-nav__item--active' : ''}`
               }
             >
-              <span className="shell-nav__icon" aria-hidden="true">{item.icon}</span>
+              <span className="shell-nav__icon" aria-hidden="true">
+                <img src={item.icon} alt={item.label} style={{ width: '100%', height: 'auto' }} />
+              </span>
               <span>{item.label}</span>
             </NavLink>
           )

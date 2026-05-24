@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
-import logoAuth from '../../assets/logo_new.png';
 import PasswordRecoveryForm from '../../components/auth/PasswordRecoveryForm';
 
 function LoginPage() {
@@ -29,7 +28,7 @@ function LoginPage() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <Logo src={logoAuth} hideText />
+          <Logo hideText />
           <PasswordRecoveryForm
             onSubmit={(email) => console.log('[DEMO] Reset to:', email)}
             onBack={() => setIsRecoveryMode(false)}
@@ -43,7 +42,7 @@ function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Logo src={logoAuth} hideText />
+        <Logo hideText />
         <div className="auth-card__heading">
           <h1>Вход в систему</h1>
           <p>Авторизуйтесь, чтобы перейти в рабочее пространство "Наш слон".</p>
