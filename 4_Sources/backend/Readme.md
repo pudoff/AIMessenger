@@ -501,3 +501,64 @@ Copy-Item .env.example .env
 | `POSTGRES_HOST` | Host PostgreSQL |
 | `POSTGRES_PORT` | Port PostgreSQL, локально обычно `5433` |
 | `USE_POSTGRES_FOR_TESTS` | `True`, если тесты нужно гонять на PostgreSQL; по умолчанию тесты используют SQLite |
+
+## Sprint update: async ML, embeddings and semantic search
+
+Backend no longer runs message classification inside the HTTP request. `POST /api/messages/` and text updates save the message first, then enqueue two backend Celery tasks:
+
+- `messages.tasks.classify_message_task(message_id)` reads the message from backend DB, sends `ml_service.classify_message` to the ML queue, and saves `MessageClassification`.
+- `messages.tasks.build_message_embedding_task(message_id)` sends `ml_service.embed_text`, stores one `MessageEmbedding` per message, and uses `text_hash` to skip unchanged text.
+
+The ML service does not receive backend DB access. If ML is unavailable, message creation still succeeds. Classification has async fields: `status`, `error_message`, `source`, `needs_review`. Possible `status` values are `pending`, `completed`, `failed`; possible `source` values are `mock`, `ml_worker`, `fallback`.
+
+Local Docker has separate containers for web API and backend worker:
+
+```powershell
+cd 4_Sources
+docker compose -f docker-compose.local.yml up -d postgres redis ml-worker backend backend-worker
+docker compose -f docker-compose.local.yml logs -f backend-worker ml-worker
+```
+
+Manual local worker command:
+
+```powershell
+cd 4_Sources/backend
+.\.venv\Scripts\celery -A config worker -Q backend --loglevel=info
+```
+
+Redis/Celery smoke-check:
+
+```powershell
+.\.venv\Scripts\python manage.py check_celery_redis
+```
+
+New environment variables:
+
+```env
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/1
+ML_CELERY_QUEUE=ml
+BACKEND_CELERY_QUEUE=backend
+ML_TASK_TIMEOUT_SECONDS=30
+ML_CONFIDENCE_THRESHOLD=0.55
+EMBEDDING_DIMENSIONS=384
+```
+
+PostgreSQL uses `pgvector/pgvector:pg18-trixie`. Migration `0005_async_ml_and_embeddings` enables `CREATE EXTENSION IF NOT EXISTS vector`, creates `MessageEmbedding.vector` with 384 dimensions, and adds an HNSW cosine index.
+
+Semantic search endpoint:
+
+```http
+GET /api/search/semantic/?q=deadline&chat=10&limit=20&date_from=2026-05-01&date_to=2026-05-25&message_type=task
+```
+
+Regular users search only messages from chats where they are participants; project admins search all chats. Messages without embeddings are skipped. `limit` is capped at 50.
+
+Rebuild old/stale embeddings:
+
+```powershell
+.\.venv\Scripts\python manage.py rebuild_message_embeddings
+.\.venv\Scripts\python manage.py rebuild_message_embeddings --sync
+```
+
+When `drf-spectacular` is installed, live OpenAPI docs are available at `/api/schema/` and `/api/docs/`. API errors use a single envelope with `detail`, `field_errors`, and `code`.

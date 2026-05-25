@@ -33,7 +33,30 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       ML_CELERY_QUEUE: ml
+      BACKEND_CELERY_QUEUE: backend
     entrypoint: /app/entrypoint.sh
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  backend-worker:
+    image: magnificent8/ai-messenger:backend-latest
+    container_name: backend-worker
+    restart: always
+    volumes:
+      - ./.env:/app/.env:ro
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ML_CELERY_QUEUE: ml
+      BACKEND_CELERY_QUEUE: backend
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    command: celery -A config worker -Q backend --loglevel=info
     networks:
       - backend
     depends_on:
@@ -83,7 +106,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:18.3
+    image: pgvector/pgvector:pg18-trixie
     restart: always
     container_name: postgres
     environment:
@@ -91,7 +114,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - aimessenger_postgres_data:/var/lib/postgresql/18/main
+      - aimessenger_postgres_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:

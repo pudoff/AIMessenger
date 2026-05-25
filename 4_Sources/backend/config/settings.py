@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -58,6 +59,11 @@ INSTALLED_APPS = [
     'chats',
     'messages.apps.MessagesConfig',
 ]
+
+if find_spec('drf_spectacular'):
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('users'), 'drf_spectacular')
+if find_spec('pgvector'):
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('users'), 'pgvector.django')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -206,8 +212,33 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': int(os.getenv('API_PAGE_SIZE', '20')),
+    'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
 }
+
+if find_spec('drf_spectacular'):
+    REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 ML_CELERY_QUEUE = os.getenv("ML_CELERY_QUEUE", "ml")
+BACKEND_CELERY_QUEUE = os.getenv("BACKEND_CELERY_QUEUE", "backend")
+CELERY_TASK_DEFAULT_QUEUE = BACKEND_CELERY_QUEUE
+CELERY_TASK_ROUTES = {
+    "messages.tasks.classify_message_task": {"queue": BACKEND_CELERY_QUEUE},
+    "messages.tasks.build_message_embedding_task": {"queue": BACKEND_CELERY_QUEUE},
+}
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+ML_TASK_TIMEOUT_SECONDS = int(os.getenv("ML_TASK_TIMEOUT_SECONDS", "30"))
+ML_CONFIDENCE_THRESHOLD = float(os.getenv("ML_CONFIDENCE_THRESHOLD", "0.55"))
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AIMessenger Backend API",
+    "DESCRIPTION": "Auth, users, contacts, chats, messages, async ML classification and semantic search.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
