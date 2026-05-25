@@ -544,7 +544,7 @@ ML_CONFIDENCE_THRESHOLD=0.55
 EMBEDDING_DIMENSIONS=384
 ```
 
-PostgreSQL uses `pgvector/pgvector:pg18-trixie`. Migration `0005_async_ml_and_embeddings` enables `CREATE EXTENSION IF NOT EXISTS vector`, creates `MessageEmbedding.vector` with 384 dimensions, and adds an HNSW cosine index.
+PostgreSQL uses `pgvector/pgvector:pg18-trixie`. Migrations `0005_async_ml_and_embeddings` and `0006_ensure_pgvector_column` enable `CREATE EXTENSION IF NOT EXISTS vector`, ensure `MessageEmbedding.vector` is stored as `vector(384)`, and add an HNSW cosine index.
 
 Semantic search endpoint:
 
