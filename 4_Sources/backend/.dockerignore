@@ -1,5 +1,4 @@
 *
-!.env
 !requirements.txt
 !**/*.py
 !**/*.html

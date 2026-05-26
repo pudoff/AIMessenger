@@ -20,7 +20,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 
 from chats.views import ChatMemberViewSet, ChatViewSet
-from messages.views import MessageViewSet
+from messages.views import MessageViewSet, SemanticSearchView
 from users.views import AdminEmailBroadcastView, AdminEventsView, ConfirmRegistrationView, ContactViewSet, CurrentUserView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView, UserSearchViewSet, UserViewSet
 
 router = DefaultRouter()
@@ -41,6 +41,17 @@ urlpatterns = [
     path('api/password-reset/', PasswordResetRequestView.as_view(), name='api-password-reset'),
     path('api/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='api-password-reset-confirm'),
     path('api/me/', CurrentUserView.as_view(), name='api-me'),
+    path('api/search/semantic/', SemanticSearchView.as_view(), name='api-search-semantic'),
     path('api/admin/events/', AdminEventsView.as_view(), name='api-admin-events'),
     path('api/admin/email/broadcast/', AdminEmailBroadcastView.as_view(), name='api-admin-email-broadcast'),
 ]
+
+try:
+    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+except ImportError:
+    pass
+else:
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]

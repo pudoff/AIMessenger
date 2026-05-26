@@ -215,7 +215,7 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('confirm_password', response.json())
+        self.assertIn('confirm_password', response.json()['field_errors'])
 
     def test_user_can_login_with_token_endpoint(self):
         user = User.objects.create_user(username='demo', password='StrongPassword123')
@@ -257,10 +257,10 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('birth_date', response.json())
-        self.assertIn('phone_number', response.json())
-        self.assertIn('accepted_user_agreement', response.json())
-        self.assertIn('accepted_privacy_policy', response.json())
+        self.assertIn('birth_date', response.json()['field_errors'])
+        self.assertIn('phone_number', response.json()['field_errors'])
+        self.assertIn('accepted_user_agreement', response.json()['field_errors'])
+        self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
 
     def test_user_must_accept_legal_documents_to_register(self):
         response = self.client.post(
@@ -280,8 +280,8 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('accepted_user_agreement', response.json())
-        self.assertIn('accepted_privacy_policy', response.json())
+        self.assertIn('accepted_user_agreement', response.json()['field_errors'])
+        self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
 
     def test_current_user_endpoint_returns_frontend_profile(self):
         user = User.objects.create_user(
