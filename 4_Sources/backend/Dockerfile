@@ -9,4 +9,5 @@ COPY . /app/
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-RUN chmod +x ./entrypoint.sh
+RUN sed -i 's/\r$//' ./entrypoint.sh \
+    && chmod +x ./entrypoint.sh

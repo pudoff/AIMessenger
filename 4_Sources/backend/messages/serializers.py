@@ -8,7 +8,16 @@ from .models import Message, MessageClassification
 class MessageClassificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageClassification
-        fields = ('label', 'confidence', 'probabilities', 'classified_at')
+        fields = (
+            'label',
+            'confidence',
+            'probabilities',
+            'status',
+            'error_message',
+            'source',
+            'needs_review',
+            'classified_at',
+        )
         read_only_fields = fields
 
 

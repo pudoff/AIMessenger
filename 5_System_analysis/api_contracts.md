@@ -1129,3 +1129,53 @@ const ws = new WebSocket(
 
 ---
 
+
+---
+
+## Sprint backend update: current stabilized contracts
+
+Current backend exposes live OpenAPI when `drf-spectacular` is installed:
+
+- `GET /api/schema/`
+- `GET /api/docs/`
+
+All API errors are normalized to:
+
+```json
+{
+  "detail": "Validation error.",
+  "field_errors": {},
+  "code": "invalid"
+}
+```
+
+Message classification is asynchronous. `POST /api/messages/` returns after saving the message; `classification` can be `null` until `messages.tasks.classify_message_task` finishes. When present, classification includes `label`, `confidence`, `probabilities`, `status`, `error_message`, `source`, `needs_review`, `classified_at`.
+
+Semantic search endpoint:
+
+```http
+GET /api/search/semantic/?q=...&chat=...&limit=20&date_from=2026-05-01&date_to=2026-05-25&message_type=task
+```
+
+Rules:
+
+- regular users search only messages from chats where they are participants;
+- project admins search all chats;
+- messages without embeddings are skipped;
+- `limit` is capped at 50.
+
+Response item:
+
+```json
+{
+  "message_id": 42,
+  "chat_id": 10,
+  "chat_title": "Sprint planning",
+  "sender": {"id": 1, "username": "demo"},
+  "text": "Prepare release notes",
+  "message_type": "task",
+  "created_at": "2026-05-25T10:00:00Z",
+  "classification": "task",
+  "similarity_score": 0.923
+}
+```
