@@ -5,39 +5,11 @@ import MessageBubble from '../../components/MessageBubble';
 import SectionHeader from '../../components/SectionHeader';
 import { chatsAPI, messagesAPI } from '../../api/chats';
 import { contactsAPI } from '../../api/contacts';
+import { request as apiRequest } from '../../api/client';
 import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatHeader from '../../components/chat/ChatHeader';
 import ChatList from '../../components/chat/ChatList';
 import ChatRoom from '../../components/chat/ChatRoom';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
 
 // Форматирование группы
 const formatGroup = (g) => ({
@@ -256,7 +228,7 @@ function GroupChatsPage() {
   const handleSelectGroup = (id) => {
     setLastSelectedGroupId(String(id));
     localStorage.setItem('last_group_chat_id', String(id));
-    navigate(`/app/group/${id}`);
+    navigate(`/app/groups/${id}`);
   };
 
   // Создание группы
@@ -278,7 +250,7 @@ function GroupChatsPage() {
       localStorage.setItem('last_group_chat_id', String(newGroup.id));
       setShowCreateForm(false);
       setCreateForm({ title: '', description: '', participantIds: [] });
-      navigate(`/app/group/${newGroup.id}`);
+      navigate(`/app/groups/${newGroup.id}`);
     } catch (e) {
       console.error('Ошибка создания группы:', e);
       alert('Не удалось создать группу: ' + e.message);

@@ -3,16 +3,12 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
-import logoAuth from '../../assets/logo_new.png';
-import PasswordRecoveryForm from '../../components/auth/PasswordRecoveryForm';
 
 function LoginPage() {
   const navigate = useNavigate();
   const { login, loading, error, clearError } = useAuth();
   
   const [form, setForm] = useState({ login: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -24,21 +20,6 @@ function LoginPage() {
       navigate(result.user?.role === 'admin' ? '/admin' : '/app', { replace: true });
     }
   };
-
-  if (isRecoveryMode) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <Logo hideText />
-          <PasswordRecoveryForm
-            onSubmit={(email) => console.log('[DEMO] Reset to:', email)}
-            onBack={() => setIsRecoveryMode(false)}
-            onCancel={() => setIsRecoveryMode(false)}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">
@@ -68,7 +49,7 @@ function LoginPage() {
             <span>Пароль</span>
             <div className="password-input-wrapper">
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="password"
                 value={form.password}
                 onChange={(e) => {
                   setForm(prev => ({ ...prev, password: e.target.value }));
@@ -78,15 +59,6 @@ function LoginPage() {
                 disabled={loading}
                 required
               />
-              {/* <button
-                type="button"
-                className="toggle-password-btn"
-                onClick={() => setShowPassword(prev => !prev)}
-                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                disabled={loading}
-              >
-                {showPassword ? '⚫' : '👁️'}
-              </button> */}
             </div>
           </label>
 
@@ -95,7 +67,7 @@ function LoginPage() {
           <button 
             className="primary-button auth-form__submit" 
             type="submit"
-            disabled={loading}
+            disabled={loading || !form.login.trim() || !form.password}
           >
             {loading ? 'Вход...' : 'Войти'}
           </button>

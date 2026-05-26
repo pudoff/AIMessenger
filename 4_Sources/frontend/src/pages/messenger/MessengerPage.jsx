@@ -3,35 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatList from '../../components/chat/ChatList';
 import SectionHeader from '../../components/SectionHeader';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import { request as apiRequest } from '../../api/client';
 
 // Получение текущего пользователя
 const getCurrentUser = async () => {
@@ -135,7 +107,6 @@ function MessengerPage() {
           return bTime - aTime;
         });
 
-        console.log('[MessengerPage] Загружено чатов:', { direct: directList.length, group: groupList.length, corporate: corporateList.length, total: all.length });
         setAllChats(all);
         setError(null);
       } catch (e) {
@@ -168,8 +139,6 @@ function MessengerPage() {
   });
 
   const handleSelectChat = (chatId) => {
-    console.log('[MessengerPage.handleSelectChat] Получен ID:', chatId, 'Всего чатов:', allChats.length);
-    
     // chatId приходит просто ID, ищем тип чата
     const foundChat = allChats.find(c => String(c.id) === String(chatId));
     
@@ -179,7 +148,6 @@ function MessengerPage() {
     }
 
     const chatType = foundChat.chat_type;
-    console.log('[MessengerPage.handleSelectChat] Найден чат:', { id: chatId, type: chatType, name: foundChat.name });
 
     let url = '';
     // Навигация в зависимости от типа чата с replace
@@ -187,7 +155,7 @@ function MessengerPage() {
       url = `/app/direct/${chatId}`;
       navigate(url, { replace: true });
     } else if (chatType === 'group') {
-      url = `/app/group/${chatId}`;
+      url = `/app/groups/${chatId}`;
       navigate(url, { replace: true });
     } else if (chatType === 'corporate') {
       url = `/app/community/${chatId}`;
@@ -197,8 +165,6 @@ function MessengerPage() {
       url = `/app/direct/${chatId}`;
       navigate(url, { replace: true });
     }
-    
-    console.log('[MessengerPage.handleSelectChat] Переход по адресу:', url);
   };
 
   return (

@@ -15,7 +15,6 @@ function AdminBroadcast() {
     const loadUsers = async () => {
       try {
         const data = await adminAPI.getUsers(1); // Получаем первую страницу
-        console.log('Полный ответ от API getUsers:', data);
 
         // Обрабатываем разные форматы ответа
         let usersList = [];
@@ -27,7 +26,6 @@ function AdminBroadcast() {
           usersList = data.users;
         }
 
-        console.log('Обработанный список пользователей:', usersList);
         setUsers(usersList);
       } catch (error) {
         console.error('Не удалось загрузить пользователей:', error);

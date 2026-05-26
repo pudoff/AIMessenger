@@ -70,7 +70,7 @@ function App() {
         <Route path="direct" element={<DirectChatsPage />} />
         <Route path="direct/:chatId" element={<DirectChatsPage />} />
         <Route path="groups" element={<GroupChatsPage />} />
-        <Route path="group/:chatId" element={<GroupChatsPage />} />
+        <Route path="groups/:chatId" element={<GroupChatsPage />} />
         <Route path="communities" element={<CommunitiesPage />} />
         <Route path="community/:communityId" element={<CommunitiesPage />} />
         <Route path="contacts" element={<ContactsPage />} />
