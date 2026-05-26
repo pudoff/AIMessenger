@@ -1,7 +1,10 @@
 import math
+from datetime import datetime, time
 
 from django.conf import settings
 from django.db import connection
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -55,23 +58,24 @@ class SemanticSearchView(APIView):
         if not query:
             raise serializers.ValidationError({'q': 'This query parameter is required.'})
 
-        try:
-            limit = min(int(request.query_params.get('limit') or 20), 50)
-        except ValueError:
-            raise serializers.ValidationError({'limit': 'Limit must be an integer.'})
+        limit = self._parse_limit(request.query_params.get('limit'))
+        chat_id = self._parse_int_param(request.query_params.get('chat'), 'chat')
+        date_from = self._parse_datetime_param(request.query_params.get('date_from'), 'date_from')
+        date_to = self._parse_datetime_param(request.query_params.get('date_to'), 'date_to', end_of_day=True)
+        message_type = self._parse_message_type(request.query_params.get('message_type'))
+
         queryset = Message.objects.select_related('chat', 'sender', 'classification', 'embedding')
         if not is_project_admin(request.user):
             queryset = queryset.filter(chat__chat_members__user=request.user)
 
-        chat_id = request.query_params.get('chat')
-        if chat_id:
+        if chat_id is not None:
             queryset = queryset.filter(chat_id=chat_id)
-        if request.query_params.get('date_from'):
-            queryset = queryset.filter(created_at__gte=request.query_params['date_from'])
-        if request.query_params.get('date_to'):
-            queryset = queryset.filter(created_at__lte=request.query_params['date_to'])
-        if request.query_params.get('message_type'):
-            queryset = queryset.filter(message_type=request.query_params['message_type'])
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+        if message_type:
+            queryset = queryset.filter(message_type=message_type)
 
         queryset = queryset.filter(embedding__isnull=False).distinct()
         query_vector = self._query_embedding(query)
@@ -95,9 +99,56 @@ class SemanticSearchView(APIView):
 
     def _query_embedding(self, query):
         try:
-            return ml_tasks.embed_text(query).get(timeout=settings.ML_TASK_TIMEOUT_SECONDS)['embedding']
+            return ml_tasks.embed_text(query).get(timeout=settings.SEMANTIC_SEARCH_ML_TIMEOUT_SECONDS)['embedding']
         except Exception:
             return fallback_embedding(query)
+
+    @staticmethod
+    def _parse_limit(raw_limit):
+        try:
+            limit = int(raw_limit or 20)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({'limit': 'Limit must be an integer.'})
+        if limit < 1:
+            raise serializers.ValidationError({'limit': 'Limit must be greater than zero.'})
+        return min(limit, 50)
+
+    @staticmethod
+    def _parse_int_param(raw_value, field_name):
+        if raw_value in (None, ''):
+            return None
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({field_name: 'Value must be an integer.'})
+        if value < 1:
+            raise serializers.ValidationError({field_name: 'Value must be greater than zero.'})
+        return value
+
+    @staticmethod
+    def _parse_datetime_param(raw_value, field_name, end_of_day=False):
+        if not raw_value:
+            return None
+
+        parsed = parse_datetime(raw_value)
+        if parsed is None:
+            parsed_date = parse_date(raw_value)
+            if parsed_date is None:
+                raise serializers.ValidationError({field_name: 'Use ISO date or datetime format.'})
+            parsed = datetime.combine(parsed_date, time.max if end_of_day else time.min)
+
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+
+    @staticmethod
+    def _parse_message_type(raw_value):
+        if not raw_value:
+            return None
+        if raw_value not in Message.MessageType.values:
+            allowed = ', '.join(Message.MessageType.values)
+            raise serializers.ValidationError({'message_type': f'Allowed values: {allowed}.'})
+        return raw_value
 
     @staticmethod
     def _cosine_similarity(left, right):

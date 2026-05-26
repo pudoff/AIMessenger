@@ -59,8 +59,10 @@ class ChatSerializer(serializers.ModelSerializer):
         extra_kwargs = {'title': {'required': False}}
 
     def get_last_message(self, obj):
-        message = getattr(obj, 'last_prefetched_message', None)
-        if message is None:
+        prefetched_messages = getattr(obj, 'last_prefetched_messages', None)
+        if prefetched_messages is not None:
+            message = prefetched_messages[0] if prefetched_messages else None
+        else:
             message = obj.messages.select_related('sender').order_by('-created_at').first()
         if message is None:
             return None

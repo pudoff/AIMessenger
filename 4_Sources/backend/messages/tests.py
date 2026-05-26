@@ -185,7 +185,10 @@ class MessageAccessTests(APITestCase):
     def test_ml_worker_error_does_not_break_message_creation(self):
         self.client.force_authenticate(self.owner)
 
-        with patch('messages.tasks.classify_message_task.apply_async', side_effect=Exception('redis down')):
+        with patch('messages.tasks.logger.exception'), patch(
+            'messages.tasks.classify_message_task.apply_async',
+            side_effect=Exception('redis down'),
+        ), patch('messages.tasks.build_message_embedding_task.apply_async'):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
                     reverse('message-list'),
@@ -195,6 +198,27 @@ class MessageAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Message.objects.filter(text='Still saved').exists())
+
+    def test_classification_enqueue_failure_marks_message_for_review(self):
+        self.client.force_authenticate(self.owner)
+
+        with patch('messages.tasks.logger.exception'), patch(
+            'messages.tasks.classify_message_task.apply_async',
+            side_effect=Exception('redis down'),
+        ), patch('messages.tasks.build_message_embedding_task.apply_async'):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse('message-list'),
+                    {'chat': self.chat.id, 'text': 'Still saved with failed queue'},
+                    format='json',
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        message = Message.objects.get(text='Still saved with failed queue')
+        classification = MessageClassification.objects.get(message=message)
+        self.assertEqual(classification.status, MessageClassification.Status.FAILED)
+        self.assertTrue(classification.needs_review)
+        self.assertIn('redis down', classification.error_message)
 
     def test_classification_task_is_idempotent(self):
         with patch('config.ml_tasks.classify_message') as ml_task:
@@ -208,6 +232,38 @@ class MessageAccessTests(APITestCase):
             classify_message_task.run(self.message.id)
 
         self.assertEqual(MessageClassification.objects.filter(message=self.message).count(), 1)
+
+    def test_classification_task_clears_stale_values_while_pending(self):
+        MessageClassification.objects.create(
+            message=self.message,
+            label='task',
+            confidence=0.95,
+            probabilities={'task': 0.95},
+            status=MessageClassification.Status.COMPLETED,
+            needs_review=True,
+        )
+
+        def assert_pending_state(timeout):
+            classification = MessageClassification.objects.get(message=self.message)
+            self.assertIsNone(classification.label)
+            self.assertEqual(classification.confidence, 0)
+            self.assertEqual(classification.probabilities, {})
+            self.assertFalse(classification.needs_review)
+            self.assertEqual(classification.status, MessageClassification.Status.PENDING)
+            return {
+                'label': 'default',
+                'confidence': 0.9,
+                'probabilities': {'default': 0.9},
+            }
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.side_effect = assert_pending_state
+
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.status, MessageClassification.Status.COMPLETED)
+        self.assertEqual(classification.label, 'default')
 
     def test_embedding_task_is_idempotent(self):
         with patch('config.ml_tasks.embed_text') as ml_task:
@@ -292,3 +348,35 @@ class SemanticSearchTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn(self.no_embedding.id, [item['message_id'] for item in response.json()['results']])
+
+    def test_semantic_search_rejects_invalid_limit(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'deadline', 'limit': '-1'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('limit', response.json()['field_errors'])
+
+    def test_semantic_search_rejects_invalid_chat_id(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'deadline', 'chat': 'abc'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('chat', response.json()['field_errors'])
+
+    def test_semantic_search_rejects_invalid_message_type(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'deadline', 'message_type': 'unknown'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('message_type', response.json()['field_errors'])
+
+    def test_semantic_search_rejects_invalid_date(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'deadline', 'date_from': 'not-a-date'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('date_from', response.json()['field_errors'])

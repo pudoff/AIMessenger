@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import math
 import random
 
@@ -50,6 +51,9 @@ from .classification import classify_text
 from .models import Message, MessageClassification, MessageEmbedding
 
 
+logger = logging.getLogger(__name__)
+
+
 def text_hash(text):
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
@@ -68,11 +72,37 @@ def enqueue_message_ml_tasks(message_id):
 
 
 def _enqueue_after_commit(message_id):
-    for task in (classify_message_task, build_message_embedding_task):
-        try:
-            task.apply_async(args=[message_id])
-        except Exception:
-            continue
+    try:
+        classify_message_task.apply_async(args=[message_id])
+    except Exception as exc:
+        logger.exception("Failed to enqueue message classification task for message %s.", message_id)
+        _mark_classification_enqueue_failed(message_id, exc)
+
+    try:
+        build_message_embedding_task.apply_async(args=[message_id])
+    except Exception:
+        logger.exception("Failed to enqueue message embedding task for message %s.", message_id)
+
+
+def _mark_classification_enqueue_failed(message_id, exc):
+    try:
+        message = Message.objects.get(pk=message_id)
+    except Message.DoesNotExist:
+        return
+
+    MessageClassification.objects.update_or_create(
+        message=message,
+        defaults={
+            "label": None,
+            "confidence": 0,
+            "probabilities": {},
+            "status": MessageClassification.Status.FAILED,
+            "error_message": f"Failed to enqueue classification task: {exc}",
+            "source": MessageClassification.Source.ML_WORKER,
+            "needs_review": True,
+            "classified_at": timezone.now(),
+        },
+    )
 
 
 @shared_task(bind=True, max_retries=3)
@@ -85,9 +115,13 @@ def classify_message_task(self, message_id):
     MessageClassification.objects.update_or_create(
         message=message,
         defaults={
+            "label": None,
+            "confidence": 0,
+            "probabilities": {},
             "status": MessageClassification.Status.PENDING,
             "error_message": "",
             "source": MessageClassification.Source.ML_WORKER,
+            "needs_review": False,
             "classified_at": timezone.now(),
         },
     )
@@ -99,21 +133,16 @@ def classify_message_task(self, message_id):
     except (CeleryError, TimeoutError) as exc:
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc, countdown=2 ** self.request.retries)
-        MessageClassification.objects.update_or_create(
-            message=message,
-            defaults={
-                "label": None,
-                "confidence": 0,
-                "probabilities": {},
-                "status": MessageClassification.Status.FAILED,
-                "error_message": str(exc),
-                "source": MessageClassification.Source.ML_WORKER,
-                "needs_review": True,
-                "classified_at": timezone.now(),
-            },
+        logger.warning(
+            "ML classification task failed after retries for message %s. Falling back to local classifier.",
+            message_id,
+            exc_info=True,
         )
-        return {"status": "failed", "message_id": message_id}
+        result = classify_text(message.text)
+        source = MessageClassification.Source.FALLBACK
+        error_message = str(exc)
     except Exception as exc:
+        logger.exception("ML classification task failed for message %s. Falling back to local classifier.", message_id)
         result = classify_text(message.text)
         source = MessageClassification.Source.FALLBACK
         error_message = str(exc)
@@ -164,8 +193,16 @@ def build_message_embedding_task(self, message_id):
     except (CeleryError, TimeoutError) as exc:
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc, countdown=2 ** self.request.retries)
-        return {"status": "failed", "message_id": message_id, "error": str(exc)}
+        logger.warning(
+            "ML embedding task failed after retries for message %s. Falling back to hash embedding.",
+            message_id,
+            exc_info=True,
+        )
+        vector = fallback_embedding(message.text)
+        model_name = "fallback-hash-embedding"
+        source = "fallback"
     except Exception:
+        logger.exception("ML embedding task failed for message %s. Falling back to hash embedding.", message_id)
         vector = fallback_embedding(message.text)
         model_name = "fallback-hash-embedding"
         source = "fallback"

@@ -1,8 +1,10 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from messages.models import Message
 from users.permissions import is_project_admin
 from .models import Chat, ChatMember
 from .permissions import IsChatMember, IsChatMemberRecordVisible, IsChatOwnerOrAdminForUnsafe
@@ -14,7 +16,11 @@ class ChatViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, IsChatMember, IsChatOwnerOrAdminForUnsafe)
 
     def get_queryset(self):
-        queryset = Chat.objects.select_related('created_by').prefetch_related('chat_members__user')
+        last_message_queryset = Message.objects.select_related('sender').order_by('-created_at')[:1]
+        queryset = Chat.objects.select_related('created_by').prefetch_related(
+            'chat_members__user',
+            Prefetch('messages', queryset=last_message_queryset, to_attr='last_prefetched_messages'),
+        )
         user = self.request.user
         if not is_project_admin(user):
             queryset = queryset.filter(chat_members__user=user)

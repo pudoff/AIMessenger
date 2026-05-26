@@ -14,6 +14,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils import timezone
 from rest_framework import generics, views, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import serializers, status
@@ -131,10 +132,7 @@ class ContactViewSet(viewsets.ModelViewSet):
             user=request.user,
             role__in=(ChatMember.Role.OWNER, ChatMember.Role.ADMIN),
         ).exists():
-            return Response(
-                {'detail': 'У вас нет прав добавлять участников в этот чат.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionDenied('У вас нет прав добавлять участников в этот чат.')
 
         member, created = ChatMember.objects.get_or_create(
             chat=chat,
