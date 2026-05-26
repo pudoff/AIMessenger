@@ -62,11 +62,24 @@ export const validateField = (name, value, form = {}) => {
 // Парсинг ошибок от бэкенда (DRF format)
 export const parseBackendErrors = (errors) => {
   if (!errors || typeof errors !== 'object') return {};
-  
+
+  const source = errors.field_errors && typeof errors.field_errors === 'object'
+    ? errors.field_errors
+    : errors;
+  const fieldMap = {
+    first_name: 'firstName',
+    last_name: 'lastName',
+    birth_date: 'birthDate',
+    phone_number: 'phone',
+    confirm_password: 'confirmPassword',
+    non_field_errors: '_global',
+  };
   const mapped = {};
-  for (const [field, messages] of Object.entries(errors)) {
+  for (const [field, messages] of Object.entries(source)) {
+    if (['detail', 'code', 'field_errors'].includes(field)) continue;
     // DRF возвращает массив строк: ["Ошибка 1", "Ошибка 2"]
-    mapped[field] = Array.isArray(messages) ? messages.join('. ') : messages;
+    const frontendField = fieldMap[field] || field;
+    mapped[frontendField] = Array.isArray(messages) ? messages.join('. ') : messages;
   }
   return mapped;
 };

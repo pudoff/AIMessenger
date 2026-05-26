@@ -24,6 +24,7 @@ from .tokens import email_confirmation_token
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
     DEFAULT_FROM_EMAIL='notify@nash-slon.local',
     FRONTEND_BASE_URL='http://frontend.test',
+    BACKEND_PUBLIC_BASE_URL='https://api.frontend.test',
 )
 class AuthApiTests(APITestCase):
     def test_api_root_is_available_for_authenticated_user(self):
@@ -70,7 +71,7 @@ class AuthApiTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ['demo@example.com'])
         self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
-        self.assertIn('/api/register/confirm/', mail.outbox[0].body)
+        self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
         self.assertIn('зарегистрироваться', mail.outbox[0].alternatives[0][0])
 
     def test_user_can_confirm_registration_by_email_link(self):
@@ -88,7 +89,7 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], 'http://frontend.test/register?registration=confirmed')
+        self.assertEqual(response['Location'], 'http://frontend.test/login?registration=confirmed')
         user.refresh_from_db()
         self.assertTrue(user.is_active)
         self.assertFalse(email_confirmation_token.check_token(user, token))
@@ -107,7 +108,7 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], 'http://frontend.test/register?registration=invalid')
+        self.assertEqual(response['Location'], 'http://frontend.test/login?registration=invalid')
         user.refresh_from_db()
         self.assertFalse(user.is_active)
 
@@ -131,6 +132,26 @@ class AuthApiTests(APITestCase):
         self.assertIn('Восстановление доступа', mail.outbox[0].subject)
         self.assertIn('/reset-password/', mail.outbox[0].body)
         self.assertIn('восстановить доступ', mail.outbox[0].alternatives[0][0])
+
+    def test_password_reset_request_resends_confirmation_for_inactive_user(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=False,
+        )
+
+        response = self.client.post(
+            reverse('api-password-reset'),
+            {'email': 'demo@example.com'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
+        self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
+        self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
 
     def test_password_reset_request_does_not_disclose_unknown_email(self):
         response = self.client.post(

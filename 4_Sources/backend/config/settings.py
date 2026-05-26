@@ -188,18 +188,22 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-repl
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '15'))
 
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:5173').rstrip('/')
+BACKEND_PUBLIC_BASE_URL = os.getenv('BACKEND_PUBLIC_BASE_URL', '').rstrip('/')
 REGISTRATION_CONFIRM_REDIRECT_PATH = os.getenv(
     'REGISTRATION_CONFIRM_REDIRECT_PATH',
-    '/register?registration=confirmed',
+    '/login?registration=confirmed',
 )
 REGISTRATION_CONFIRM_INVALID_REDIRECT_PATH = os.getenv(
     'REGISTRATION_CONFIRM_INVALID_REDIRECT_PATH',
-    '/register?registration=invalid',
+    '/login?registration=invalid',
 )
 PASSWORD_RESET_FRONTEND_PATH = os.getenv(
     'PASSWORD_RESET_FRONTEND_PATH',
     '/reset-password/{uidb64}/{token}',
 )
+
+USE_X_FORWARDED_HOST = os.getenv('USE_X_FORWARDED_HOST', 'True').lower() == 'true'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

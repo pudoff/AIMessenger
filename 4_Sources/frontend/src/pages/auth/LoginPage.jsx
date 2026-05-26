@@ -1,14 +1,21 @@
 // src/pages/auth/LoginPage.jsx
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login, loading, error, clearError } = useAuth();
   
   const [form, setForm] = useState({ login: '', password: '' });
+  const registrationStatus = searchParams.get('registration');
+  const notice = location.state?.notice ||
+    (registrationStatus === 'confirmed' ? 'Регистрация подтверждена. Теперь вы можете войти.' : '');
+  const pageError = location.state?.error ||
+    (registrationStatus === 'invalid' ? 'Ссылка подтверждения недействительна или уже была использована.' : '');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -31,6 +38,9 @@ function LoginPage() {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          {notice && <div className="form-success">{notice}</div>}
+          {pageError && <div className="form-error">{pageError}</div>}
+
           <label>
             <span>Логин</span>
             <input

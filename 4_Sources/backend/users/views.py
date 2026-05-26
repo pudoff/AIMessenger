@@ -33,6 +33,44 @@ def frontend_url(path):
     return f'{settings.FRONTEND_BASE_URL}{path}'
 
 
+def backend_url(request, path):
+    if path.startswith(('http://', 'https://')):
+        return path
+    if settings.BACKEND_PUBLIC_BASE_URL:
+        return f'{settings.BACKEND_PUBLIC_BASE_URL}{path}'
+    return request.build_absolute_uri(path)
+
+
+def send_registration_confirmation_email(request, user):
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = email_confirmation_token.make_token(user)
+    path = reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
+    confirmation_url = backend_url(request, path)
+
+    plain_message = (
+        'Добрый день!\n\n'
+        'Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+        f'зарегистрироваться ({confirmation_url})\n\n'
+        'Если это не вы, просто удалите сообщение.'
+    )
+    html_message = format_html(
+        '<p>Добрый день!</p>'
+        '<p>Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+        '<a href="{}">зарегистрироваться</a></p>'
+        '<p>Если это не вы, просто удалите сообщение.</p>',
+        confirmation_url,
+    )
+
+    send_mail(
+        subject='Подтверждение регистрации в мессенджере "Наш Слон"',
+        message=plain_message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+        html_message=html_message,
+    )
+
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
@@ -155,7 +193,7 @@ class RegisterView(generics.CreateAPIView):
 
         with transaction.atomic():
             user = serializer.save()
-            self.send_confirmation_email(request, user)
+            send_registration_confirmation_email(request, user)
 
         headers = self.get_success_headers(serializer.data)
         return Response(
@@ -166,36 +204,6 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
             headers=headers,
         )
-
-    def send_confirmation_email(self, request, user):
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        token = email_confirmation_token.make_token(user)
-        path = reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
-        confirmation_url = request.build_absolute_uri(path)
-
-        plain_message = (
-            'Добрый день!\n\n'
-            'Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
-            f'зарегистрироваться ({confirmation_url})\n\n'
-            'Если это не вы, просто удалите сообщение.'
-        )
-        html_message = format_html(
-            '<p>Добрый день!</p>'
-            '<p>Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
-            '<a href="{}">зарегистрироваться</a></p>'
-            '<p>Если это не вы, просто удалите сообщение.</p>',
-            confirmation_url,
-        )
-
-        send_mail(
-            subject='Подтверждение регистрации в мессенджере "Наш Слон"',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-            html_message=html_message,
-        )
-
 
 class ConfirmRegistrationView(views.APIView):
     permission_classes = (AllowAny,)
@@ -229,12 +237,15 @@ class PasswordResetRequestView(views.APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
-        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        user = User.objects.filter(email__iexact=email).first()
         if user:
-            self.send_reset_email(request, user)
+            if user.is_active:
+                self.send_reset_email(request, user)
+            else:
+                send_registration_confirmation_email(request, user)
 
         return Response({
-            'detail': 'Если пользователь с таким email существует, письмо для восстановления пароля будет отправлено.',
+            'detail': 'Если пользователь с таким email существует, письмо с дальнейшими инструкциями будет отправлено.',
         })
 
     def send_reset_email(self, request, user):
