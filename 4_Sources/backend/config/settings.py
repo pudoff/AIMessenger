@@ -175,6 +175,7 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     'https://api.elephantaimessenger.ru',
 ]
 
+#
 # CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
 # CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', join_env_list(CORS_ALLOWED_ORIGINS))
 CORS_ALLOWED_ORIGINS = ['*']
