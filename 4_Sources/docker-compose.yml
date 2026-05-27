@@ -110,7 +110,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: pgvector/pgvector:pg18-trixie
+    image: pgvector/pgvector:0.8.2-pg18-trixie
     restart: always
     container_name: postgres
     environment:
@@ -118,11 +118,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - aimessenger_postgres_data:/var/lib/postgresql/data
+      - aimessenger_pgvector_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
+      test: [ "CMD-SHELL", "test -f /usr/share/postgresql/$${PG_MAJOR}/extension/vector.control && pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
       interval: 5s
       timeout: 1s
       retries: 10
@@ -146,7 +146,7 @@ services:
       retries: 5
 
 volumes:
-  aimessenger_postgres_data:
+  aimessenger_pgvector_data:
   aimessenger_static_data:
   aimessenger_traefik_acme:
 
