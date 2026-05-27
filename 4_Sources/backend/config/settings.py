@@ -175,11 +175,13 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     'https://api.elephantaimessenger.ru',
 ]
 
-#
-# CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
-# CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', join_env_list(CORS_ALLOWED_ORIGINS))
-CORS_ALLOWED_ORIGINS = ['*']
-CSRF_TRUSTED_ORIGINS = ['*']
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "True").lower() == "true"
+CORS_ALLOWED_ORIGINS = (
+    []
+    if CORS_ALLOW_ALL_ORIGINS
+    else env_list("CORS_ALLOWED_ORIGINS", join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
+)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
 
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
