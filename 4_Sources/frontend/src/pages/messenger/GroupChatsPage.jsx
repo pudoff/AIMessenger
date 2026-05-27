@@ -176,7 +176,15 @@ function GroupChatsPage() {
 
   // Отправка сообщения
   const handleSend = async (text) => {
-    if (!chatId || !text.trim() || !myId) return;
+    if (!text.trim()) return;
+    if (!chatId) {
+      setMessageError('Чат не выбран.');
+      return;
+    }
+    if (!myId) {
+      setMessageError('Не удалось определить текущего пользователя. Обновите страницу или войдите заново.');
+      return;
+    }
 
     const tempId = `temp-${Date.now()}`;
     const optimisticCreatedAt = new Date().toISOString();

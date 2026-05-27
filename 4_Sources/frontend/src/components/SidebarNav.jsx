@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,6 +23,7 @@ const items = [
 
 function SidebarNav() {
   const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   const fullName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim() 
                  || currentUser?.username || 'Пользователь';
@@ -36,7 +37,12 @@ function SidebarNav() {
     <aside className="shell-sidebar">
       <Logo compact />
 
-      <button className="primary-button shell-sidebar__new-chat" type="button">
+      <button
+        className="primary-button shell-sidebar__new-chat"
+        type="button"
+        onClick={() => navigate('/app/contacts')}
+        title="Найти контакт и начать личный чат"
+      >
         Новый чат
       </button>
 
