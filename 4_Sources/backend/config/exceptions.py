@@ -1,6 +1,10 @@
 from rest_framework.views import exception_handler
 
 
+VALIDATION_DETAIL = 'Ошибка валидации. Проверьте заполненные поля.'
+REQUEST_FAILED_DETAIL = 'Ошибка запроса. Попробуйте еще раз.'
+
+
 def _flatten_error_codes(detail):
     if hasattr(detail, "get_codes"):
         return detail.get_codes()
@@ -30,7 +34,7 @@ def api_exception_handler(exc, context):
         return response
 
     response.data = {
-        "detail": "Validation error." if response.status_code == 400 else "Request failed.",
+        "detail": VALIDATION_DETAIL if response.status_code == 400 else REQUEST_FAILED_DETAIL,
         "field_errors": data if isinstance(data, dict) else {"non_field_errors": data},
         "code": codes or getattr(exc, "default_code", "error"),
     }

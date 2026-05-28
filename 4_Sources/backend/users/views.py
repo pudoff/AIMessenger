@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -14,7 +15,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils import timezone
 from rest_framework import generics, views, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import serializers, status
@@ -25,6 +26,15 @@ from .models import Contact, User
 from .permissions import IsProjectAdminUser, is_project_admin
 from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
 from .tokens import email_confirmation_token
+
+
+logger = logging.getLogger(__name__)
+
+
+class EmailDeliveryError(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = 'Не удалось отправить письмо. Проверьте настройки почты или попробуйте позже.'
+    default_code = 'email_delivery_failed'
 
 
 def frontend_url(path):
@@ -193,7 +203,11 @@ class RegisterView(generics.CreateAPIView):
 
         with transaction.atomic():
             user = serializer.save()
-            send_registration_confirmation_email(request, user)
+            try:
+                send_registration_confirmation_email(request, user)
+            except Exception as exc:
+                logger.exception('Failed to send registration confirmation email for user %s', user.pk)
+                raise EmailDeliveryError() from exc
 
         headers = self.get_success_headers(serializer.data)
         return Response(
@@ -239,10 +253,14 @@ class PasswordResetRequestView(views.APIView):
         email = serializer.validated_data['email']
         user = User.objects.filter(email__iexact=email).first()
         if user:
-            if user.is_active:
-                self.send_reset_email(request, user)
-            else:
-                send_registration_confirmation_email(request, user)
+            try:
+                if user.is_active:
+                    self.send_reset_email(request, user)
+                else:
+                    send_registration_confirmation_email(request, user)
+            except Exception as exc:
+                logger.exception('Failed to send password/reset confirmation email for user %s', user.pk)
+                raise EmailDeliveryError() from exc
 
         return Response({
             'detail': 'Если пользователь с таким email существует, письмо с дальнейшими инструкциями будет отправлено.',

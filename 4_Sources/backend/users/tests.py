@@ -535,7 +535,11 @@ class SeedAdminUserCommandTests(TestCase):
 
         with patch.dict(
             os.environ,
-            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "NewPassword123"},
+            {
+                "ADMIN_USER": "admin",
+                "ADMIN_PASSWORD": "NewPassword123",
+                "ADMIN_UPDATE_EXISTING": "False",
+            },
             clear=False,
         ):
             call_command("seed_admin_user", stdout=StringIO())
@@ -545,6 +549,27 @@ class SeedAdminUserCommandTests(TestCase):
         self.assertFalse(existing_user.is_superuser)
         self.assertFalse(existing_user.is_staff)
         self.assertTrue(existing_user.check_password("OldPassword123"))
+
+    def test_updates_existing_user_when_enabled(self):
+        existing_user = User.objects.create_user(username="admin", password="OldPassword123")
+
+        with patch.dict(
+            os.environ,
+            {
+                "ADMIN_USER": "admin",
+                "ADMIN_PASSWORD": "NewPassword123",
+                "ADMIN_UPDATE_EXISTING": "True",
+            },
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
+
+        self.assertEqual(User.objects.count(), 1)
+        existing_user.refresh_from_db()
+        self.assertTrue(existing_user.is_superuser)
+        self.assertTrue(existing_user.is_staff)
+        self.assertEqual(existing_user.role, User.Role.ADMIN)
+        self.assertTrue(existing_user.check_password("NewPassword123"))
 
     def test_skips_when_admin_env_is_missing(self):
         with patch.dict(os.environ, {}, clear=True):
