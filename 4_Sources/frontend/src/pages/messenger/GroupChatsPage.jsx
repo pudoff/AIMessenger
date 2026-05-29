@@ -72,6 +72,10 @@ function GroupChatsPage() {
   const groupsPollRef = useRef(null);
   const endRef = useRef(null);
   const pendingMessagesRef = useRef([]);
+  const messagesRef = useRef([]);
+  const lastMarkedReadMessageRef = useRef(null);
+  const hasLoadedMessagesRef = useRef(false);
+  const isFetchingMessagesRef = useRef(false);
 
   useEffect(() => {
     const initUser = async () => {
@@ -94,6 +98,17 @@ function GroupChatsPage() {
   useEffect(() => {
     pendingMessagesRef.current = pendingMessages;
   }, [pendingMessages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    lastMarkedReadMessageRef.current = null;
+    hasLoadedMessagesRef.current = false;
+    isFetchingMessagesRef.current = false;
+    setLoadingMessages(false);
+  }, [chatId]);
 
   useEffect(() => {
     if (!myId) return undefined;
@@ -141,7 +156,15 @@ function GroupChatsPage() {
     if (!chatId || !myId) return undefined;
 
     const fetchMessages = async () => {
-      setLoadingMessages(true);
+      if (isFetchingMessagesRef.current) {
+        return;
+      }
+
+      isFetchingMessagesRef.current = true;
+      const showInitialLoader = !hasLoadedMessagesRef.current && messagesRef.current.length === 0;
+      if (showInitialLoader) {
+        setLoadingMessages(true);
+      }
       try {
         const data = await messagesAPI.getList(chatId, 1, 200);
         const list = data.results || data || [];
@@ -157,9 +180,16 @@ function GroupChatsPage() {
         ].sort((a, b) => new Date(a.createdAtRaw).getTime() - new Date(b.createdAtRaw).getTime());
 
         setMessages(mergedMessages);
+        hasLoadedMessagesRef.current = true;
         const lastMessage = mergedMessages[mergedMessages.length - 1];
         if (lastMessage?.id) {
+          if (String(lastMarkedReadMessageRef.current) === String(lastMessage.id)) {
+            setMessageError(null);
+            return;
+          }
+          lastMarkedReadMessageRef.current = lastMessage.id;
           chatsAPI.markRead(chatId, lastMessage.id).catch((e) => {
+            lastMarkedReadMessageRef.current = null;
             console.error('Не удалось отметить групповой чат прочитанным:', e);
           });
           markChatRead('group', chatId, lastMessage.id);
@@ -176,7 +206,10 @@ function GroupChatsPage() {
           setMessageError('Не удалось загрузить сообщения: ' + e.message);
         }
       } finally {
-        setLoadingMessages(false);
+        isFetchingMessagesRef.current = false;
+        if (showInitialLoader) {
+          setLoadingMessages(false);
+        }
       }
     };
 
@@ -402,7 +435,7 @@ function GroupChatsPage() {
               onSend={handleSend}
               placeholder={`Сообщение в ${selectedGroup?.name || 'группу'}`}
               endRef={endRef}
-              composerDisabled={loadingMessages || isSending}
+              composerDisabled={isSending}
             />
           </section>
         )}

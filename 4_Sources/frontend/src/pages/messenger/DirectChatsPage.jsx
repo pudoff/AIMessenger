@@ -94,6 +94,10 @@ export default function DirectChatsPage() {
   const endRef = useRef(null);
   const pendingMessagesRef = useRef([]);
   const chatMetaRef = useRef({});
+  const messagesRef = useRef([]);
+  const lastMarkedReadMessageRef = useRef(null);
+  const hasLoadedMessagesRef = useRef(false);
+  const isFetchingMessagesRef = useRef(false);
 
   // Инициализация: получение ID текущего пользователя
   useEffect(() => {
@@ -129,6 +133,17 @@ export default function DirectChatsPage() {
   useEffect(() => {
     pendingMessagesRef.current = pendingMessages;
   }, [pendingMessages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    lastMarkedReadMessageRef.current = null;
+    hasLoadedMessagesRef.current = false;
+    isFetchingMessagesRef.current = false;
+    setLoadingMessages(false);
+  }, [chatId]);
 
   // Синхронизация рефа для текущих меток чатов
   useEffect(() => {
@@ -209,7 +224,15 @@ export default function DirectChatsPage() {
     if (!chatId || !myId) return;
 
     const fetchMessages = async () => {
-      setLoadingMessages(true);
+      if (isFetchingMessagesRef.current) {
+        return;
+      }
+
+      isFetchingMessagesRef.current = true;
+      const showInitialLoader = !hasLoadedMessagesRef.current && messagesRef.current.length === 0;
+      if (showInitialLoader) {
+        setLoadingMessages(true);
+      }
       try {
         const data = await messagesAPI.getList(chatId, 1, MESSAGE_PAGE_SIZE);
         const list = data.results || data || [];
@@ -229,9 +252,16 @@ export default function DirectChatsPage() {
         ].sort((a, b) => new Date(a.createdAtRaw).getTime() - new Date(b.createdAtRaw).getTime());
 
         setMessages(mergedMessages);
+        hasLoadedMessagesRef.current = true;
         const lastMessage = mergedMessages[mergedMessages.length - 1];
         if (lastMessage?.id) {
+          if (String(lastMarkedReadMessageRef.current) === String(lastMessage.id)) {
+            setMessageError(null);
+            return;
+          }
+          lastMarkedReadMessageRef.current = lastMessage.id;
           chatsAPI.markRead(chatId, lastMessage.id).catch((e) => {
+            lastMarkedReadMessageRef.current = null;
             console.error('Не удалось отметить личный чат прочитанным:', e);
           });
           markChatRead('direct', chatId, lastMessage.id);
@@ -248,7 +278,10 @@ export default function DirectChatsPage() {
           setMessageError('Не удалось загрузить сообщения: ' + e.message);
         }
       } finally {
-        setLoadingMessages(false);
+        isFetchingMessagesRef.current = false;
+        if (showInitialLoader) {
+          setLoadingMessages(false);
+        }
       }
     };
 
@@ -408,7 +441,7 @@ export default function DirectChatsPage() {
               onSend={handleSend}
               placeholder={`Сообщение для ${selectedChat?.name}`}
               endRef={endRef}
-              composerDisabled={loadingMessages}
+              composerDisabled={false}
             />
           </section>
         )}
