@@ -1,0 +1,62 @@
+http:
+  middlewares:
+    rate-limiter:
+      rateLimit:
+        average: 100
+        burst: 200
+
+    common-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+
+  routers:
+
+    frontend:
+      rule: "Host(`elephantaimessenger.ru`)"
+      entryPoints:
+        - websecure
+      service: frontend
+      tls:
+        certResolver: traefik
+      middlewares:
+        - rate-limiter
+        - common-headers
+
+    backend:
+      rule: "Host(`api.elephantaimessenger.ru`)"
+      entryPoints:
+        - websecure
+      service: backend
+      tls:
+        certResolver: traefik
+      middlewares:
+        - rate-limiter
+        - common-headers
+
+    webhook:
+      rule: "Host(`4dd83a12-17cf-4fe7-8a9d-d63078438705.elephantaimessenger.ru`)"
+      entryPoints:
+        - websecure
+      service: webhook
+      tls:
+        certResolver: traefik
+      middlewares:
+        - rate-limiter
+        - common-headers
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+
+    backend:
+      loadBalancer:
+        servers:
+          - url: "http://backend:8000"
+
+    webhook:
+      loadBalancer:
+        servers:
+          - url: "http://webhook:3000"

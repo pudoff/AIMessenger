@@ -1,213 +1,39 @@
-# Backend AIMessenger
+# AIMessenger Backend
 
-REST API на Django и Django REST Framework для пользователей, чатов, участников чатов и сообщений. Backend подготовлен для связки с frontend через DRF Token Authentication.
+Django + Django REST Framework API для пользователей, чатов, участников и сообщений. Текущий backend использует **DRF TokenAuthentication**, не JWT.
 
-## Что реализовано
-
-- Все пользовательские API, кроме регистрации и получения токена, требуют авторизацию.
-- `SECRET_KEY`, `DEBUG`, параметры PostgreSQL и размер страницы вынесены в `.env`.
-- Включена глобальная пагинация DRF.
-- Добавлена фильтрация сообщений по чату: `GET /api/messages/?chat=<chat_id>`.
-- Добавлена фильтрация участников по чату: `GET /api/chat-members/?chat=<chat_id>`.
-- Добавлена регистрация: `POST /api/register/`.
-- Добавлен профиль текущего пользователя для frontend: `GET /api/me/`.
-- `/api/users/` оставлен как админский endpoint только для Django staff/superuser.
-- Queryset'ы `chats`, `chat-members`, `messages` ограничены текущим пользователем.
-- Добавлены object permissions для чатов, участников и сообщений.
-- Модель пользователя расширена под требования регистрации: дата рождения, телефон, согласие с пользовательским соглашением, согласие с политикой конфиденциальности, timestamps согласий, поле `blocked_until` для будущей блокировки.
-- Добавлена доменная валидация: `task_status` можно указывать только для сообщений с `message_type = "task"`.
-- Добавлены API-тесты на авторизацию, регистрацию, профиль пользователя, права на чаты, участников и сообщения.
-
-## Стек
-
-- Python 3.12+
-- Django 5.2
-- Django REST Framework
-- DRF Token Authentication
-- PostgreSQL для разработки и запуска
-- SQLite fallback только для `manage.py test`, чтобы тесты можно было гонять без поднятой PostgreSQL
-- Docker Compose для локальной PostgreSQL
-
-## Структура backend
-
-```text
-4_Sources/backend/
-├── chats/             # чаты, участники, permissions, serializers, tests
-├── config/            # settings.py, urls.py, wsgi/asgi
-├── messages/          # сообщения, permissions, serializers, tests
-├── users/             # User, регистрация, /api/me/, админский users API, tests
-├── docker-compose.yml # PostgreSQL
-├── manage.py
-├── requirements.txt
-├── .env.example
-└── Readme.md
-```
-
-## Быстрый запуск на Windows
-
-Docker Desktop должен быть запущен заранее.
+## Быстрый запуск
 
 ```powershell
 cd 4_Sources/backend
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 Copy-Item .env.example .env
-docker compose up -d
+cd ..
+Copy-Item backend\.env .env
+docker compose -f docker-compose.local.yml up -d postgres redis
+cd backend
 .\.venv\Scripts\python manage.py migrate
 .\.venv\Scripts\python manage.py createsuperuser
 .\.venv\Scripts\python manage.py runserver
 ```
 
-После запуска:
-
-- API: `http://127.0.0.1:8000/api/`
-- админка: `http://127.0.0.1:8000/admin/`
-- token login: `http://127.0.0.1:8000/api/auth/token/`
-
-## Переменные окружения
-
-Создайте `.env` из `.env.example`:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Пример:
-
-```env
-SECRET_KEY=django-insecure-change-me
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-API_PAGE_SIZE=20
-
-POSTGRES_DB=aimessenger
-POSTGRES_USER=aimessenger
-POSTGRES_PASSWORD=aimessenger
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5433
-```
-
-| Переменная | Назначение |
-|---|---|
-| `SECRET_KEY` | Обязательный секретный ключ Django. В production хранить только в окружении/секретах сервера. |
-| `DEBUG` | `True` только локально. На сервере должно быть `False`. |
-| `ALLOWED_HOSTS` | Хосты через запятую. |
-| `API_PAGE_SIZE` | Размер страницы для list endpoints. По умолчанию `20`. |
-| `POSTGRES_DB` | Имя базы PostgreSQL. |
-| `POSTGRES_USER` | Пользователь PostgreSQL. |
-| `POSTGRES_PASSWORD` | Пароль PostgreSQL. |
-| `POSTGRES_HOST` | Хост PostgreSQL. Для локального Docker Compose обычно `localhost`. |
-| `POSTGRES_PORT` | Внешний порт PostgreSQL. Сейчас `5433`, потому что контейнерный `5432` проброшен наружу как `5433`. |
-| `USE_POSTGRES_FOR_TESTS` | Если поставить `True`, тесты будут идти через PostgreSQL. По умолчанию тесты используют SQLite fallback. |
-
-Файл `.env` не коммитим.
-
-## PostgreSQL через Docker Compose
-
-```powershell
-cd 4_Sources/backend
-docker compose up -d
-docker compose ps
-docker compose logs postgres
-```
-
-Остановить контейнер без удаления данных:
-
-```powershell
-docker compose stop
-```
-
-Остановить и удалить контейнер, но оставить volume:
-
-```powershell
-docker compose down
-```
-
-Удалить контейнер и локальные данные PostgreSQL:
-
-```powershell
-docker compose down -v
-```
-
-## Проверки
-
-Быстрая проверка Django:
+Проверки:
 
 ```powershell
 .\.venv\Scripts\python manage.py check
+.\.venv\Scripts\python manage.py test users chats messages
 ```
 
-Тесты API:
+Демо-данные для показа:
 
 ```powershell
-.\.venv\Scripts\python manage.py test
+.\.venv\Scripts\python manage.py seed_demo_data
 ```
 
-Проверка миграций:
+Команда идемпотентная: повторный запуск не создаёт дубли. Пароль демо-пользователей: `DemoPassword123`.
 
-```powershell
-.\.venv\Scripts\python manage.py makemigrations --check --dry-run
-```
-
-Если нужно прогнать тесты именно на PostgreSQL:
-
-```powershell
-$env:USE_POSTGRES_FOR_TESTS='True'
-.\.venv\Scripts\python manage.py test
-```
-
-Текущий backend проверен на поднятой PostgreSQL из Docker Compose:
-
-- `docker compose ps` - контейнер `aimessenger-postgres` запущен на `5433`;
-- `python manage.py check` - без ошибок;
-- `python manage.py makemigrations --check --dry-run` - новых миграций нет;
-- `python manage.py migrate` - миграции применяются;
-- `USE_POSTGRES_FOR_TESTS=True python manage.py test` - 22 API-теста проходят.
-
-## Что не должно попадать в Git
-
-Корневой `.gitignore` уже закрывает локальные секреты, зависимости и runtime-артефакты:
-
-- `.env`, `.env.*`, кроме `.env.example`;
-- `.venv/`, `venv/`, `__pycache__/`, `*.pyc`;
-- `db.sqlite3`, `*.sqlite3`, `.coverage`, `htmlcov/`;
-- `node_modules/`, `.vite/`, npm/yarn/pnpm debug logs;
-- `build/`, `dist/`, локальные Docker override-файлы.
-
-Важно: `3_Prototype/dist` уже отслеживается Git'ом как существующий артефакт прототипа. Правило `dist/` защитит новые неотслеживаемые сборки, но не удаляет уже отслеживаемые файлы из индекса.
-
-## Авторизация frontend -> backend
-
-Используется DRF Token Authentication.
-
-## Сверка с требованиями аналитика по регистрации и авторизации
-
-В документации аналитика для регистрации пользователя указаны обязательные данные:
-
-| Требование | Текущее поле/API | Статус |
-|---|---|---|
-| имя | `first_name` | есть, обязательно в `POST /api/register/` |
-| фамилия | `last_name` | есть, обязательно в `POST /api/register/` |
-| дата рождения | `birth_date` | добавлено, обязательно в `POST /api/register/` |
-| логин для чата | `username` | есть, обязательно |
-| мобильный телефон | `phone_number` | добавлено, обязательно, уникальное |
-| email | `email` | есть, обязательно, проверяется на уникальность при регистрации |
-| пользовательское соглашение | `accepted_user_agreement` | добавлено, должно быть `true` |
-| политика конфиденциальности | `accepted_privacy_policy` | добавлено, должно быть `true` |
-| дата принятия пользовательского соглашения | `user_agreement_accepted_at` | заполняется автоматически |
-| дата принятия политики конфиденциальности | `privacy_policy_accepted_at` | заполняется автоматически |
-| блокировка аккаунта | `blocked_until` | поле добавлено, сам rate-limit процесс ещё не реализован |
-
-Что пока не реализовано как процесс:
-
-- отправка письма со ссылкой для завершения регистрации;
-- создание пароля по ссылке из письма;
-- восстановление пароля по email-ссылке;
-- блокировка аккаунта на 1 минуту при 10+ запросах в секунду.
-
-Текущий MVP-сценарий отличается от BPMN аналитика: пользователь передаёт пароль сразу в `POST /api/register/`, после чего может получить token через `POST /api/auth/token/`.
-
-### Логин
+## Авторизация
 
 `POST /api/auth/token/`
 
@@ -227,269 +53,36 @@ Response:
   "token": "0123456789abcdef..."
 }
 ```
-
-Дальше frontend хранит token и отправляет его во все защищённые запросы:
-
-```http
-Authorization: Token <token>
-```
-
-### Регистрация
-
-`POST /api/register/`
-
-Endpoint открыт без авторизации.
-
-Request:
-
-```json
-{
-  "username": "demo",
-  "password": "StrongPassword123",
-  "email": "demo@example.com",
-  "first_name": "Demo",
-  "last_name": "User",
-  "birth_date": "1995-05-04",
-  "phone_number": "+79990000001",
-  "accepted_user_agreement": true,
-  "accepted_privacy_policy": true
-}
-```
-
-Response `201 Created`:
-
-```json
-{
-  "id": 1,
-  "username": "demo",
-  "email": "demo@example.com",
-  "first_name": "Demo",
-  "last_name": "User",
-  "birth_date": "1995-05-04",
-  "phone_number": "+79990000001",
-  "accepted_user_agreement": true,
-  "accepted_privacy_policy": true,
-  "role": "user"
-}
-```
-
-Пароль в ответе не возвращается.
-
-### Текущий пользователь
-
-`GET /api/me/`
-
-Headers:
+  
+Дальше frontend отправляет:
 
 ```http
 Authorization: Token <token>
 ```
 
-Response:
+Актуальные публичные auth endpoints:
 
-```json
-{
-  "id": 1,
-  "username": "demo",
-  "email": "demo@example.com",
-  "first_name": "Demo",
-  "last_name": "User",
-  "birth_date": "1995-05-04",
-  "phone_number": "+79990000001",
-  "accepted_user_agreement": true,
-  "accepted_privacy_policy": true,
-  "role": "user"
-}
-```
+| Method | URL | Назначение |
+|---|---|---|
+| `POST` | `/api/register/` | Регистрация |
+| `POST` | `/api/auth/token/` | Получение DRF token |
+| `GET` | `/api/me/` | Текущий пользователь по token |
 
-Роли пользователя:
+`/api/auth/login/` из DRF browsable API существует для session login в браузере, но основной контракт frontend -> backend: `/api/auth/token/`.
 
-- `user` - обычный пользователь;
-- `admin` - Django staff/superuser.
+## Сверка с системной моделью
 
-## Правила доступа
-
-Обычный пользователь:
-
-- видит только чаты, где он участник;
-- видит только участников своих чатов;
-- видит только сообщения из своих чатов;
-- может создать чат и автоматически становится `owner`;
-- может писать только в чаты, где он участник;
-- не может передать чужой `sender`: backend всегда берёт `sender` из `request.user`;
-- может редактировать/удалять свои сообщения;
-- может редактировать/удалять чужие сообщения только если он `owner/admin` этого чата;
-- может менять/удалять чат только если он `owner/admin` этого чата;
-- может добавлять/менять/удалять участников только если он `owner/admin` этого чата;
-- не имеет доступа к `/api/users/`.
-
-Django staff/superuser:
-
-- видит все чаты, участников и сообщения;
-- может управлять всеми чатами, участниками и сообщениями;
-- имеет доступ к `/api/users/`.
-
-## API endpoints
-
-Все endpoints, кроме `POST /api/register/`, `POST /api/auth/token/` и DRF login pages, требуют авторизацию.
-
-### Auth
-
-| Method | URL | Доступ | Назначение |
-|---|---|---|---|
-| `POST` | `/api/auth/token/` | anyone | Получить token по `username/password`. |
-| `POST` | `/api/register/` | anyone | Самостоятельная регистрация пользователя. |
-| `GET` | `/api/me/` | authenticated | Данные текущего пользователя для frontend. |
-
-### Чаты
-
-Base URL: `/api/chats/`
-
-| Method | URL | Доступ | Назначение |
-|---|---|---|---|
-| `GET` | `/api/chats/` | участник чатов | Список только своих чатов. |
-| `POST` | `/api/chats/` | authenticated | Создать чат. Создатель станет `owner`. |
-| `GET` | `/api/chats/{id}/` | участник чата | Получить свой чат. Чужой чат будет скрыт как `404`. |
-| `PUT` | `/api/chats/{id}/` | owner/admin чата или staff | Полностью изменить чат. |
-| `PATCH` | `/api/chats/{id}/` | owner/admin чата или staff | Частично изменить чат. |
-| `DELETE` | `/api/chats/{id}/` | owner/admin чата или staff | Удалить чат. |
-
-Создание чата:
-
-```json
-{
-  "title": "Project chat"
-}
-```
-
-### Участники чатов
-
-Base URL: `/api/chat-members/`
-
-| Method | URL | Доступ | Назначение |
-|---|---|---|---|
-| `GET` | `/api/chat-members/` | участник соответствующих чатов | Список участников только из своих чатов. |
-| `GET` | `/api/chat-members/?chat=1` | участник чата | Участники конкретного своего чата. |
-| `POST` | `/api/chat-members/` | owner/admin чата или staff | Добавить пользователя в чат. |
-| `GET` | `/api/chat-members/{id}/` | участник соответствующего чата | Получить запись участника. |
-| `PUT` | `/api/chat-members/{id}/` | owner/admin чата или staff | Полностью изменить запись участника. |
-| `PATCH` | `/api/chat-members/{id}/` | owner/admin чата или staff | Частично изменить запись участника. |
-| `DELETE` | `/api/chat-members/{id}/` | owner/admin чата или staff | Удалить участника. |
-
-Добавить участника:
-
-```json
-{
-  "chat": 1,
-  "user": 2,
-  "role": "member"
-}
-```
-
-Роли участника чата:
-
-- `owner` - владелец;
-- `admin` - администратор чата;
-- `member` - обычный участник.
-
-### Сообщения
-
-Base URL: `/api/messages/`
-
-| Method | URL | Доступ | Назначение |
-|---|---|---|---|
-| `GET` | `/api/messages/` | участник чатов | Список сообщений только из своих чатов. |
-| `GET` | `/api/messages/?chat=1` | участник чата | Сообщения конкретного своего чата. |
-| `POST` | `/api/messages/` | участник чата | Создать сообщение в своём чате. |
-| `GET` | `/api/messages/{id}/` | участник чата | Получить сообщение из своего чата. Чужое сообщение будет скрыто как `404`. |
-| `PUT` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Полностью изменить сообщение. |
-| `PATCH` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Частично изменить сообщение. |
-| `DELETE` | `/api/messages/{id}/` | автор, owner/admin чата или staff | Удалить сообщение. |
-
-Обычное сообщение:
-
-```json
-{
-  "chat": 1,
-  "text": "Привет",
-  "message_type": "default",
-  "task_status": "none",
-  "analyst_notes": ""
-}
-```
-
-Задача:
-
-```json
-{
-  "chat": 1,
-  "text": "Сделать экран логина",
-  "message_type": "task",
-  "task_status": "todo",
-  "analyst_notes": "Важно для MVP"
-}
-```
-
-Поля сообщения:
-
-| Поле | Описание |
-|---|---|
-| `id` | ID сообщения. |
-| `chat` | ID чата. |
-| `sender` | ID отправителя. Read-only, backend подставляет `request.user`. |
-| `sender_username` | Username отправителя. Read-only. |
-| `text` | Текст сообщения. |
-| `message_type` | `default`, `question`, `task`. |
-| `task_status` | `none`, `todo`, `in_progress`, `done`. |
-| `analyst_notes` | Дополнительные заметки аналитика. Может быть пустым. |
-| `created_at` | Дата создания. Read-only. |
-| `updated_at` | Дата обновления. Read-only. |
-
-Доменное правило:
-
-- если `message_type != "task"`, то `task_status` должен быть `none`;
-- если передать `task_status = "todo"` для обычного сообщения, API вернёт `400 Bad Request`.
-
-### Пользователи
-
-Base URL: `/api/users/`
-
-`/api/users/` - админский endpoint. Для обычного frontend-пользователя используем только:
-
-- `POST /api/register/`;
-- `POST /api/auth/token/`;
-- `GET /api/me/`.
-
-| Method | URL | Доступ | Назначение |
-|---|---|---|---|
-| `GET` | `/api/users/` | Django staff/superuser | Список пользователей. |
-| `POST` | `/api/users/` | Django staff/superuser | Создать пользователя. |
-| `GET` | `/api/users/{id}/` | Django staff/superuser | Получить пользователя. |
-| `PUT/PATCH` | `/api/users/{id}/` | Django staff/superuser | Изменить пользователя. |
-| `DELETE` | `/api/users/{id}/` | Django staff/superuser | Удалить пользователя. |
-
-Поля пользователя:
-
-| Поле | Описание |
-|---|---|
-| `id` | ID пользователя. |
-| `username` | Логин для чата. |
-| `email` | Email пользователя. При регистрации обязателен и проверяется на уникальность. |
-| `first_name` | Имя. |
-| `last_name` | Фамилия. |
-| `birth_date` | Дата рождения в формате `YYYY-MM-DD`. |
-| `phone_number` | Мобильный телефон. При регистрации обязателен и уникален. |
-| `accepted_user_agreement` | Принято пользовательское соглашение. Для регистрации должно быть `true`. |
-| `accepted_privacy_policy` | Принята политика конфиденциальности. Для регистрации должно быть `true`. |
-| `user_agreement_accepted_at` | Когда принято пользовательское соглашение. Заполняется автоматически. |
-| `privacy_policy_accepted_at` | Когда принята политика конфиденциальности. Заполняется автоматически. |
-| `blocked_until` | До какого времени аккаунт заблокирован. Поле подготовлено под будущий rate-limit процесс. |
-| `role` | `user` или `admin`. |
-| `is_active` | Активен ли пользователь. |
+| Документ/ожидание | Текущий backend | Решение на sprint |
+|---|---|---|
+| JWT login | DRF `TokenAuthentication` | Фиксируем `Authorization: Token <token>` |
+| `/api/auth/register/` | `/api/register/` | Документируем фактический endpoint |
+| `/api/chats/{id}/messages/` | `/api/messages/?chat=<id>` | Фиксируем query param, nested endpoint не добавлен |
+| `/api/chats/{id}/members/` | `/api/chat-members/?chat=<id>` | Фиксируем query param |
+| Асинхронная ML-классификация | Временная синхронная классификация при создании сообщения | Результат хранится в `MessageClassification`; будущая схема ниже |
 
 ## Пагинация
 
-List endpoints возвращают DRF pagination response:
+Все list endpoints DRF возвращают:
 
 ```json
 {
@@ -506,27 +99,342 @@ List endpoints возвращают DRF pagination response:
 API_PAGE_SIZE=20
 ```
 
-## Ошибки API
+## Users API
 
-### Неверный логин/пароль или пользователь не найден
-
-`POST /api/auth/token/`
-
-Status: `400 Bad Request`
+`GET /api/me/` возвращает профиль текущего пользователя:
 
 ```json
 {
-  "non_field_errors": [
-    "Unable to log in with provided credentials."
+  "id": 1,
+  "username": "demo",
+  "email": "demo@example.com",
+  "first_name": "Demo",
+  "last_name": "User",
+  "birth_date": "1995-05-04",
+  "phone_number": "+79990000001",
+  "accepted_user_agreement": true,
+  "accepted_privacy_policy": true,
+  "role": "user"
+}
+```
+
+`/api/users/` доступен только project admin: `is_staff`, `is_superuser` или `role = "admin"`.
+
+Query params:
+
+| Param | Values | Пример |
+|---|---|---|
+| `role` | `user`, `admin` | `/api/users/?role=admin` |
+| `status` | `active`, `inactive`, `blocked` | `/api/users/?status=active` |
+
+Пример `/api/users/`:
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@example.com",
+      "first_name": "Admin",
+      "last_name": "User",
+      "birth_date": null,
+      "phone_number": null,
+      "accepted_user_agreement": false,
+      "accepted_privacy_policy": false,
+      "user_agreement_accepted_at": null,
+      "privacy_policy_accepted_at": null,
+      "blocked_until": null,
+      "role": "admin",
+      "is_active": true
+    }
   ]
 }
 ```
 
-DRF специально не раскрывает, что именно неверно: username или password.
+Админ может менять `role`, `is_active`, `blocked_until`. Поле `password` принимается только на запись и никогда не возвращается.
 
-### Нет авторизации
+Admin summary:
 
-Status: `401 Unauthorized`
+| Method | URL | Доступ |
+|---|---|---|
+| `GET` | `/api/admin/events/` | Только project admin |
+
+Response содержит `latest_registrations`, `created_chats`, `messages_last_24h`, `active_users_last_24h`.
+
+### Контакты и поиск пользователей
+
+Авторизованные пользователи могут искать других активных пользователей и вести личный список контактов.
+
+| Method | URL | Назначение |
+|---|---|---|
+| `GET` | `/api/user-search/?q=<text>` | Поиск активных пользователей по username, email, имени, фамилии или телефону. Текущий пользователь исключается из выдачи. |
+| `GET` | `/api/contacts/` | Список контактов текущего пользователя. Project admin видит все записи контактов. |
+| `POST` | `/api/contacts/` | Добавить пользователя в контакты: `{"contact": 2}`. |
+| `DELETE` | `/api/contacts/{id}/` | Удалить запись контакта. |
+| `POST` | `/api/contacts/{id}/direct-chat/` | Создать или переиспользовать личный чат с контактом. Возвращает `{"chat": 10, "created": true}`. |
+| `POST` | `/api/contacts/{id}/add-to-chat/` | Добавить контакт в групповой или корпоративный чат. Body: `{"chat": 10, "role": "member"}`. Добавлять участников может только owner/admin чата или project admin. |
+
+Contact response:
+
+```json
+{
+  "id": 1,
+  "owner": 1,
+  "contact": 2,
+  "contact_detail": {
+    "id": 2,
+    "username": "user2",
+    "email": "user2@example.com",
+    "first_name": "User",
+    "last_name": "Two",
+    "role": "user"
+  },
+  "created_at": "2026-05-11T08:00:00Z"
+}
+```
+
+## Chats API
+
+Base URL: `/api/chats/`
+
+Поля `Chat`:
+
+| Поле | Описание |
+|---|---|
+| `id` | ID чата |
+| `title` | Название |
+| `chat_type` | `direct`, `group`, `corporate` |
+| `description` | Описание |
+| `created_by` | ID создателя |
+| `members_count` | Количество участников |
+| `members` | Участники с `id`, `user`, `username`, `user_detail`, `role`, `joined_at` |
+| `last_message` | Последнее сообщение для списка чатов или `null` |
+| `created_at`, `updated_at` | Timestamps |
+
+Query params:
+
+| Param | Values | Пример |
+|---|---|---|
+| `type` | `direct`, `group`, `corporate` | `/api/chats/?type=direct` |
+
+Пример `/api/chats/`:
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 10,
+      "title": "Sprint planning",
+      "chat_type": "group",
+      "description": "Group chat",
+      "created_by": 1,
+      "members_count": 2,
+      "members": [
+        {
+          "id": 100,
+          "chat": 10,
+          "user": 1,
+          "username": "demo",
+          "user_detail": {
+            "id": 1,
+            "username": "demo",
+            "email": "demo@example.com",
+            "first_name": "Demo",
+            "last_name": "User",
+            "role": "user"
+          },
+          "role": "owner",
+          "joined_at": "2026-05-11T08:00:00Z"
+        }
+      ],
+      "last_message": {
+        "id": 50,
+        "text": "Привет",
+        "sender": 1,
+        "sender_username": "demo",
+        "message_type": "default",
+        "task_status": "none",
+        "created_at": "2026-05-11T08:01:00Z"
+      },
+      "created_at": "2026-05-11T08:00:00Z",
+      "updated_at": "2026-05-11T08:01:00Z"
+    }
+  ]
+}
+```
+
+Создание direct-чата:
+
+```json
+{
+  "chat_type": "direct",
+  "direct_user_id": 2
+}
+```
+
+Backend запрещает дубль direct-чата для одной пары пользователей и автоматически добавляет обоих участников. Создатель получает роль `owner`, второй пользователь - `member`.
+
+Создание group/corporate-чата:
+
+```json
+{
+  "title": "Project chat",
+  "chat_type": "corporate",
+  "description": "Main project room",
+  "participant_ids": [2, 3]
+}
+```
+
+Создатель становится `owner`, участники из `participant_ids` добавляются как `member`.
+
+## Chat Members API
+
+Base URL: `/api/chat-members/`
+
+Query params:
+
+| Param | Пример |
+|---|---|
+| `chat` | `/api/chat-members/?chat=10` |
+
+Добавлять/изменять участников может только `owner`/`admin` чата или project admin.
+
+Request:
+
+```json
+{
+  "chat": 10,
+  "user": 2,
+  "role": "member"
+}
+```
+
+## Messages API
+
+Base URL: `/api/messages/`
+
+Query params:
+
+| Param | Пример |
+|---|---|
+| `chat` | `/api/messages/?chat=10` |
+
+Поля `Message`:
+
+| Поле | Описание |
+|---|---|
+| `id` | ID сообщения |
+| `chat` | ID чата |
+| `sender` | ID автора, read-only |
+| `sender_username` | Username автора |
+| `text` | Текст |
+| `message_type` | `default`, `question`, `task` |
+| `task_status` | `none`, `todo`, `in_progress`, `done` |
+| `analyst_notes` | Заметки аналитика |
+| `classification` | ML-результат или `null` |
+| `created_at`, `updated_at` | Timestamps |
+
+Пример `/api/messages/?chat=10`:
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 50,
+      "chat": 10,
+      "sender": 1,
+      "sender_username": "demo",
+      "text": "Нужно подготовить демо",
+      "message_type": "task",
+      "task_status": "todo",
+      "analyst_notes": "",
+      "classification": {
+        "label": "task",
+        "confidence": 0.75,
+        "probabilities": {
+          "task": 0.75
+        },
+        "classified_at": "2026-05-11T08:01:00Z"
+      },
+      "created_at": "2026-05-11T08:01:00Z",
+      "updated_at": "2026-05-11T08:01:00Z"
+    }
+  ]
+}
+```
+
+Создание сообщения:
+
+```json
+{
+  "chat": 10,
+  "text": "Нужно подготовить демо",
+  "message_type": "task",
+  "task_status": "todo",
+  "analyst_notes": ""
+}
+```
+
+Правила:
+
+- обычный пользователь видит только сообщения своих чатов;
+- создавать сообщение можно только при членстве в чате;
+- редактировать/удалять сообщение может автор, `owner`/`admin` чата или project admin;
+- если `message_type != "task"`, то `task_status` должен быть `none`.
+
+## ML-классификация
+
+При создании сообщения backend синхронно вызывает временную классификацию:
+
+1. пытается загрузить `4_Sources/ml-service/predictor.py`;
+2. если модель или зависимости недоступны, использует безопасный mock fallback;
+3. сохраняет результат в `MessageClassification`;
+4. возвращает результат в `MessageSerializer.classification`.
+
+Хранимые поля:
+
+| Поле | Описание |
+|---|---|
+| `label` | Метка класса |
+| `confidence` | Максимальная вероятность |
+| `probabilities` | JSON распределения вероятностей |
+| `classified_at` | Время классификации |
+
+Будущая асинхронная схема:
+
+1. `POST /api/messages/` сохраняет сообщение и возвращает `201 Created`;
+2. backend ставит Celery task `classify_message(message_id)`;
+3. Redis используется как broker;
+4. worker вызывает ML-service;
+5. worker обновляет `MessageClassification`;
+6. если ML-service недоступен, task пишет fallback-результат или оставляет `classification = null` и уходит в retry/backoff.
+
+## Права доступа
+
+Project admin: `is_staff`, `is_superuser` или `role = "admin"`. Он имеет полный доступ к users/chats/messages.
+
+Обычный пользователь:
+
+- видит только свои чаты;
+- видит только сообщения своих чатов;
+- видит участников только своих чатов;
+- не может добавлять участников, если не `owner`/`admin` чата;
+- не может создавать сообщения в чужом чате;
+- не может редактировать/удалять чужие сообщения без роли `owner`/`admin`.
+
+## Ошибки API
+
+Нет token:
 
 ```json
 {
@@ -534,15 +442,15 @@ Status: `401 Unauthorized`
 }
 ```
 
-Правильный формат заголовка:
+Невалидный token:
 
-```http
-Authorization: Token <token>
+```json
+{
+  "detail": "Invalid token."
+}
 ```
 
-### Нет прав
-
-Status: `403 Forbidden`
+Нет прав:
 
 ```json
 {
@@ -550,16 +458,7 @@ Status: `403 Forbidden`
 }
 ```
 
-Примеры:
-
-- обычный участник пытается изменить чат;
-- обычный участник пытается добавить пользователя в чат;
-- пользователь пытается написать в чужой чат;
-- обычный пользователь открывает `/api/users/`.
-
-### Объект не найден или скрыт правами
-
-Status: `404 Not Found`
+Объект скрыт правами или не найден:
 
 ```json
 {
@@ -567,158 +466,38 @@ Status: `404 Not Found`
 }
 ```
 
-Так может быть, если объект существует, но не входит в queryset текущего пользователя. Например, пользователь запрашивает чужой чат.
+## Обновление классификации сообщений
 
-### Невалидные поля формы
+Классификация пересчитывается при `POST /api/messages/`, а также при `PATCH`/`PUT`, если изменился `Message.text`. Существующая запись `MessageClassification` обновляется вместе с новым `classified_at`.
 
-Status: `400 Bad Request`
+## Security checklist
 
-```json
-{
-  "username": [
-    "A user with that username already exists."
-  ],
-  "password": [
-    "This password is too short."
-  ]
-}
-```
+- Пароль не сохраняется во frontend `localStorage`; там хранится только `auth_token`.
+- Пароль не возвращается API: поля `password` write-only.
+- Пароль не пишется backend-логами; кастомного логирования request body нет.
+- Пользователь создаётся через `create_user()`/`set_password()`, в Django admin хранится hash пароля.
+- Статические demo-пользователи frontend не содержат пароль.
 
-### Некорректный `task_status`
+## Переменные окружения
 
-Request:
-
-```json
-{
-  "chat": 1,
-  "text": "Обычное сообщение",
-  "message_type": "default",
-  "task_status": "todo"
-}
-```
-
-Status: `400 Bad Request`
-
-```json
-{
-  "task_status": [
-    "Статус задачи можно указывать только для сообщений типа task."
-  ]
-}
-```
-
-## Curl-примеры
-
-Регистрация:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/register/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"StrongPassword123","email":"demo@example.com","first_name":"Demo","last_name":"User","birth_date":"1995-05-04","phone_number":"+79990000001","accepted_user_agreement":true,"accepted_privacy_policy":true}'
-```
-
-Получить token:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/auth/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"StrongPassword123"}'
-```
-
-Получить текущего пользователя:
-
-```bash
-curl http://127.0.0.1:8000/api/me/ \
-  -H "Authorization: Token <token>"
-```
-
-Создать чат:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/chats/ \
-  -H "Authorization: Token <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Project chat"}'
-```
-
-Добавить участника:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/chat-members/ \
-  -H "Authorization: Token <owner_or_admin_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"chat":1,"user":2,"role":"member"}'
-```
-
-Создать сообщение:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/messages/ \
-  -H "Authorization: Token <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"chat":1,"text":"Привет","message_type":"default","task_status":"none"}'
-```
-
-Получить сообщения чата:
-
-```bash
-curl "http://127.0.0.1:8000/api/messages/?chat=1" \
-  -H "Authorization: Token <token>"
-```
-
-## Командный чеклист ручной проверки
-
-1. Запустить Docker Desktop.
-2. Создать `.env` из `.env.example`.
-3. Запустить PostgreSQL: `docker compose up -d`.
-4. Применить миграции: `.\.venv\Scripts\python manage.py migrate`.
-5. Запустить backend: `.\.venv\Scripts\python manage.py runserver`.
-6. Зарегистрировать двух пользователей: `user1`, `user2`.
-7. Получить token для каждого через `/api/auth/token/`.
-8. Под token `user1` создать чат через `/api/chats/`.
-9. Проверить, что `user1` видит чат в `/api/chats/`.
-10. Проверить, что `user2` не видит чат `user1` в `/api/chats/`.
-11. Проверить, что `user2` не может создать сообщение в чате `user1`.
-12. Под token `user1` добавить `user2` в `/api/chat-members/`.
-13. Проверить, что теперь `user2` видит чат и может писать в него.
-14. Проверить, что `GET /api/me/` возвращает `id`, `username`, `email`, `first_name`, `last_name`, `role`.
-
-## Частые проблемы
-
-### `SECRET_KEY environment variable is required`
-
-Не создан `.env` или в нём нет `SECRET_KEY`.
+Создайте `.env` из `.env.example`:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-### Backend не подключается к PostgreSQL
+Основные переменные:
 
-Проверьте контейнер:
-
-```powershell
-docker compose ps
-```
-
-Проверьте порт в `.env`:
-
-```env
-POSTGRES_PORT=5433
-```
-
-### Docker не может скачать образ PostgreSQL
-
-Если `docker compose up -d` падает с `TLS handshake timeout`, это проблема сетевого доступа к Docker Hub или CDN. Повторите команду позже, проверьте VPN/proxy/фаерволл или заранее скачайте образ:
-
-```powershell
-docker pull postgres:17-alpine
-```
-
-### `relation does not exist`
-
-Не применены миграции:
-
-```powershell
-.\.venv\Scripts\python manage.py migrate
-```
+| Переменная | Назначение |
+|---|---|
+| `SECRET_KEY` | Обязательный Django secret |
+| `DEBUG` | `True` локально, `False` на сервере |
+| `ALLOWED_HOSTS` | Хосты через запятую |
+| `API_PAGE_SIZE` | Размер страницы list endpoints |
+| `CORS_ALLOWED_ORIGINS` | Разрешённые frontend origins |
+| `POSTGRES_DB` | Имя базы |
+| `POSTGRES_USER` | Пользователь PostgreSQL |
+| `POSTGRES_PASSWORD` | Пароль PostgreSQL |
+| `POSTGRES_HOST` | Host PostgreSQL |
+| `POSTGRES_PORT` | Port PostgreSQL, локально обычно `5433` |
+| `USE_POSTGRES_FOR_TESTS` | `True`, если тесты нужно гонять на PostgreSQL; по умолчанию тесты используют SQLite |

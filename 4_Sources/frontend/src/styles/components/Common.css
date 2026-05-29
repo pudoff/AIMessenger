@@ -1,0 +1,128 @@
+.panel__title {
+  margin-bottom: 14px;
+  font-weight: 800;
+}
+
+.panel__title,
+.metric-card,
+.context-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel__title h1,
+.panel__title,
+.metric-card strong {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panel__title--small {
+  margin-top: 14px;
+}
+
+.panel__title--between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.insight-card,
+.metric-card,
+.context-chip,
+.activity-item {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+}
+
+.insight-card--large {
+  margin-bottom: 12px;
+}
+
+.insight-card p,
+.context-chip {
+  color: var(--text-soft);
+}
+
+.metric-card span {
+  color: var(--text-soft);
+}
+
+.metric-card strong {
+  font-size: 2rem;
+}
+
+.messages-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.floating-insights {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+}
+
+.floating-insights--open {
+  display: block;
+}
+
+.ai-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  box-shadow: 0 16px 40px rgba(42, 68, 127, 0.28);
+}
+
+.ai-fab__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 800;
+}
+
+.ai-fab__label {
+  font-weight: 700;
+}
+
+.avatars,
+.actions-grid,
+.metrics-grid,
+.admin-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.system-message {
+  align-self: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(126, 137, 217, 0.12);
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.empty-state {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  text-align: center;
+}

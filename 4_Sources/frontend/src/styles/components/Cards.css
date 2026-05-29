@@ -1,0 +1,72 @@
+.chat-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.chat-card--button {
+  width: 100%;
+}
+
+.chat-card--active {
+  border-color: rgba(126, 137, 217, 0.34);
+  background: linear-gradient(180deg, rgba(126, 137, 217, 0.16), rgba(255, 255, 255, 0.84));
+}
+
+.chat-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chat-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chat-card p,
+.chat-card small {
+  color: var(--text-soft);
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid transparent;
+}
+
+.contact-row--active {
+  border-color: rgba(126, 137, 217, 0.34);
+  background: linear-gradient(180deg, rgba(126, 137, 217, 0.16), rgba(255, 255, 255, 0.84));
+}
+
+.contact-row__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.contact-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.contact-row__text strong {
+  margin: 0;
+}
+
+.contact-row__text span,
+.contact-row small {
+  color: var(--text-soft);
+}

@@ -1,0 +1,75 @@
+@media (max-width: 1280px) {
+  .workspace--three {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+
+  .workspace--messenger,
+  .panel--insights {
+    grid-column: 1 / -1;
+  }
+
+  .workspace--contacts,
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-shell,
+  .admin-shell,
+  .workspace--split,
+  .workspace--messenger,
+  .workspace--contacts,
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-sidebar,
+  .admin-shell__sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell__content,
+  .admin-shell__content,
+  .shell-sidebar,
+  .admin-shell__sidebar,
+  .panel--list,
+  .panel--chat,
+  .panel--insights,
+  .assistant-page,
+  .admin-page,
+  .login-card {
+    padding: 18px;
+  }
+
+  .workspace--three,
+  .workspace--split,
+  .workspace--messenger,
+  .workspace--contacts,
+  .demo-accounts,
+  .actions-grid--wide,
+  .metrics-grid,
+  .contact-info-grid,
+  .community-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-form,
+  .composer,
+  .section-header,
+  .chat-toolbar,
+  .chat-toolbar__head,
+  .stories-strip__head,
+  .workspace-summary-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .floating-insights {
+    right: 16px;
+    bottom: 16px;
+  }
+}

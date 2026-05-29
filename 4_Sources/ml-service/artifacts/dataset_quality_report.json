@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-05-14T07:48:27.575958+00:00",
+  "dataset_path": "D:\\Pudov\\УРФУ\\03.Учеба\\2. Семестр\\Проектный практикум\\Repo\\AIMessenger\\AIMessenger\\4_Sources\\ml-service\\artifacts\\chat_dataset.csv",
+  "dataset_version": "c410be014022",
+  "dataset_rows": 294899,
+  "class_distribution": {
+    "offtopic": 112,
+    "question": 123290,
+    "statement": 67110,
+    "task": 104387
+  },
+  "exact_duplicate_texts": 0,
+  "exact_duplicate_text_label_pairs": 0,
+  "normalized_duplicate_texts": 44620,
+  "train_test_normalized_overlap": 427,
+  "unique_text_ratio": 1.0,
+  "unique_normalized_text_ratio": 0.8486939596268553,
+  "top_repeated_normalized_templates": {
+    "проверь почту от <email>": 12239,
+    "забронируй столик на <num>:<num>:<num>.": 11670,
+    "обычно это стоит около <num> руб.": 11080,
+    "можешь скинуть ссылку на <url>": 4024,
+    "вот: <url> — там всё есть.": 3941,
+    "займёт примерно <num> минут.": 120,
+    "сделай металл. до <num>:<num>:<num>.": 9,
+    "сделай пространство. до <num>:<num>:<num>.": 8,
+    "сделай слишком. до <num>:<num>:<num>.": 8,
+    "сделай монета. до <num>:<num>:<num>.": 8,
+    "сделай что. до <num>:<num>:<num>.": 8,
+    "сделай горький. до <num>:<num>:<num>.": 7,
+    "сделай сынок. до <num>:<num>:<num>.": 7,
+    "сделай выражаться. до <num>:<num>:<num>.": 7,
+    "сделай скрытый. до <num>:<num>:<num>.": 7,
+    "сделай тревога. до <num>:<num>:<num>.": 7,
+    "сделай конструкция. до <num>:<num>:<num>.": 7,
+    "сделай плясать. до <num>:<num>:<num>.": 7,
+    "сделай князь. до <num>:<num>:<num>.": 7,
+    "сделай ведь. до <num>:<num>:<num>.": 6
+  }
+}

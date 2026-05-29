@@ -1,0 +1,8 @@
+*
+!package*.json
+!.env
+!**/*.js
+!**/*.ts
+!**/*.css
+!**/*.html
+!**/*.sh

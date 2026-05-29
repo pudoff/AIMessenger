@@ -1,0 +1,56 @@
+.shell-nav,
+.admin-menu,
+.list-stack,
+.activity-feed,
+.assistant-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shell-nav__item,
+.admin-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: var(--text-soft);
+}
+
+.shell-nav__item--active,
+.admin-menu__item--active {
+  background: rgba(126, 137, 217, 0.14);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.shell-nav__icon {
+  width: 22px;
+  text-align: center;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+}
+
+.profile-card__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card__text span {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.shell-sidebar__new-chat {
+  width: 100%;
+}

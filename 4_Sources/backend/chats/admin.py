@@ -11,8 +11,10 @@ class ChatMemberInline(admin.TabularInline):
 
 @admin.register(Chat)
 class ChatAdmin(admin.ModelAdmin):
-    list_display = ('title', 'created_at', 'updated_at')
+    list_display = ('title', 'chat_type', 'created_by', 'created_at', 'updated_at')
+    list_filter = ('chat_type', 'created_at')
     search_fields = ('title',)
+    autocomplete_fields = ('created_by',)
     inlines = (ChatMemberInline,)
 
 

@@ -1,10 +1,12 @@
+from unittest.mock import patch
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from chats.models import Chat, ChatMember
 from users.models import User
-from .models import Message
+from .models import Message, MessageClassification
 
 
 def results(response):
@@ -85,6 +87,8 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         created = Message.objects.get(id=response.json()['id'])
         self.assertEqual(created.sender, self.member)
+        self.assertIn('classification', response.json())
+        self.assertTrue(hasattr(created, 'classification'))
 
     def test_task_status_is_allowed_only_for_task_messages(self):
         self.client.force_authenticate(self.member)
@@ -102,6 +106,26 @@ class MessageAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('task_status', response.json())
+
+    def test_role_admin_can_see_and_update_any_message(self):
+        admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
+        self.client.force_authenticate(admin)
+
+        list_response = self.client.get(reverse('message-list'))
+        update_response = self.client.patch(
+            reverse('message-detail', args=[self.foreign_message.id]),
+            {'text': 'Updated by role admin'},
+            format='json',
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in results(list_response)],
+            [self.message.id, self.foreign_message.id],
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.foreign_message.refresh_from_db()
+        self.assertEqual(self.foreign_message.text, 'Updated by role admin')
 
     def test_author_can_update_own_message(self):
         self.client.force_authenticate(self.owner)
@@ -126,3 +150,29 @@ class MessageAccessTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_text_update_recalculates_classification(self):
+        self.client.force_authenticate(self.owner)
+
+        with patch('messages.views.classify_text') as classifier:
+            classifier.side_effect = [
+                {'label': 'default', 'confidence': 0.6, 'probabilities': {'default': 0.6}},
+                {'label': 'task', 'confidence': 0.9, 'probabilities': {'task': 0.9}},
+            ]
+            create_response = self.client.post(
+                reverse('message-list'),
+                {'chat': self.chat.id, 'text': 'Hello'},
+                format='json',
+            )
+            message_id = create_response.json()['id']
+            update_response = self.client.patch(
+                reverse('message-detail', args=[message_id]),
+                {'text': 'Please prepare report'},
+                format='json',
+            )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        classification = MessageClassification.objects.get(message_id=message_id)
+        self.assertEqual(classification.label, 'task')
+        self.assertEqual(classifier.call_count, 2)

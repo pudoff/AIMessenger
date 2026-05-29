@@ -1,11 +1,20 @@
 from rest_framework import serializers
 
 from chats.models import ChatMember
-from .models import Message
+from users.permissions import is_project_admin
+from .models import Message, MessageClassification
+
+
+class MessageClassificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageClassification
+        fields = ('label', 'confidence', 'probabilities', 'classified_at')
+        read_only_fields = fields
 
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source='sender.username', read_only=True)
+    classification = MessageClassificationSerializer(read_only=True)
 
     class Meta:
         model = Message
@@ -18,10 +27,11 @@ class MessageSerializer(serializers.ModelSerializer):
             'message_type',
             'task_status',
             'analyst_notes',
+            'classification',
             'created_at',
             'updated_at',
         )
-        read_only_fields = ('id', 'sender', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'sender', 'sender_username', 'classification', 'created_at', 'updated_at')
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -36,7 +46,7 @@ class MessageSerializer(serializers.ModelSerializer):
             getattr(self.instance, 'task_status', Message.TaskStatus.NONE),
         )
 
-        if chat and user and user.is_authenticated and not (user.is_staff or user.is_superuser):
+        if chat and user and user.is_authenticated and not is_project_admin(user):
             if not ChatMember.objects.filter(chat=chat, user=user).exists():
                 raise serializers.ValidationError({'chat': 'Вы не состоите в этом чате.'})
 

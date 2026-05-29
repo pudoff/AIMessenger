@@ -1,0 +1,380 @@
+/* Базовая обёртка */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 560px);
+  padding: 36px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  text-align: center;
+}
+
+.auth-card__heading h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+}
+
+.auth-card__heading p {
+  color: var(--text-soft);
+  margin-top: 8px;
+}
+
+/*  Форма  */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.auth-form label {
+  width: 100%;
+  text-align: center;
+}
+
+.auth-form label span {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid rgba(126, 137, 217, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: rgba(126, 137, 217, 0.5);
+  box-shadow: 0 0 0 3px rgba(126, 137, 217, 0.15);
+}
+
+/*  Поле пароля  */
+.password-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  padding-right: 48px;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 1.1rem;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password-btn:hover {
+  opacity: 1;
+}
+
+/*  Ошибка  */
+.form-error {
+  padding: 12px 14px;
+  color: #8b2c2c;
+  background: rgba(185, 109, 109, 0.12);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+/*  Кнопка отправки  */
+.auth-form__submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/*  Переключатель Вход / Регистрация  */
+.auth-form__footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--text-soft);
+}
+
+.auth-form__footer-link {
+  color: #5b6abf;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.auth-form__footer-link:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+/* Строка с именем и фамилией */
+.auth-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Чекбоксы соглашений */
+.auth-form__agreements {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.auth-form__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.auth-form__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.auth-form__checkbox a {
+  color: var(--accent-strong);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s;
+}
+
+.auth-form__checkbox a:hover {
+  border-bottom-color: currentColor;
+}
+
+/* Адаптив: на мобильных имя/фамилия в столбик */
+@media (max-width: 520px) {
+  .auth-form__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.auth-form__label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Состояние disabled для кнопки регистрации */
+.auth-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important; /* Отменяем ховер-эффект */
+  box-shadow: none;
+}
+
+.auth-form__submit:disabled:hover {
+  transform: none;
+}
+
+/* Ссылка-кнопка для возврата к форме */
+.auth-form__footer-link {
+  color: #5b6abf;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.auth-form__footer-link:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+button.auth-form__footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Ссылка "Забыли пароль?" */
+.auth-form__forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.auth-form__forgot-link:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+.auth-form__forgot-link:focus {
+  outline: none;
+  border-bottom-color: var(--accent-strong);
+}
+
+.auth-loader {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text-soft);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ────────────── Инлайн-ошибки валидации ────────────── */
+.auth-form__field-error {
+  display: block;
+  min-height: 20px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--danger);
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.auth-form__field-error:empty {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.auth-form__field-error--block {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(185, 109, 109, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid var(--danger);
+}
+
+.auth-form__field-success {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.auth-form__label--error input,
+.auth-form__label--error select,
+.auth-form__label--error textarea {
+  border-color: var(--danger);
+  background: rgba(185, 109, 109, 0.05);
+}
+
+.auth-form__checkbox--error {
+  color: var(--danger);
+}
+
+.auth-form__checkbox--error input[type="checkbox"] {
+  accent-color: var(--danger);
+}
+
+@keyframes field-error-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ────────────── Требования к паролю ────────────── */
+.password-requirements {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.password-requirement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s;
+}
+
+.password-requirement__icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(126, 137, 217, 0.15);
+  color: var(--accent-strong);
+  transition: background 0.2s, color 0.2s;
+}
+
+.password-requirement--met {
+  color: var(--success);
+}
+
+.password-requirement--met .password-requirement__icon {
+  background: var(--success);
+  color: white;
+}
+
+.password-requirement--error {
+  color: var(--danger);
+}
+
+.password-requirement--error .password-requirement__icon {
+  background: rgba(185, 109, 109, 0.2);
+  color: var(--danger);
+}
+
+/* Плавный скролл к ошибке */
+html {
+  scroll-behavior: smooth;
+}
