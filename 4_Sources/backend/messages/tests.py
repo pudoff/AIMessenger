@@ -4,12 +4,13 @@ from io import StringIO
 from django.core.management import call_command
 from django.urls import reverse
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from chats.models import Chat, ChatMember
 from users.models import User
-from .models import Message, MessageClassification, MessageEmbedding
+from .models import Message, MessageClassification, MessageEmbedding, MessageReadReceipt
 from .tasks import build_message_embedding_task, classify_message_task, fallback_embedding, text_hash
 
 
@@ -60,6 +61,38 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(results(response)), 2)
         self.assertTrue(all(item['chat'] == self.chat.id for item in results(response)))
+
+    def test_message_response_contains_read_state(self):
+        self.client.force_authenticate(self.member)
+
+        unread_response = self.client.get(reverse('message-list'), {'chat': self.chat.id})
+        MessageReadReceipt.objects.create(
+            chat=self.chat,
+            user=self.member,
+            last_read_message=self.message,
+            last_read_at=timezone.now(),
+        )
+        read_response = self.client.get(reverse('message-list'), {'chat': self.chat.id})
+
+        self.assertEqual(unread_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(results(unread_response)[0]['is_read'])
+        self.assertEqual(results(unread_response)[0]['read_by_count'], 0)
+        self.assertTrue(results(read_response)[0]['is_read'])
+
+    def test_sender_sees_message_read_by_other_member(self):
+        MessageReadReceipt.objects.create(
+            chat=self.chat,
+            user=self.member,
+            last_read_message=self.message,
+            last_read_at=timezone.now(),
+        )
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.get(reverse('message-detail', args=[self.message.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.json()['is_read'])
+        self.assertEqual(response.json()['read_by_count'], 1)
 
     def test_foreign_message_detail_is_hidden(self):
         self.client.force_authenticate(self.member)

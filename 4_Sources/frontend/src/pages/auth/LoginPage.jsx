@@ -1,5 +1,5 @@
 // src/pages/auth/LoginPage.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../components/Logo';
@@ -10,16 +10,32 @@ function LoginPage() {
   const [searchParams] = useSearchParams();
   const { login, loading, error, clearError } = useAuth();
   
-  const [form, setForm] = useState({ login: '', password: '' });
   const registrationStatus = searchParams.get('registration');
-  const notice = location.state?.notice ||
-    (registrationStatus === 'confirmed' ? 'Регистрация подтверждена. Теперь вы можете войти.' : '');
-  const pageError = location.state?.error ||
-    (registrationStatus === 'invalid' ? 'Ссылка подтверждения недействительна или уже была использована.' : '');
+  const [form, setForm] = useState({ login: '', password: '' });
+  const [notice, setNotice] = useState(
+    location.state?.notice ||
+    (registrationStatus === 'confirmed' ? 'Регистрация подтверждена. Теперь вы можете войти.' : '')
+  );
+  const [pageError, setPageError] = useState(
+    location.state?.error ||
+    (registrationStatus === 'invalid' ? 'Ссылка подтверждения недействительна или уже была использована.' : '')
+  );
+
+  useEffect(() => {
+    if (location.state?.notice || location.state?.error || registrationStatus) {
+      navigate('/login', { replace: true, state: null });
+    }
+  }, []);
+
+  const clearPageMessages = () => {
+    setNotice('');
+    setPageError('');
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     clearError();
+    clearPageMessages();
     
     const result = await login(form.login.trim(), form.password);
     
@@ -42,14 +58,15 @@ function LoginPage() {
           {pageError && <div className="form-error">{pageError}</div>}
 
           <label>
-            <span>Логин</span>
+            <span>Логин или e-mail</span>
             <input
               value={form.login}
               onChange={(e) => {
                 setForm(prev => ({ ...prev, login: e.target.value }));
                 clearError();
+                clearPageMessages();
               }}
-              placeholder="Введите логин"
+              placeholder="Введите логин или e-mail"
               disabled={loading}
               required
             />
@@ -64,6 +81,7 @@ function LoginPage() {
                 onChange={(e) => {
                   setForm(prev => ({ ...prev, password: e.target.value }));
                   clearError();
+                  clearPageMessages();
                 }}
                 placeholder="Введите пароль"
                 disabled={loading}

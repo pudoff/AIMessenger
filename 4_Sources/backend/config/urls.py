@@ -16,12 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 
 from chats.views import ChatMemberViewSet, ChatViewSet
 from messages.views import MessageViewSet, SemanticSearchView
-from users.views import AdminEmailBroadcastView, AdminEventsView, ConfirmRegistrationView, ContactViewSet, CurrentUserView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView, UserSearchViewSet, UserViewSet
+from users.views import AdminEmailBroadcastView, AdminEventsView, ConfirmRegistrationView, ContactViewSet, CurrentUserView, EmailOrUsernameAuthTokenView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView, UserSearchViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register('users', UserViewSet)
@@ -35,7 +34,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('api/auth/', include('rest_framework.urls')),
-    path('api/auth/token/', obtain_auth_token, name='api-token-auth'),
+    path('api/auth/token/', EmailOrUsernameAuthTokenView.as_view(), name='api-token-auth'),
     path('api/register/', RegisterView.as_view(), name='api-register'),
     path('api/register/confirm/<uidb64>/<token>/', ConfirmRegistrationView.as_view(), name='api-register-confirm'),
     path('api/password-reset/', PasswordResetRequestView.as_view(), name='api-password-reset'),

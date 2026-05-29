@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from chats.models import ChatMember
 from users.permissions import is_project_admin
-from .models import Message, MessageClassification
+from .models import Message, MessageClassification, MessageReadReceipt
 
 
 class MessageClassificationSerializer(serializers.ModelSerializer):
@@ -24,6 +24,8 @@ class MessageClassificationSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source='sender.username', read_only=True)
     classification = MessageClassificationSerializer(read_only=True)
+    is_read = serializers.SerializerMethodField()
+    read_by_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -37,10 +39,45 @@ class MessageSerializer(serializers.ModelSerializer):
             'task_status',
             'analyst_notes',
             'classification',
+            'is_read',
+            'read_by_count',
             'created_at',
             'updated_at',
         )
-        read_only_fields = ('id', 'sender', 'sender_username', 'classification', 'created_at', 'updated_at')
+        read_only_fields = (
+            'id',
+            'sender',
+            'sender_username',
+            'classification',
+            'is_read',
+            'read_by_count',
+            'created_at',
+            'updated_at',
+        )
+
+    def get_is_read(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return False
+
+        if obj.sender_id == user.id:
+            return MessageReadReceipt.objects.filter(
+                chat=obj.chat,
+                last_read_at__gte=obj.created_at,
+            ).exclude(user=user).exists()
+
+        return MessageReadReceipt.objects.filter(
+            chat=obj.chat,
+            user=user,
+            last_read_at__gte=obj.created_at,
+        ).exists()
+
+    def get_read_by_count(self, obj):
+        return MessageReadReceipt.objects.filter(
+            chat=obj.chat,
+            last_read_at__gte=obj.created_at,
+        ).exclude(user=obj.sender).count()
 
     def validate(self, attrs):
         request = self.context.get('request')

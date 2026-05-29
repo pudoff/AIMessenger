@@ -250,6 +250,22 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()['token'], Token.objects.get(user=user).key)
 
+    def test_user_can_login_with_email_token_endpoint(self):
+        user = User.objects.create_user(
+            username='demo',
+            email='demo@example.com',
+            password='StrongPassword123',
+        )
+
+        response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'demo@example.com', 'password': 'StrongPassword123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['token'], Token.objects.get(user=user).key)
+
     def test_me_accepts_token_authentication(self):
         user = User.objects.create_user(username='demo', password='StrongPassword123')
         token = Token.objects.create(user=user)

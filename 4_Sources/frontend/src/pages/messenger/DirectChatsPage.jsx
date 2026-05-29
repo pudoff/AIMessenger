@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { messagesAPI } from '../../api/chats';
+import { chatsAPI, messagesAPI } from '../../api/chats';
 import { request as apiRequest } from '../../api/client';
 import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatHeader from '../../components/chat/ChatHeader';
 import ChatList from '../../components/chat/ChatList';
 import ChatRoom from '../../components/chat/ChatRoom';
+import SectionHeader from '../../components/SectionHeader';
+import { useUnread } from '../../context/UnreadContext';
 
 // Получение текущего пользователя
 const getCurrentUser = async () => {
@@ -35,6 +37,9 @@ const formatChat = (c, myId) => {
     chat_type: c.chat_type,
     members,
     last_message: c.last_message,
+    unread_count: c.unread_count,
+    last_read_message: c.last_read_message,
+    last_read_at: c.last_read_at,
     other_user: other?.user
   };
 };
@@ -52,13 +57,19 @@ const formatMessage = (m, myId) => ({
   message_type: m.message_type,
   task_status: m.task_status,
   classification: m.classification,
-  tag: m.classification?.label || m.message_type
+  tag: m.classification?.label || m.message_type,
+  readStatus: m.isOptimistic ? 'sent' : (m.is_read ? 'read' : 'sent'),
 });
 
 export default function DirectChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const {
+    decorateChatsWithUnread,
+    markChatRead,
+    registerOutgoingMessage,
+  } = useUnread();
 
   const queryParams = new URLSearchParams(location.search);
   const tabFromQuery = queryParams.get('tab');
@@ -158,8 +169,14 @@ export default function DirectChatsPage() {
             return new Date(bTime) - new Date(aTime);
           });
 
-        setChats(formattedChats);
-        setChatMeta(formattedChats.reduce((meta, chat) => {
+        const unreadChats = decorateChatsWithUnread(
+          'direct',
+          formattedChats,
+          { activeChatId: chatId, currentUserId: myId },
+        );
+
+        setChats(unreadChats);
+        setChatMeta(unreadChats.reduce((meta, chat) => {
           meta[chat.id] = {
             lastMessageId: chat.lastMessageId,
             hasUnread: chat.hasUnread,
@@ -185,7 +202,7 @@ export default function DirectChatsPage() {
     return () => {
       if (chatPollRef.current) clearInterval(chatPollRef.current);
     };
-  }, [myId, chatId]);
+  }, [myId, chatId, decorateChatsWithUnread]);
 
   // Загрузка сообщений для выбранного чата с опросом
   useEffect(() => {
@@ -212,6 +229,18 @@ export default function DirectChatsPage() {
         ].sort((a, b) => new Date(a.createdAtRaw).getTime() - new Date(b.createdAtRaw).getTime());
 
         setMessages(mergedMessages);
+        const lastMessage = mergedMessages[mergedMessages.length - 1];
+        if (lastMessage?.id) {
+          chatsAPI.markRead(chatId, lastMessage.id).catch((e) => {
+            console.error('Не удалось отметить личный чат прочитанным:', e);
+          });
+          markChatRead('direct', chatId, lastMessage.id);
+          setChats((prev) => prev.map((chat) => (
+            String(chat.id) === String(chatId)
+              ? { ...chat, hasUnread: false, unreadCount: 0 }
+              : chat
+          )));
+        }
         setMessageError(null);
       } catch (e) {
         console.error('Ошибка загрузки сообщений:', e);
@@ -231,11 +260,12 @@ export default function DirectChatsPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [chatId, myId]);
+  }, [chatId, myId, markChatRead]);
 
   useEffect(() => {
     if (!chatId) return;
 
+    markChatRead('direct', chatId);
     setChatMeta((prev) => ({
       ...prev,
       [chatId]: {
@@ -246,10 +276,10 @@ export default function DirectChatsPage() {
     }));
     setChats((prev) => prev.map((chat) => (
       String(chat.id) === String(chatId)
-        ? { ...chat, hasUnread: false, isNewChat: false }
+        ? { ...chat, hasUnread: false, isNewChat: false, unreadCount: 0 }
         : chat
     )));
-  }, [chatId]);
+  }, [chatId, markChatRead]);
 
   // Отправка сообщения
   const handleSend = async (text) => {
@@ -275,11 +305,13 @@ export default function DirectChatsPage() {
       optimisticCreatedAt,
       created_at: optimisticCreatedAt,
       tag: 'default',
+      readStatus: 'sent',
     };
 
     // Оптимистичное обновление UI
     setMessages(prev => [...prev, optimisticMessage]);
     setPendingMessages(prev => [...prev, optimisticMessage]);
+    registerOutgoingMessage('direct', chatId, tempId);
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
@@ -296,6 +328,7 @@ export default function DirectChatsPage() {
 
       if (res) {
         setPendingMessages(prev => prev.filter((pending) => pending.id !== tempId));
+        registerOutgoingMessage('direct', chatId, res.id);
 
         // Заменить оптимистичное сообщение на реальное
         setMessages(prev =>
@@ -314,7 +347,11 @@ export default function DirectChatsPage() {
             const bTime = b.last_message?.created_at || 0;
             return new Date(bTime) - new Date(aTime);
           });
-        setChats(formattedChats);
+        setChats(decorateChatsWithUnread(
+          'direct',
+          formattedChats,
+          { activeChatId: chatId, currentUserId: myId },
+        ));
       }
     } catch (e) {
       console.error('Ошибка отправки сообщения:', e);
@@ -330,6 +367,10 @@ export default function DirectChatsPage() {
   const handleSelectChat = (id) => {
     setLastSelectedChatId(String(id));
     localStorage.setItem('last_direct_chat_id', String(id));
+    chatsAPI.markRead(id).catch((e) => {
+      console.error('Не удалось отметить личный чат прочитанным:', e);
+    });
+    markChatRead('direct', id);
     setChatMeta((prev) => ({
       ...prev,
       [id]: {

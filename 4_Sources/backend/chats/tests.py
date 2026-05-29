@@ -2,6 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from messages.models import Message, MessageReadReceipt
 from users.models import User
 from .models import Chat, ChatMember
 
@@ -155,6 +156,51 @@ class ChatAccessTests(APITestCase):
         self.assertEqual(update_response.status_code, status.HTTP_200_OK)
         self.foreign_chat.refresh_from_db()
         self.assertEqual(self.foreign_chat.title, 'Changed by role admin')
+
+    def test_chat_list_returns_unread_count(self):
+        Message.objects.create(chat=self.chat, sender=self.owner, text='Unread for member')
+        Message.objects.create(chat=self.chat, sender=self.member, text='Own message is not unread')
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('chat-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = results(response)[0]
+        self.assertEqual(item['unread_count'], 1)
+        self.assertIsNone(item['last_read_message'])
+        self.assertIsNone(item['last_read_at'])
+
+    def test_mark_read_endpoint_resets_unread_count(self):
+        first_message = Message.objects.create(chat=self.chat, sender=self.owner, text='Unread')
+        self.client.force_authenticate(self.member)
+
+        mark_response = self.client.post(reverse('chat-mark-read', args=[self.chat.id]), format='json')
+        list_response = self.client.get(reverse('chat-list'))
+
+        self.assertEqual(mark_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mark_response.json()['chat'], self.chat.id)
+        self.assertEqual(mark_response.json()['last_read_message'], first_message.id)
+        self.assertEqual(results(list_response)[0]['unread_count'], 0)
+        self.assertTrue(
+            MessageReadReceipt.objects.filter(
+                chat=self.chat,
+                user=self.member,
+                last_read_message=first_message,
+            ).exists()
+        )
+
+    def test_mark_read_rejects_message_from_another_chat(self):
+        foreign_message = Message.objects.create(chat=self.foreign_chat, sender=self.outsider, text='Hidden')
+        self.client.force_authenticate(self.member)
+
+        response = self.client.post(
+            reverse('chat-mark-read', args=[self.chat.id]),
+            {'last_message_id': foreign_message.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('last_message_id', response.json()['field_errors'])
 
 
 class ChatMemberAccessTests(APITestCase):

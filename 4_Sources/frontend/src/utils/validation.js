@@ -79,9 +79,59 @@ export const parseBackendErrors = (errors) => {
     if (['detail', 'code', 'field_errors'].includes(field)) continue;
     // DRF возвращает массив строк: ["Ошибка 1", "Ошибка 2"]
     const frontendField = fieldMap[field] || field;
-    mapped[frontendField] = Array.isArray(messages) ? messages.join('. ') : messages;
+    mapped[frontendField] = Array.isArray(messages)
+      ? messages.map(normalizeBackendMessage).join('. ')
+      : normalizeBackendMessage(messages);
   }
   return mapped;
+};
+
+export const normalizeBackendMessage = (message) => {
+  if (!message) return '';
+
+  const text = String(message).trim();
+  const lower = text.toLowerCase();
+
+  if (lower.includes('email_delivery_failed') || lower.includes('не удалось отправить письмо')) {
+    return 'Не удалось отправить письмо подтверждения. Попробуйте позже или обратитесь к администратору.';
+  }
+  if (lower.includes('validation error') || lower.includes('ошибка валидации')) {
+    return 'Ошибка валидации. Проверьте выделенные поля.';
+  }
+  if (lower.includes('request failed') || lower.includes('ошибка запроса')) {
+    return 'Ошибка запроса. Попробуйте еще раз.';
+  }
+  if (lower.includes('unable to log in') || lower.includes('provided credentials')) {
+    return 'Неверный логин или пароль.';
+  }
+  if (lower.includes('too common')) {
+    return 'Пароль слишком простой.';
+  }
+  if (lower.includes('entirely numeric')) {
+    return 'Пароль не должен состоять только из цифр.';
+  }
+  if (lower.includes('too short')) {
+    return 'Пароль слишком короткий.';
+  }
+  if (lower.includes('too similar')) {
+    return 'Пароль слишком похож на личные данные.';
+  }
+
+  return text;
+};
+
+export const getFirstBackendError = (data) => {
+  const fieldErrors = parseBackendErrors(data);
+  const fieldMessage = Object.entries(fieldErrors)
+    .find(([field, message]) => field !== '_global' && message)?.[1];
+
+  return (
+    fieldErrors._global ||
+    fieldMessage ||
+    normalizeBackendMessage(data?.detail) ||
+    normalizeBackendMessage(data?.non_field_errors?.[0]) ||
+    'Ошибка запроса. Попробуйте еще раз.'
+  );
 };
 
 // Требования к паролю для отображения подсказок

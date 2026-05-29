@@ -32,4 +32,119 @@
 @import './pages/admin/AdminPage.css';
 @import './pages/messenger/GroupChatPage.css';
 
+.shell-nav__item {
+  position: relative;
+}
+
+.shell-nav__unread-dot {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  box-shadow: 0 0 0 4px rgba(126, 137, 217, 0.16);
+}
+
+.chat-card {
+  position: relative;
+}
+
+.chat-card--unread {
+  border-color: rgba(126, 137, 217, 0.44);
+  background: linear-gradient(180deg, rgba(126, 137, 217, 0.12), rgba(255, 255, 255, 0.92));
+}
+
+.chat-card--unread h3,
+.chat-card--unread p {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.chat-card__unread-count {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(42, 68, 127, 0.2);
+}
+
+.composer {
+  position: relative;
+}
+
+.composer__emoji-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.icon-button--active {
+  background: rgba(126, 137, 217, 0.2);
+}
+
+.emoji-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  z-index: 20;
+  width: 260px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 50px rgba(42, 68, 127, 0.18);
+}
+
+.emoji-picker__item {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  transition: 150ms ease;
+}
+
+.emoji-picker__item:hover {
+  background: rgba(126, 137, 217, 0.12);
+  transform: translateY(-1px);
+}
+
+.message__bubble {
+  position: relative;
+}
+
+.message__status {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.08em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.message__bubble:not(.message__bubble--mine) .message__status {
+  color: var(--accent-strong);
+}
+
+.message__status--error {
+  letter-spacing: 0;
+  color: var(--danger);
+}
 

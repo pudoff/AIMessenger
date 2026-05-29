@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from config import ml_tasks
 from users.permissions import is_project_admin
-from .models import Message
+from .models import Message, MessageReadReceipt
 from .permissions import CanWriteMessageInChat, IsMessageChatMember
 from .serializers import MessageSerializer
 from .tasks import enqueue_message_ml_tasks, fallback_embedding
@@ -41,6 +41,14 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         message = serializer.save(sender=self.request.user)
+        MessageReadReceipt.objects.update_or_create(
+            chat=message.chat,
+            user=self.request.user,
+            defaults={
+                'last_read_message': message,
+                'last_read_at': timezone.now(),
+            },
+        )
         enqueue_message_ml_tasks(message.id)
 
     def perform_update(self, serializer):

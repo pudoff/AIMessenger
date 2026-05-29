@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Message, MessageClassification
+from .models import Message, MessageClassification, MessageReadReceipt
 
 
 @admin.register(Message)
@@ -19,3 +19,12 @@ class MessageClassificationAdmin(admin.ModelAdmin):
     search_fields = ('message__text', 'label')
     autocomplete_fields = ('message',)
     readonly_fields = ('classified_at',)
+
+
+@admin.register(MessageReadReceipt)
+class MessageReadReceiptAdmin(admin.ModelAdmin):
+    list_display = ('chat', 'user', 'last_read_message', 'last_read_at')
+    list_filter = ('last_read_at',)
+    search_fields = ('chat__title', 'user__username', 'last_read_message__text')
+    autocomplete_fields = ('chat', 'user', 'last_read_message')
+    readonly_fields = ('last_read_at',)

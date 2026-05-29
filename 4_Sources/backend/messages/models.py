@@ -118,3 +118,37 @@ class MessageEmbedding(models.Model):
 
     def __str__(self):
         return f'{self.message_id}: {self.model_name}'
+
+
+class MessageReadReceipt(models.Model):
+    chat = models.ForeignKey(
+        'chats.Chat',
+        on_delete=models.CASCADE,
+        related_name='read_receipts',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='message_read_receipts',
+    )
+    last_read_message = models.ForeignKey(
+        Message,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='read_receipts',
+    )
+    last_read_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-last_read_at']
+        constraints = [
+            models.UniqueConstraint(fields=['chat', 'user'], name='unique_chat_read_receipt'),
+        ]
+        indexes = [
+            models.Index(fields=['chat', 'user']),
+            models.Index(fields=['user', 'last_read_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user} read {self.chat} at {self.last_read_at:%Y-%m-%d %H:%M:%S}'

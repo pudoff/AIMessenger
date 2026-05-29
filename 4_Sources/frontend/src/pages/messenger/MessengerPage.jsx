@@ -4,6 +4,7 @@ import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatList from '../../components/chat/ChatList';
 import SectionHeader from '../../components/SectionHeader';
 import { request as apiRequest } from '../../api/client';
+import { useUnread } from '../../context/UnreadContext';
 
 // Получение текущего пользователя
 const getCurrentUser = async () => {
@@ -32,6 +33,9 @@ const formatDirectChat = (c, myId) => {
     initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
     chat_type: 'direct',
     last_message: c.last_message,
+    unread_count: c.unread_count,
+    last_read_message: c.last_read_message,
+    last_read_at: c.last_read_at,
   };
 };
 
@@ -44,6 +48,10 @@ const formatGroup = (g) => ({
   preview: g.last_message?.text || 'Нет сообщений',
   position: `Участников: ${g.members_count || 0}`,
   chat_type: 'group',
+  last_message: g.last_message,
+  unread_count: g.unread_count,
+  last_read_message: g.last_read_message,
+  last_read_at: g.last_read_at,
 });
 
 // Форматирование сообщества
@@ -56,10 +64,15 @@ const formatCommunity = (c) => ({
   preview: 'Сообщество',
   position: `${c.members_count || 0} участников`,
   chat_type: 'corporate',
+  last_message: c.last_message,
+  unread_count: c.unread_count,
+  last_read_message: c.last_read_message,
+  last_read_at: c.last_read_at,
 });
 
 function MessengerPage() {
   const navigate = useNavigate();
+  const { decorateChatsWithUnread } = useUnread();
   const [searchQuery, setSearchQuery] = useState('');
   const [allChats, setAllChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,9 +110,21 @@ function MessengerPage() {
           apiRequest('/chats/?type=corporate'),
         ]);
 
-        const directList = (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId));
-        const groupList = (groupRes?.results || groupRes || []).map(formatGroup);
-        const corporateList = (corporateRes?.results || corporateRes || []).map(formatCommunity);
+        const directList = decorateChatsWithUnread(
+          'direct',
+          (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId)),
+          { currentUserId: myId },
+        );
+        const groupList = decorateChatsWithUnread(
+          'group',
+          (groupRes?.results || groupRes || []).map(formatGroup),
+          { currentUserId: myId },
+        );
+        const corporateList = decorateChatsWithUnread(
+          'corporate',
+          (corporateRes?.results || corporateRes || []).map(formatCommunity),
+          { currentUserId: myId },
+        );
 
         const all = [...directList, ...groupList, ...corporateList].sort((a, b) => {
           const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
@@ -122,7 +147,7 @@ function MessengerPage() {
     // Опрос для обновления каждые 5 секунд
     const pollInterval = setInterval(fetchAllChats, 5000);
     return () => clearInterval(pollInterval);
-  }, [myId]);
+  }, [myId, decorateChatsWithUnread]);
 
   // Фильтрация по поиску
   const filteredChats = allChats.filter(chat => {

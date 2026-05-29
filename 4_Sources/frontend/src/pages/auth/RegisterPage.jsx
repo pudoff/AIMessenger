@@ -8,17 +8,58 @@ import { validateField, parseBackendErrors, PASSWORD_REQUIREMENTS } from '../../
 import Logo from '../../components/Logo';
 import LegalModal from '../../components/auth/LegalModal';
 
+const REGISTER_DRAFT_KEY = 'register_form_draft';
+
+const emptyForm = {
+  firstName: '',
+  lastName: '',
+  birthDate: '',
+  username: '',
+  phone: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  accepted_user_agreement: false,
+  accepted_privacy_policy: false
+};
+
+const loadRegisterDraft = () => {
+  try {
+    const savedDraft = JSON.parse(sessionStorage.getItem(REGISTER_DRAFT_KEY) || '{}');
+    return {
+      ...emptyForm,
+      ...savedDraft,
+      password: '',
+      confirmPassword: '',
+    };
+  } catch {
+    return emptyForm;
+  }
+};
+
+const getCurrentFormErrors = (formValues, extraErrors = {}) => {
+  const errors = { ...extraErrors };
+
+  for (const [name, value] of Object.entries(formValues)) {
+    const err = validateField(name, value, formValues);
+
+    if (err) {
+      errors[name] = err;
+    } else {
+      delete errors[name];
+    }
+  }
+
+  return errors;
+};
+
 function RegisterPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { register, loading, error: globalError, clearError } = useAuth();
   const registrationStatus = searchParams.get('registration');
 
-  const [form, setForm] = useState({
-    firstName: '', lastName: '', birthDate: '', username: '',
-    phone: '', email: '', password: '', confirmPassword: '',
-    accepted_user_agreement: false, accepted_privacy_policy: false
-  });
+  const [form, setForm] = useState(loadRegisterDraft);
   
   const [fieldErrors, setFieldErrors] = useState({}); //  Ошибки по полям
   const [serverErrors, setServerErrors] = useState({});
@@ -26,6 +67,10 @@ function RegisterPage() {
   const [activeModal, setActiveModal] = useState(null);
   const [submitError, setSubmitError] = useState('');
   
+  useEffect(() => {
+    const { password, confirmPassword, ...draft } = form;
+    sessionStorage.setItem(REGISTER_DRAFT_KEY, JSON.stringify(draft));
+  }, [form]);
 
   //  Валидация поля при изменении (только если поле уже "трогали")
   useEffect(() => {
@@ -47,6 +92,11 @@ function RegisterPage() {
       delete next[name];
       delete next._global;
       if (name === 'phone') delete next.phone;
+      if (name === 'password') {
+        delete next.password;
+        delete next.confirmPassword;
+      }
+      if (name === 'confirmPassword') delete next.confirmPassword;
       return next;
     });
     
@@ -74,17 +124,12 @@ function RegisterPage() {
     
     //  Валидируем ВСЕ поля перед отправкой
     const newTouched = {};
-    const newErrors = {};
-    let hasError = false;
-    
     for (const field of Object.keys(form)) {
       newTouched[field] = true;
-      const err = validateField(field, form[field], form);
-      if (err) {
-        newErrors[field] = err;
-        hasError = true;
-      }
     }
+
+    const newErrors = getCurrentFormErrors(form);
+    const hasError = Object.keys(newErrors).length > 0;
     
     setTouched(newTouched);
     setFieldErrors(newErrors);
@@ -111,6 +156,7 @@ function RegisterPage() {
     const result = await register(payload);
     
     if (result.success) {
+      sessionStorage.removeItem(REGISTER_DRAFT_KEY);
       navigate('/login', {
         replace: true,
         state: {
@@ -118,6 +164,8 @@ function RegisterPage() {
         },
       });
     } else {
+      setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+
       const backendErrors = parseBackendErrors(result.errors || {});
       const existingAccountError = [backendErrors.username, backendErrors.email]
         .find((message) => typeof message === 'string' && message.toLowerCase().includes('существ'));
@@ -154,14 +202,8 @@ function RegisterPage() {
     }
   };
 
-  //  Форма валидна, если нет ошибок в тронутых полях и все обязательные заполнены
-  const isFormValid = 
-    !Object.values(fieldErrors).some(err => err) &&
-    form.firstName.trim() && form.lastName.trim() && form.birthDate &&
-    form.username.trim() && form.phone.length === 10 &&
-    form.email.trim() && form.password && form.confirmPassword &&
-    form.password === form.confirmPassword &&
-    form.accepted_user_agreement && form.accepted_privacy_policy;
+  const currentFormErrors = getCurrentFormErrors(form, serverErrors);
+  const isFormValid = Object.keys(currentFormErrors).length === 0;
 
   // ─────────────────────────────────────────────────────────
   //  Экран успеха

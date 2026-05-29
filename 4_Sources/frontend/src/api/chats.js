@@ -12,6 +12,11 @@ export const chatsAPI = {
   
   // Открыть/создать личный чат с контактом
   openDirect: (contactId) => request(`/contacts/${contactId}/direct-chat/`, { method: 'POST' }),
+
+  markRead: (chatId, lastMessageId = null) => request(`/chats/${chatId}/mark-read/`, {
+    method: 'POST',
+    body: JSON.stringify(lastMessageId ? { last_message_id: lastMessageId } : {}),
+  }),
 };
 
 export const messagesAPI = {

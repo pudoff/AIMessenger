@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
@@ -12,6 +13,47 @@ class PublicUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role')
         read_only_fields = fields
+
+
+class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
+    username = serializers.CharField(label='Логин или e-mail', write_only=True)
+    password = serializers.CharField(
+        label='Пароль',
+        style={'input_type': 'password'},
+        trim_whitespace=False,
+        write_only=True,
+    )
+
+    def validate(self, attrs):
+        identifier = attrs.get('username')
+        password = attrs.get('password')
+
+        if not identifier or not password:
+            raise serializers.ValidationError(
+                'Введите логин или e-mail и пароль.',
+                code='authorization',
+            )
+
+        username = identifier
+        if '@' in identifier:
+            user_by_email = User.objects.filter(email__iexact=identifier).first()
+            if user_by_email:
+                username = user_by_email.get_username()
+
+        user = authenticate(
+            request=self.context.get('request'),
+            username=username,
+            password=password,
+        )
+
+        if not user:
+            raise serializers.ValidationError(
+                'Невозможно войти с предоставленными учетными данными.',
+                code='authorization',
+            )
+
+        attrs['user'] = user
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):

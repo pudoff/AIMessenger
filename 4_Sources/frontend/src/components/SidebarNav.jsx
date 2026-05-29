@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
+import { useUnread } from '../context/UnreadContext';
 
-// Импортируем иконки из assets
 import chatIcon from '../assets/icons_final/01_chat.png';
 import directIcon from '../assets/icons_final/09_users.png';
 import groupsIcon from '../assets/icons_final/09_users.png';
@@ -12,26 +12,25 @@ import assistantIcon from '../assets/icons_final/04_assistant.png';
 import settingsIcon from '../assets/icons_final/06_settings.png';
 
 const items = [
-  { to: '/app', label: 'Чаты', icon: chatIcon },
-  { to: '/app/direct', label: 'Личные сообщения', icon: directIcon },
-  { to: '/app/groups', label: 'Корпоративные чаты', icon: groupsIcon },
+  { to: '/app', label: 'Чаты', icon: chatIcon, unreadKey: 'all' },
+  { to: '/app/direct', label: 'Личные сообщения', icon: directIcon, unreadKey: 'direct' },
+  { to: '/app/groups', label: 'Корпоративные чаты', icon: groupsIcon, unreadKey: 'groups' },
   { to: '/app/communities', label: 'Сообщества', icon: communitiesIcon },
   { to: '/app/contacts', label: 'Контакты', icon: contactsIcon },
   { to: '/app/assistant', label: 'AI-ассистент', icon: assistantIcon },
-  { label: 'Настройки', icon: settingsIcon, disabled: true }
+  { label: 'Настройки', icon: settingsIcon, disabled: true },
 ];
 
 function SidebarNav() {
   const { currentUser, logout } = useAuth();
+  const { getSectionUnreadCount } = useUnread();
   const navigate = useNavigate();
 
-  const fullName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim() 
-                 || currentUser?.username || 'Пользователь';
-  
-  const initials = (fullName.slice(0, 2) || '??').toUpperCase();
+  const fullName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim()
+    || currentUser?.username
+    || 'Пользователь';
 
-  const roleLabels = { user: 'Сотрудник', admin: 'Администратор' };
-  const displayRole = roleLabels[currentUser?.role] || '';
+  const initials = (fullName.slice(0, 2) || '??').toUpperCase();
 
   return (
     <aside className="shell-sidebar">
@@ -47,15 +46,29 @@ function SidebarNav() {
       </button>
 
       <nav className="shell-nav">
-        {items.map((item) =>
-          item.disabled ? (
-            <div key={item.label} className="shell-nav__item">
-              <span className="shell-nav__icon" aria-hidden="true">
-                <img src={item.icon} alt={item.label} style={{ width: '100%', height: 'auto' }} />
-              </span>
-              <span>{item.label}</span>
-            </div>
-          ) : (
+        {items.map((item) => {
+          const unreadCount = item.unreadKey ? getSectionUnreadCount(item.unreadKey) : 0;
+          const unreadIndicator = unreadCount > 0 && (
+            <span
+              className="shell-nav__unread-dot"
+              aria-label={`Непрочитанных сообщений: ${unreadCount}`}
+              title={`Непрочитанных сообщений: ${unreadCount}`}
+            />
+          );
+
+          if (item.disabled) {
+            return (
+              <div key={item.label} className="shell-nav__item">
+                <span className="shell-nav__icon" aria-hidden="true">
+                  <img src={item.icon} alt="" />
+                </span>
+                <span>{item.label}</span>
+                {unreadIndicator}
+              </div>
+            );
+          }
+
+          return (
             <NavLink
               key={`${item.label}-${item.to}`}
               to={item.to}
@@ -65,12 +78,13 @@ function SidebarNav() {
               }
             >
               <span className="shell-nav__icon" aria-hidden="true">
-                <img src={item.icon} alt={item.label} style={{ width: '100%', height: 'auto' }} />
+                <img src={item.icon} alt="" />
               </span>
               <span>{item.label}</span>
+              {unreadIndicator}
             </NavLink>
-          )
-        )}
+          );
+        })}
       </nav>
 
       <div className="profile-card">
@@ -79,7 +93,6 @@ function SidebarNav() {
         </div>
         <div className="profile-card__text">
           <strong>{fullName}</strong>
-          {/* <span>{displayRole}</span> */}
         </div>
       </div>
 

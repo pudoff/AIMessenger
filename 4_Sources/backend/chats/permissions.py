@@ -26,6 +26,8 @@ class IsChatOwnerOrAdminForUnsafe(permissions.BasePermission):
     """Restrict chat/member mutations to chat owner/admin or project admin."""
 
     def has_permission(self, request, view):
+        if getattr(view, 'action', None) == 'mark_read':
+            return True
         if request.method in permissions.SAFE_METHODS:
             return True
         if is_project_admin(request.user):
@@ -42,6 +44,8 @@ class IsChatOwnerOrAdminForUnsafe(permissions.BasePermission):
         ).exists()
 
     def has_object_permission(self, request, view, obj):
+        if getattr(view, 'action', None) == 'mark_read':
+            return True
         if request.method in permissions.SAFE_METHODS:
             return True
         if is_project_admin(request.user):

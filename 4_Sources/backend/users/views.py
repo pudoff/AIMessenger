@@ -14,6 +14,8 @@ from django.utils.html import format_html
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils import timezone
 from rest_framework import generics, views, viewsets
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.permissions import AllowAny
@@ -24,7 +26,7 @@ from chats.models import Chat, ChatMember
 from messages.models import Message
 from .models import Contact, User
 from .permissions import IsProjectAdminUser, is_project_admin
-from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
+from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, EmailOrUsernameAuthTokenSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
 from .tokens import email_confirmation_token
 
 
@@ -35,6 +37,19 @@ class EmailDeliveryError(APIException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     default_detail = 'Не удалось отправить письмо. Проверьте настройки почты или попробуйте позже.'
     default_code = 'email_delivery_failed'
+
+
+class EmailOrUsernameAuthTokenView(ObtainAuthToken):
+    serializer_class = EmailOrUsernameAuthTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        token, _ = Token.objects.get_or_create(user=serializer.validated_data['user'])
+        return Response({'token': token.key})
 
 
 def frontend_url(path):

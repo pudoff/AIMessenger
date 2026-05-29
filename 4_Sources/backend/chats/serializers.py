@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from messages.models import MessageReadReceipt
 from users.models import User
 from users.permissions import is_project_admin
 from users.serializers import PublicUserSerializer
@@ -38,6 +39,9 @@ class ChatSerializer(serializers.ModelSerializer):
     )
     direct_user_id = serializers.IntegerField(write_only=True, required=False)
     last_message = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+    last_read_message = serializers.SerializerMethodField()
+    last_read_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Chat
@@ -52,11 +56,44 @@ class ChatSerializer(serializers.ModelSerializer):
             'participant_ids',
             'direct_user_id',
             'last_message',
+            'unread_count',
+            'last_read_message',
+            'last_read_at',
             'created_at',
             'updated_at',
         )
-        read_only_fields = ('id', 'created_by', 'members_count', 'members', 'last_message', 'created_at', 'updated_at')
+        read_only_fields = (
+            'id',
+            'created_by',
+            'members_count',
+            'members',
+            'last_message',
+            'unread_count',
+            'last_read_message',
+            'last_read_at',
+            'created_at',
+            'updated_at',
+        )
         extra_kwargs = {'title': {'required': False}}
+
+    def _get_receipt(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return None
+
+        if not hasattr(self, '_receipt_cache'):
+            self._receipt_cache = {}
+
+        cache_key = (obj.id, user.id)
+        if cache_key not in self._receipt_cache:
+            self._receipt_cache[cache_key] = (
+                MessageReadReceipt.objects
+                .filter(chat=obj, user=user)
+                .select_related('last_read_message')
+                .first()
+            )
+        return self._receipt_cache[cache_key]
 
     def get_last_message(self, obj):
         prefetched_messages = getattr(obj, 'last_prefetched_messages', None)
@@ -75,6 +112,26 @@ class ChatSerializer(serializers.ModelSerializer):
             'task_status': message.task_status,
             'created_at': message.created_at,
         }
+
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return 0
+
+        queryset = obj.messages.exclude(sender=user)
+        receipt = self._get_receipt(obj)
+        if receipt and receipt.last_read_at:
+            queryset = queryset.filter(created_at__gt=receipt.last_read_at)
+        return queryset.count()
+
+    def get_last_read_message(self, obj):
+        receipt = self._get_receipt(obj)
+        return receipt.last_read_message_id if receipt else None
+
+    def get_last_read_at(self, obj):
+        receipt = self._get_receipt(obj)
+        return receipt.last_read_at if receipt else None
 
     def validate(self, attrs):
         chat_type = attrs.get('chat_type', getattr(self.instance, 'chat_type', Chat.ChatType.GROUP))

@@ -1,4 +1,5 @@
 import { API_BASE } from './config';
+import { getFirstBackendError } from '../utils/validation';
 
 const getAuthToken = () => localStorage.getItem('auth_token');
 const clearAuthToken = () => localStorage.removeItem('auth_token');
@@ -42,9 +43,7 @@ export const request = async (endpoint, options = {}) => {
       clearAuthToken();
     }
 
-    const error = new Error(
-      data?.detail || data?.non_field_errors?.[0] || 'Ошибка запроса'
-    );
+    const error = new Error(getFirstBackendError(data));
     error.status = response.status;
     error.data = data;
     throw error;

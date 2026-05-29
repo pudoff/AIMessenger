@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       return { success: true, data };
     } catch (err) {
-      setError(err.message);
+      setError(null);
       return { success: false, message: err.message, errors: err.data };
     } finally {
       setLoading(false);
