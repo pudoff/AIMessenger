@@ -18,7 +18,7 @@ const items = [
   { to: '/app/communities', label: 'Сообщества', icon: communitiesIcon },
   { to: '/app/contacts', label: 'Контакты', icon: contactsIcon },
   { to: '/app/assistant', label: 'AI-ассистент', icon: assistantIcon },
-  { label: 'Настройки', icon: settingsIcon, disabled: true },
+  { to: '/app/settings', label: 'Настройки', icon: settingsIcon },
 ];
 
 function SidebarNav() {

@@ -519,6 +519,12 @@ docker compose -f docker-compose.local.yml up -d postgres redis ml-worker backen
 docker compose -f docker-compose.local.yml logs -f backend-worker ml-worker
 ```
 
+`ml-worker` is required for production-like classification and semantic search embeddings. Backend tasks are pinned to the `backend` queue, while ML tasks `ml_service.classify_message` and `ml_service.embed_text` are pinned to the `ml` queue. If the ML worker is unavailable, the backend worker stores a fallback classification with `source = "fallback"` instead of leaving all messages as a regular/default message.
+
+Messages can include uploaded files via multipart `POST /api/messages/` with repeated `attachments` fields. The response includes an `attachments` array with `url`, `original_name`, `content_type`, and `size`.
+
+Current user settings are available at `/api/me/`: `PATCH` supports `email`, `phone_number`, `avatar`, and password change via `current_password` + `new_password`.
+
 Manual local worker command:
 
 ```powershell

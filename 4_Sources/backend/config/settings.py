@@ -156,6 +156,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -235,6 +237,8 @@ CELERY_TASK_DEFAULT_QUEUE = BACKEND_CELERY_QUEUE
 CELERY_TASK_ROUTES = {
     "messages.tasks.classify_message_task": {"queue": BACKEND_CELERY_QUEUE},
     "messages.tasks.build_message_embedding_task": {"queue": BACKEND_CELERY_QUEUE},
+    "ml_service.classify_message": {"queue": ML_CELERY_QUEUE},
+    "ml_service.embed_text": {"queue": ML_CELERY_QUEUE},
 }
 CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]

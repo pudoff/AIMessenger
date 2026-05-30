@@ -18,6 +18,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminChats from './pages/admin/AdminChats';
 import AdminBroadcast from './pages/admin/AdminBroadcast';
 import AssistantPage from './pages/assistant/AssistantPage';
+import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import { RequireAuth, RequireGuest, RequireRole } from './components/guards/RouteGuards';
@@ -76,6 +77,7 @@ function App() {
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="contacts/:contactId" element={<ContactsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* Админ */}

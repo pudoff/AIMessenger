@@ -7,22 +7,31 @@ _predictor = None
 
 def _mock_predict(text):
     lowered = (text or "").lower()
-    if "?" in lowered or any(word in lowered for word in ("как", "что", "когда", "почему", "зачем")):
+    question_words = (
+        "как", "что", "когда", "почему", "зачем", "где", "куда", "кто",
+        "which", "what", "when", "why", "how", "where", "who",
+    )
+    task_words = (
+        "сделай", "сделать", "нужно", "надо", "задача", "дедлайн", "подготовь",
+        "проверь", "исправь", "добавь", "todo", "task", "deadline", "please",
+    )
+
+    if "?" in lowered or any(word in lowered for word in question_words):
         label = "question"
-    elif any(word in lowered for word in ("сделай", "нужно", "задача", "дедлайн", "todo")):
+    elif any(word in lowered for word in task_words):
         label = "task"
     else:
-        label = "statement"
+        label = "default"
 
     return {
         "label": label,
-        "confidence": 0.6,
+        "confidence": 0.72,
         "probabilities": {
             "question": 0.0,
-            "statement": 0.0,
+            "default": 0.0,
             "task": 0.0,
             "offtopic": 0.0,
-            label: 0.6,
+            label: 0.72,
         },
     }
 

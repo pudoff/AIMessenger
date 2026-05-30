@@ -213,6 +213,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class CurrentUserSerializer(serializers.ModelSerializer):
+    current_password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -223,11 +227,54 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'last_name',
             'birth_date',
             'phone_number',
+            'avatar',
+            'avatar_url',
             'accepted_user_agreement',
             'accepted_privacy_policy',
             'role',
+            'current_password',
+            'new_password',
         )
-        read_only_fields = fields
+        read_only_fields = (
+            'id',
+            'username',
+            'accepted_user_agreement',
+            'accepted_privacy_policy',
+            'role',
+            'avatar_url',
+        )
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        if not obj.avatar:
+            return None
+        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+
+    def validate(self, attrs):
+        new_password = attrs.get('new_password')
+        current_password = attrs.get('current_password')
+        if new_password and not current_password:
+            raise serializers.ValidationError({'current_password': 'Введите текущий пароль.'})
+        if new_password and not self.instance.check_password(current_password):
+            raise serializers.ValidationError({'current_password': 'Текущий пароль указан неверно.'})
+        return attrs
+
+    def update(self, instance, validated_data):
+        new_password = validated_data.pop('new_password', None)
+        validated_data.pop('current_password', None)
+        avatar = validated_data.pop('avatar', serializers.empty)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if avatar is not serializers.empty:
+            if avatar in (None, '') and instance.avatar:
+                instance.avatar.delete(save=False)
+                instance.avatar = None
+            else:
+                instance.avatar = avatar
+        if new_password:
+            instance.set_password(new_password)
+        instance.save()
+        return instance
 
 
 class ContactSerializer(serializers.ModelSerializer):

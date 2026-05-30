@@ -6,8 +6,9 @@ const clearAuthToken = () => localStorage.removeItem('auth_token');
 
 const buildHeaders = (options = {}) => {
   const token = getAuthToken();
+  const isFormData = options.body instanceof FormData;
   return {
-    'Content-Type': 'application/json',
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Token ${token}` }),
     ...options.headers,
   };

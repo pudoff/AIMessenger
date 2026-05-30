@@ -347,9 +347,11 @@ class AuthApiTests(APITestCase):
                 'last_name': 'User',
                 'birth_date': '1995-05-04',
                 'phone_number': '+79990000001',
+                'avatar': None,
+                'avatar_url': None,
                 'accepted_user_agreement': True,
                 'accepted_privacy_policy': True,
-                'role': User.Role.USER,
+                'role': User.Role.USER.value,
             },
         )
 

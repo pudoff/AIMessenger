@@ -62,6 +62,8 @@ services:
     networks:
       - backend
     depends_on:
+      ml-worker:
+        condition: service_started
       redis:
         condition: service_healthy
       postgres:

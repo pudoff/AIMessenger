@@ -21,6 +21,21 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
         </div>
         <Tag value={tag} />
         <p>{message.text}</p>
+        {message.attachments?.length > 0 && (
+          <div className="message__attachments">
+            {message.attachments.map((attachment) => (
+              <a
+                key={attachment.id || attachment.url}
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="message__attachment"
+              >
+                {attachment.original_name || 'attachment'}
+              </a>
+            ))}
+          </div>
+        )}
         {readStatus && (
           <span
             className={`message__status message__status--${readStatus}`}

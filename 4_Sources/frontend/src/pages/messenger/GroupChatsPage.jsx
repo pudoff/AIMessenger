@@ -38,6 +38,7 @@ const formatMessage = (message, myId) => ({
   message_type: message.message_type,
   task_status: message.task_status,
   classification: message.classification,
+  attachments: message.attachments || [],
   tag: message.classification?.label || message.message_type,
   readStatus: message.isOptimistic ? 'sent' : (message.is_read ? 'read' : 'sent'),
 });
@@ -60,6 +61,9 @@ function GroupChatsPage() {
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [semanticResults, setSemanticResults] = useState([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [pendingMessages, setPendingMessages] = useState([]);
@@ -240,8 +244,8 @@ function GroupChatsPage() {
     }
   };
 
-  const handleSend = async (text) => {
-    if (!text.trim()) return;
+  const handleSend = async (text, files = []) => {
+    if (!text.trim() && files.length === 0) return;
     if (!chatId) {
       setMessageError('Чат не выбран.');
       return;
@@ -258,6 +262,7 @@ function GroupChatsPage() {
       author: 'Вы',
       time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
       text,
+      attachments: files.map((file) => ({ id: `${tempId}-${file.name}`, original_name: file.name })),
       isOptimistic: true,
       isOwn: true,
       optimisticCreatedAt,
@@ -273,13 +278,11 @@ function GroupChatsPage() {
 
     try {
       setIsSending(true);
-      const res = await apiRequest('/messages/', {
-        method: 'POST',
-        body: JSON.stringify({
-          chat: parseInt(chatId, 10),
-          text,
-          message_type: 'default',
-        }),
+      const res = await messagesAPI.send({
+        chat: parseInt(chatId, 10),
+        text,
+        message_type: 'default',
+        attachments: files,
       });
 
       if (res) {
@@ -310,6 +313,44 @@ function GroupChatsPage() {
     markChatRead('group', id);
     navigate(`/app/groups/${id}`);
   };
+
+  const handleSemanticSearch = async (event) => {
+    event.preventDefault();
+    const query = semanticQuery.trim();
+    if (!query || !chatId) return;
+    setSemanticLoading(true);
+    try {
+      const data = await messagesAPI.semanticSearch({ q: query, chat: chatId, limit: 8 });
+      setSemanticResults(data.results || []);
+    } catch (e) {
+      setMessageError(`Не удалось выполнить семантический поиск: ${e.message}`);
+    } finally {
+      setSemanticLoading(false);
+    }
+  };
+
+  const semanticSearchNode = (
+    <form className="chat-semantic-search" onSubmit={handleSemanticSearch}>
+      <input
+        value={semanticQuery}
+        onChange={(event) => setSemanticQuery(event.target.value)}
+        placeholder="Семантический поиск в этом чате"
+      />
+      <button className="secondary-button" type="submit" disabled={semanticLoading || !semanticQuery.trim()}>
+        {semanticLoading ? 'Поиск...' : 'Найти'}
+      </button>
+      {semanticResults.length > 0 && (
+        <div className="chat-semantic-search__results">
+          {semanticResults.map((result) => (
+            <button type="button" key={result.message_id} onClick={() => setSemanticQuery(result.text)}>
+              <strong>{Math.round(result.similarity_score * 100)}%</strong>
+              <span>{result.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </form>
+  );
 
   const handleCreateGroup = async () => {
     if (!createForm.title.trim()) return;
@@ -436,6 +477,7 @@ function GroupChatsPage() {
               placeholder={`Сообщение в ${selectedGroup?.name || 'группу'}`}
               endRef={endRef}
               composerDisabled={isSending}
+              searchNode={semanticSearchNode}
             />
           </section>
         )}

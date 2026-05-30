@@ -32,7 +32,7 @@ class Message(models.Model):
 
     chat = models.ForeignKey('chats.Chat', on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='messages')
-    text = models.TextField()
+    text = models.TextField(blank=True)
     message_type = models.CharField(
         max_length=20,
         choices=MessageType.choices,
@@ -52,6 +52,25 @@ class Message(models.Model):
 
     def __str__(self):
         return f'{self.sender}: {self.text[:50]}'
+
+
+class MessageAttachment(models.Model):
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    file = models.FileField(upload_to='message_attachments/%Y/%m/%d/')
+    original_name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=120, blank=True)
+    size = models.PositiveIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['uploaded_at', 'id']
+
+    def __str__(self):
+        return self.original_name
 
 
 class MessageClassification(models.Model):

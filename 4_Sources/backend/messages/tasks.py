@@ -105,7 +105,7 @@ def _mark_classification_enqueue_failed(message_id, exc):
     )
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, queue=getattr(settings, "BACKEND_CELERY_QUEUE", "backend"))
 def classify_message_task(self, message_id):
     try:
         message = Message.objects.get(pk=message_id)
@@ -172,7 +172,7 @@ def classify_message_task(self, message_id):
     return {"status": classification.status, "message_id": message_id, "label": classification.label}
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, queue=getattr(settings, "BACKEND_CELERY_QUEUE", "backend"))
 def build_message_embedding_task(self, message_id):
     try:
         message = Message.objects.get(pk=message_id)

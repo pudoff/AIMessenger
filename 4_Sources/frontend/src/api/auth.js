@@ -34,6 +34,23 @@ export const authAPI = {
     }),
 
   getMe: () => request('/me/'),
+
+  updateMe: (data) => {
+    const hasFile = data.avatar instanceof File;
+    if (hasFile) {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
+      return request('/me/', { method: 'PATCH', body: formData });
+    }
+    return request('/me/', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  },
   
   // 🚪 Выход (просто удаляем токен на клиенте)
   logout: () => {
