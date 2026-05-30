@@ -73,6 +73,14 @@ docker compose -f docker-compose.local.yml --env-file .env up -d --build
 docker compose -f docker-compose.local.yml --env-file .env ps
 ```
 
+Если PyPI недоступен из Docker build, можно передать альтернативный index:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PIP_INDEX_URL=https://pypi.org/simple backend
+```
+
+Backend image использует Python 3.12, потому что текущие Celery-зависимости стабильнее собираются на этой версии.
+
 Backend container сам выполняет:
 
 - `python manage.py migrate --noinput`;
