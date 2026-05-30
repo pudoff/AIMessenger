@@ -322,7 +322,7 @@ class PasswordResetConfirmView(views.APIView):
         return Response({'detail': 'Ваш пароль успешно изменен.'})
 
 
-class CurrentUserView(generics.RetrieveAPIView):
+class CurrentUserView(generics.RetrieveUpdateAPIView):
     serializer_class = CurrentUserSerializer
 
     def get_object(self):

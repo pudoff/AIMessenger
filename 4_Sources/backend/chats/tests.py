@@ -202,6 +202,34 @@ class ChatAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('last_message_id', response.json()['field_errors'])
 
+    def test_user_cannot_mark_foreign_chat_read(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.post(reverse('chat-mark-read', args=[self.foreign_chat.id]), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_mark_read_updates_chat_and_message_read_fields(self):
+        message = Message.objects.create(chat=self.chat, sender=self.owner, text='Read receipt check')
+        self.client.force_authenticate(self.member)
+
+        mark_response = self.client.post(
+            reverse('chat-mark-read', args=[self.chat.id]),
+            {'last_message_id': message.id},
+            format='json',
+        )
+        chats_response = self.client.get(reverse('chat-list'))
+        messages_response = self.client.get(reverse('message-list'), {'chat': self.chat.id})
+
+        self.assertEqual(mark_response.status_code, status.HTTP_200_OK)
+        chat_data = results(chats_response)[0]
+        message_data = results(messages_response)[0]
+        self.assertEqual(chat_data['unread_count'], 0)
+        self.assertEqual(chat_data['last_read_message'], message.id)
+        self.assertIsNotNone(chat_data['last_read_at'])
+        self.assertTrue(message_data['is_read'])
+        self.assertEqual(message_data['read_by_count'], 1)
+
 
 class ChatMemberAccessTests(APITestCase):
     def setUp(self):

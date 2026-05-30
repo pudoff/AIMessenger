@@ -25,6 +25,26 @@
   line-height: 1.55;
 }
 
+.message__attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.message__attachment {
+  display: inline-flex;
+  align-items: center;
+  max-width: 260px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
 .message__bubble--mine .message__meta,
 .message__bubble--mine p {
   color: white;

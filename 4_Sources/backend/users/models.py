@@ -15,6 +15,7 @@ class User(AbstractUser):
     )
     birth_date = models.DateField(null=True, blank=True)
     phone_number = models.CharField(max_length=32, unique=True, null=True, blank=True)
+    avatar = models.FileField(upload_to='avatars/%Y/%m/%d/', null=True, blank=True)
     accepted_user_agreement = models.BooleanField(default=False)
     accepted_privacy_policy = models.BooleanField(default=False)
     user_agreement_accepted_at = models.DateTimeField(null=True, blank=True)

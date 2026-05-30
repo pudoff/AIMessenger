@@ -24,6 +24,7 @@ class MessageClassificationSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source='sender.username', read_only=True)
     classification = MessageClassificationSerializer(read_only=True)
+    attachments = serializers.SerializerMethodField()
     is_read = serializers.SerializerMethodField()
     read_by_count = serializers.SerializerMethodField()
 
@@ -39,6 +40,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'task_status',
             'analyst_notes',
             'classification',
+            'attachments',
             'is_read',
             'read_by_count',
             'created_at',
@@ -49,11 +51,30 @@ class MessageSerializer(serializers.ModelSerializer):
             'sender',
             'sender_username',
             'classification',
+            'attachments',
             'is_read',
             'read_by_count',
             'created_at',
             'updated_at',
         )
+        extra_kwargs = {'text': {'required': False, 'allow_blank': True}}
+
+    def get_attachments(self, obj):
+        request = self.context.get('request')
+        attachments = []
+        for attachment in obj.attachments.all():
+            url = attachment.file.url if attachment.file else ''
+            if request and url:
+                url = request.build_absolute_uri(url)
+            attachments.append({
+                'id': attachment.id,
+                'url': url,
+                'original_name': attachment.original_name,
+                'content_type': attachment.content_type,
+                'size': attachment.size,
+                'uploaded_at': attachment.uploaded_at,
+            })
+        return attachments
 
     def get_is_read(self, obj):
         request = self.context.get('request')
@@ -95,6 +116,11 @@ class MessageSerializer(serializers.ModelSerializer):
         if chat and user and user.is_authenticated and not is_project_admin(user):
             if not ChatMember.objects.filter(chat=chat, user=user).exists():
                 raise serializers.ValidationError({'chat': 'Вы не состоите в этом чате.'})
+
+        files = request.FILES.getlist('attachments') if request else []
+        text = attrs.get('text', getattr(self.instance, 'text', ''))
+        if not (text or '').strip() and not files:
+            raise serializers.ValidationError({'text': 'Введите текст или прикрепите файл.'})
 
         if message_type != Message.MessageType.TASK and task_status != Message.TaskStatus.NONE:
             raise serializers.ValidationError({

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 from io import StringIO
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.urls import reverse
 from django.test import override_settings
@@ -10,7 +11,7 @@ from rest_framework.test import APITestCase
 
 from chats.models import Chat, ChatMember
 from users.models import User
-from .models import Message, MessageClassification, MessageEmbedding, MessageReadReceipt
+from .models import Message, MessageAttachment, MessageClassification, MessageEmbedding, MessageReadReceipt
 from .tasks import build_message_embedding_task, classify_message_task, fallback_embedding, text_hash
 
 
@@ -265,6 +266,72 @@ class MessageAccessTests(APITestCase):
             classify_message_task.run(self.message.id)
 
         self.assertEqual(MessageClassification.objects.filter(message=self.message).count(), 1)
+
+    def test_message_create_then_classification_task_creates_full_classification(self):
+        self.client.force_authenticate(self.member)
+
+        with patch('messages.tasks.build_message_embedding_task.apply_async'):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse('message-list'),
+                    {'chat': self.chat.id, 'text': 'Нужно подготовить отчет к дедлайну'},
+                    format='json',
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        message = Message.objects.get(id=response.json()['id'])
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.return_value = {
+                'label': 'task',
+                'confidence': 0.91,
+                'probabilities': {'task': 0.91, 'default': 0.09},
+            }
+            classify_message_task.run(message.id)
+
+        classification = MessageClassification.objects.get(message=message)
+        self.assertEqual(classification.label, 'task')
+        self.assertEqual(classification.status, MessageClassification.Status.COMPLETED)
+        self.assertEqual(classification.source, MessageClassification.Source.ML_WORKER)
+        self.assertFalse(classification.needs_review)
+        self.assertGreater(classification.confidence, 0.9)
+
+    @override_settings(ML_TASK_TIMEOUT_SECONDS=0)
+    def test_fallback_classifier_detects_basic_task_phrase(self):
+        with patch('config.ml_tasks.classify_message', side_effect=Exception('ml offline')):
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.label, 'default')
+
+        self.message.text = 'Сделай задачу по демо'
+        self.message.save(update_fields=['text'])
+        with patch('config.ml_tasks.classify_message', side_effect=Exception('ml offline')):
+            classify_message_task.run(self.message.id)
+
+        classification.refresh_from_db()
+        self.assertEqual(classification.label, 'task')
+        self.assertEqual(classification.status, MessageClassification.Status.COMPLETED)
+        self.assertEqual(classification.source, MessageClassification.Source.FALLBACK)
+        self.assertFalse(classification.needs_review)
+
+    def test_message_create_accepts_attachment(self):
+        self.client.force_authenticate(self.member)
+        uploaded = SimpleUploadedFile('note.txt', b'hello file', content_type='text/plain')
+
+        with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse('message-list'),
+                    {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                    format='multipart',
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        message = Message.objects.get(id=response.json()['id'])
+        attachment = MessageAttachment.objects.get(message=message)
+        self.assertEqual(attachment.original_name, 'note.txt')
+        self.assertEqual(response.json()['attachments'][0]['original_name'], 'note.txt')
 
     def test_classification_task_clears_stale_values_while_pending(self):
         MessageClassification.objects.create(

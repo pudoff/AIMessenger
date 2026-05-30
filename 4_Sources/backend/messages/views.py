@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from config import ml_tasks
 from users.permissions import is_project_admin
-from .models import Message, MessageReadReceipt
+from .models import Message, MessageAttachment, MessageReadReceipt
 from .permissions import CanWriteMessageInChat, IsMessageChatMember
 from .serializers import MessageSerializer
 from .tasks import enqueue_message_ml_tasks, fallback_embedding
@@ -28,7 +28,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, IsMessageChatMember, CanWriteMessageInChat)
 
     def get_queryset(self):
-        queryset = Message.objects.select_related('chat', 'sender', 'classification')
+        queryset = Message.objects.select_related('chat', 'sender', 'classification').prefetch_related('attachments')
         user = self.request.user
         if not is_project_admin(user):
             queryset = queryset.filter(chat__chat_members__user=user)
@@ -41,6 +41,7 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         message = serializer.save(sender=self.request.user)
+        self._save_attachments(message)
         MessageReadReceipt.objects.update_or_create(
             chat=message.chat,
             user=self.request.user,
@@ -56,6 +57,16 @@ class MessageViewSet(viewsets.ModelViewSet):
         message = serializer.save()
         if message.text != old_text:
             enqueue_message_ml_tasks(message.id)
+
+    def _save_attachments(self, message):
+        for uploaded_file in self.request.FILES.getlist('attachments'):
+            MessageAttachment.objects.create(
+                message=message,
+                file=uploaded_file,
+                original_name=uploaded_file.name,
+                content_type=getattr(uploaded_file, 'content_type', '') or '',
+                size=getattr(uploaded_file, 'size', 0) or 0,
+            )
 
 
 class SemanticSearchView(APIView):

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SectionHeader from '../../components/SectionHeader';
+import { messagesAPI } from '../../api/chats';
 import { assistantContext, assistantDefaultCards, assistantQuickActions } from '../../data/assistant';
 
 function buildAssistantAnswer(question) {
@@ -72,6 +73,11 @@ function AssistantPage() {
   };
 
   const handleQuickAction = (action) => {
+    if (action === 'Поиск по чатам') {
+      handleSemanticChatSearch();
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -91,6 +97,30 @@ function AssistantPage() {
         setLoading(false);
       }
     }, 500);
+  };
+
+  const handleSemanticChatSearch = async () => {
+    const query = question.trim() || 'задачи дедлайн решения';
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await messagesAPI.semanticSearch({ q: query, limit: 8 });
+      const results = data.results || [];
+      setCards((prev) => [
+        {
+          id: Date.now(),
+          title: `Поиск по чатам: ${query}`,
+          text: results.length
+            ? results.map((item) => `${Math.round(item.similarity_score * 100)}% · ${item.chat_title}: ${item.text}`).join('\n')
+            : 'По этому запросу пока нет сообщений с embedding.',
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      setError(`Не удалось выполнить поиск по чатам: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,6 +162,14 @@ function AssistantPage() {
       )}
 
       <div className="actions-grid actions-grid--wide">
+        <button
+          className="secondary-button secondary-button--soft"
+          type="button"
+          onClick={handleSemanticChatSearch}
+          disabled={loading}
+        >
+          Поиск по чатам
+        </button>
         {assistantQuickActions.map((action) => (
           <button 
             className="secondary-button secondary-button--soft" 
