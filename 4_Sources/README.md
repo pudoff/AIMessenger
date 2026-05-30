@@ -79,7 +79,13 @@ docker compose -f docker-compose.local.yml --env-file .env ps
 docker compose -f docker-compose.local.yml --env-file .env build --build-arg PIP_INDEX_URL=https://pypi.org/simple backend
 ```
 
-Backend image использует Python 3.12, потому что текущие Celery-зависимости стабильнее собираются на этой версии.
+Если одновременно недоступен Docker Hub, используйте зеркала для базового Python image и PyPI:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=mirror.gcr.io/library/python:3.12-slim --build-arg PIP_INDEX_URL=https://pypi.mirrors.ustc.edu.cn/simple backend
+```
+
+Backend image по умолчанию использует Python 3.12, потому что текущие Celery-зависимости стабильнее собираются на этой версии.
 
 Backend container сам выполняет:
 
