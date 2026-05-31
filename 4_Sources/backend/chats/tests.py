@@ -230,6 +230,40 @@ class ChatAccessTests(APITestCase):
         self.assertTrue(message_data['is_read'])
         self.assertEqual(message_data['read_by_count'], 1)
 
+    def test_mark_read_with_stale_message_keeps_newer_messages_unread(self):
+        first_message = Message.objects.create(chat=self.chat, sender=self.owner, text='First')
+        second_message = Message.objects.create(chat=self.chat, sender=self.owner, text='Second')
+        self.client.force_authenticate(self.member)
+
+        mark_response = self.client.post(
+            reverse('chat-mark-read', args=[self.chat.id]),
+            {'last_message_id': first_message.id},
+            format='json',
+        )
+        chats_response = self.client.get(reverse('chat-list'))
+        messages_response = self.client.get(reverse('message-list'), {'chat': self.chat.id})
+
+        self.assertEqual(mark_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(results(chats_response)[0]['unread_count'], 1)
+        message_rows = results(messages_response)
+        self.assertTrue(message_rows[0]['is_read'])
+        self.assertFalse(message_rows[1]['is_read'])
+
+        self.client.post(
+            reverse('chat-mark-read', args=[self.chat.id]),
+            {'last_message_id': second_message.id},
+            format='json',
+        )
+        stale_response = self.client.post(
+            reverse('chat-mark-read', args=[self.chat.id]),
+            {'last_message_id': first_message.id},
+            format='json',
+        )
+        receipt = MessageReadReceipt.objects.get(chat=self.chat, user=self.member)
+
+        self.assertEqual(stale_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(receipt.last_read_message, second_message)
+
 
 class ChatMemberAccessTests(APITestCase):
     def setUp(self):

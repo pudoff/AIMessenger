@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '../Avatar';
 
 export default function ChatList({ items = [], selectedId, onSelect, loading, error, emptyNode, topNode }) {
   return (
@@ -23,7 +24,16 @@ export default function ChatList({ items = [], selectedId, onSelect, loading, er
               onClick={() => onSelect?.(chat.id)}
             >
               <div className="chat-card__top">
-                <h3>{chat.name}</h3>
+                <span className="chat-card__identity">
+                  <Avatar
+                    src={chat.avatar_url}
+                    initials={chat.initials}
+                    title={chat.name}
+                    className="avatar--circle"
+                    clickable={false}
+                  />
+                  <h3>{chat.name}</h3>
+                </span>
                 {chat.badge != null && <span className="badge">{chat.badge}</span>}
               </div>
               <p>{chat.preview}</p>

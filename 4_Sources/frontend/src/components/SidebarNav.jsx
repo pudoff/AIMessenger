@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import Avatar from './Avatar';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
@@ -88,9 +89,7 @@ function SidebarNav() {
       </nav>
 
       <div className="profile-card">
-        <div className="avatar avatar--primary">
-          {initials}
-        </div>
+        <Avatar src={currentUser?.avatar_url} initials={initials} title={fullName} className="avatar--circle" />
         <div className="profile-card__text">
           <strong>{fullName}</strong>
         </div>

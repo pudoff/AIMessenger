@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
+import Avatar from '../components/Avatar';
 import Logo from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,7 +29,7 @@ function AdminLayout() {
           </NavLink>
         </nav>
         <div className="profile-card">
-          <div className="avatar avatar--primary">{initials}</div>
+          <Avatar src={currentUser?.avatar_url} initials={initials} title={fullName} className="avatar--circle" />
           <div className="profile-card__text">
             <strong>{fullName}</strong>
             <span>Администратор</span>

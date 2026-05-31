@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from chats.models import ChatMember
@@ -23,6 +24,7 @@ class MessageClassificationSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source='sender.username', read_only=True)
+    sender_avatar_url = serializers.SerializerMethodField()
     classification = MessageClassificationSerializer(read_only=True)
     attachments = serializers.SerializerMethodField()
     is_read = serializers.SerializerMethodField()
@@ -35,6 +37,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'chat',
             'sender',
             'sender_username',
+            'sender_avatar_url',
             'text',
             'message_type',
             'task_status',
@@ -50,6 +53,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'id',
             'sender',
             'sender_username',
+            'sender_avatar_url',
             'classification',
             'attachments',
             'is_read',
@@ -76,6 +80,13 @@ class MessageSerializer(serializers.ModelSerializer):
             })
         return attachments
 
+    def get_sender_avatar_url(self, obj):
+        request = self.context.get('request')
+        avatar = getattr(obj.sender, 'avatar', None)
+        if not avatar:
+            return None
+        return request.build_absolute_uri(avatar.url) if request else avatar.url
+
     def get_is_read(self, obj):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
@@ -85,19 +96,19 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender_id == user.id:
             return MessageReadReceipt.objects.filter(
                 chat=obj.chat,
-                last_read_at__gte=obj.created_at,
+                last_read_message__created_at__gte=obj.created_at,
             ).exclude(user=user).exists()
 
         return MessageReadReceipt.objects.filter(
             chat=obj.chat,
             user=user,
-            last_read_at__gte=obj.created_at,
+            last_read_message__created_at__gte=obj.created_at,
         ).exists()
 
     def get_read_by_count(self, obj):
         return MessageReadReceipt.objects.filter(
             chat=obj.chat,
-            last_read_at__gte=obj.created_at,
+            last_read_message__created_at__gte=obj.created_at,
         ).exclude(user=obj.sender).count()
 
     def validate(self, attrs):
@@ -121,6 +132,7 @@ class MessageSerializer(serializers.ModelSerializer):
         text = attrs.get('text', getattr(self.instance, 'text', ''))
         if not (text or '').strip() and not files:
             raise serializers.ValidationError({'text': 'Введите текст или прикрепите файл.'})
+        self._validate_attachments(files)
 
         if message_type != Message.MessageType.TASK and task_status != Message.TaskStatus.NONE:
             raise serializers.ValidationError({
@@ -128,3 +140,24 @@ class MessageSerializer(serializers.ModelSerializer):
             })
 
         return attrs
+
+    @staticmethod
+    def _validate_attachments(files):
+        if len(files) > settings.MAX_ATTACHMENTS_PER_MESSAGE:
+            raise serializers.ValidationError({
+                'attachments': f'Можно прикрепить не более {settings.MAX_ATTACHMENTS_PER_MESSAGE} файлов.'
+            })
+
+        allowed_types = set(settings.ALLOWED_ATTACHMENT_CONTENT_TYPES)
+        for uploaded_file in files:
+            if uploaded_file.size > settings.MAX_UPLOAD_SIZE_BYTES:
+                max_mb = settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)
+                raise serializers.ValidationError({
+                    'attachments': f'Файл {uploaded_file.name} превышает лимит {max_mb} МБ.'
+                })
+
+            content_type = getattr(uploaded_file, 'content_type', '') or ''
+            if allowed_types and content_type not in allowed_types:
+                raise serializers.ValidationError({
+                    'attachments': f'Тип файла {content_type or "unknown"} не разрешен.'
+                })

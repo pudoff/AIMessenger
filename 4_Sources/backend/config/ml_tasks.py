@@ -9,7 +9,7 @@ except ImportError:
 
 
 if Celery is not None:
-    app = Celery("backend_ml_client")
+    app = Celery("backend_ml_client", set_as_current=False)
     app.conf.update(
         broker_url=settings.CELERY_BROKER_URL,
         result_backend=settings.CELERY_RESULT_BACKEND,

@@ -111,7 +111,7 @@ function AssistantPage() {
           id: Date.now(),
           title: `Поиск по чатам: ${query}`,
           text: results.length
-            ? results.map((item) => `${Math.round(item.similarity_score * 100)}% · ${item.chat_title}: ${item.text}`).join('\n')
+            ? results.map((item) => `${Math.max(0, Math.min(100, Math.round((item.similarity_score || 0) * 100)))}% · ${item.chat_title}: ${item.text}`).join('\n')
             : 'По этому запросу пока нет сообщений с embedding.',
         },
         ...prev,

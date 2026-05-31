@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -9,10 +10,18 @@ from .models import Contact, User
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role', 'avatar_url')
         read_only_fields = fields
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        if not obj.avatar:
+            return None
+        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
 
 
 class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
@@ -257,6 +266,16 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'current_password': 'Введите текущий пароль.'})
         if new_password and not self.instance.check_password(current_password):
             raise serializers.ValidationError({'current_password': 'Текущий пароль указан неверно.'})
+
+        avatar = attrs.get('avatar', serializers.empty)
+        if avatar not in (serializers.empty, None, ''):
+            if avatar.size > settings.MAX_AVATAR_SIZE_BYTES:
+                max_mb = settings.MAX_AVATAR_SIZE_BYTES // (1024 * 1024)
+                raise serializers.ValidationError({'avatar': f'Файл аватара превышает лимит {max_mb} МБ.'})
+
+            content_type = getattr(avatar, 'content_type', '') or ''
+            if not content_type.startswith('image/'):
+                raise serializers.ValidationError({'avatar': 'Аватар должен быть изображением.'})
         return attrs
 
     def update(self, instance, validated_data):

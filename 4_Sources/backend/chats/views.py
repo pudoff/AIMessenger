@@ -53,6 +53,17 @@ class ChatViewSet(viewsets.ModelViewSet):
         else:
             last_message = chat.messages.order_by('-created_at').first()
 
+        receipt = MessageReadReceipt.objects.filter(chat=chat, user=request.user).select_related(
+            'last_read_message',
+        ).first()
+        if (
+            receipt
+            and receipt.last_read_message_id
+            and last_message
+            and receipt.last_read_message.created_at > last_message.created_at
+        ):
+            last_message = receipt.last_read_message
+
         receipt, _ = MessageReadReceipt.objects.update_or_create(
             chat=chat,
             user=request.user,

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from django.conf import settings
@@ -354,6 +355,35 @@ class AuthApiTests(APITestCase):
                 'role': User.Role.USER.value,
             },
         )
+
+    def test_current_user_avatar_rejects_non_image_file(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+        uploaded = SimpleUploadedFile('avatar.txt', b'not image', content_type='text/plain')
+
+        response = self.client.patch(
+            reverse('api-me'),
+            {'avatar': uploaded},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('avatar', response.json()['field_errors'])
+
+    @override_settings(MAX_AVATAR_SIZE_BYTES=4)
+    def test_current_user_avatar_size_limit_is_validated(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+        uploaded = SimpleUploadedFile('avatar.png', b'large image bytes', content_type='image/png')
+
+        response = self.client.patch(
+            reverse('api-me'),
+            {'avatar': uploaded},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('avatar', response.json()['field_errors'])
 
     def test_regular_user_cannot_access_admin_users_endpoint(self):
         user = User.objects.create_user(username='demo', password='pass')

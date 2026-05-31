@@ -1,8 +1,10 @@
 import math
+import re
 from datetime import datetime, time
 
 from django.conf import settings
 from django.db import connection
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import serializers, status, viewsets
@@ -12,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from config import ml_tasks
 from users.permissions import is_project_admin
-from .models import Message, MessageAttachment, MessageReadReceipt
+from .models import Message, MessageAttachment, MessageClassification, MessageReadReceipt
 from .permissions import CanWriteMessageInChat, IsMessageChatMember
 from .serializers import MessageSerializer
 from .tasks import enqueue_message_ml_tasks, fallback_embedding
@@ -42,6 +44,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         message = serializer.save(sender=self.request.user)
         self._save_attachments(message)
+        self._mark_classification_pending(message)
         MessageReadReceipt.objects.update_or_create(
             chat=message.chat,
             user=self.request.user,
@@ -56,6 +59,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         old_text = serializer.instance.text
         message = serializer.save()
         if message.text != old_text:
+            self._mark_classification_pending(message)
             enqueue_message_ml_tasks(message.id)
 
     def _save_attachments(self, message):
@@ -68,9 +72,30 @@ class MessageViewSet(viewsets.ModelViewSet):
                 size=getattr(uploaded_file, 'size', 0) or 0,
             )
 
+    @staticmethod
+    def _mark_classification_pending(message):
+        MessageClassification.objects.update_or_create(
+            message=message,
+            defaults={
+                'label': None,
+                'confidence': 0,
+                'probabilities': {},
+                'status': MessageClassification.Status.PENDING,
+                'error_message': '',
+                'source': MessageClassification.Source.ML_WORKER,
+                'needs_review': False,
+                'classified_at': timezone.now(),
+            },
+        )
+
 
 class SemanticSearchView(APIView):
     permission_classes = (IsAuthenticated,)
+    CATEGORY_INTENTS = {
+        'question': {'вопрос', 'вопросы', 'questions', 'question'},
+        'task': {'задача', 'задачи', 'поручение', 'поручения', 'tasks', 'task'},
+        'offtopic': {'токсичность', 'токсичные', 'токсичные сообщения', 'оффтоп', 'offtopic', 'toxic'},
+    }
 
     def get(self, request):
         query = (request.query_params.get('q') or '').strip()
@@ -82,6 +107,7 @@ class SemanticSearchView(APIView):
         date_from = self._parse_datetime_param(request.query_params.get('date_from'), 'date_from')
         date_to = self._parse_datetime_param(request.query_params.get('date_to'), 'date_to', end_of_day=True)
         message_type = self._parse_message_type(request.query_params.get('message_type'))
+        category_intent = self._parse_category_intent(query)
 
         queryset = Message.objects.select_related('chat', 'sender', 'classification', 'embedding')
         if not is_project_admin(request.user):
@@ -96,6 +122,10 @@ class SemanticSearchView(APIView):
         if message_type:
             queryset = queryset.filter(message_type=message_type)
 
+        if category_intent:
+            results = self._category_results(queryset, category_intent, limit)
+            return Response({'count': len(results), 'results': results}, status=status.HTTP_200_OK)
+
         queryset = queryset.filter(embedding__isnull=False).distinct()
         query_vector = self._query_embedding(query)
 
@@ -104,13 +134,13 @@ class SemanticSearchView(APIView):
                 queryset.annotate(distance=CosineDistance('embedding__vector', query_vector))
                 .order_by('distance')[:limit]
             )
-            results = [self._serialize_result(message, 1 - float(message.distance or 0)) for message in rows]
+            results = [self._serialize_result(message, 1 - float(message.distance or 0), mode='semantic') for message in rows]
         else:
             scored = []
             for message in queryset[:1000]:
                 scored.append((self._cosine_similarity(query_vector, message.embedding.vector), message))
             results = [
-                self._serialize_result(message, score)
+                self._serialize_result(message, score, mode='semantic')
                 for score, message in sorted(scored, key=lambda item: item[0], reverse=True)[:limit]
             ]
 
@@ -169,6 +199,34 @@ class SemanticSearchView(APIView):
             raise serializers.ValidationError({'message_type': f'Allowed values: {allowed}.'})
         return raw_value
 
+    @classmethod
+    def _parse_category_intent(cls, query):
+        normalized = query.lower().replace('ё', 'е').strip()
+        normalized = re.sub(r'\s+', ' ', normalized)
+        for label, aliases in cls.CATEGORY_INTENTS.items():
+            normalized_aliases = {alias.replace('ё', 'е') for alias in aliases}
+            if normalized in normalized_aliases:
+                return label
+        return None
+
+    def _category_results(self, queryset, category_intent, limit):
+        if category_intent == 'question':
+            queryset = queryset.filter(
+                Q(classification__label='question') | Q(message_type=Message.MessageType.QUESTION)
+            )
+        elif category_intent == 'task':
+            queryset = queryset.filter(
+                Q(classification__label='task') | Q(message_type=Message.MessageType.TASK)
+            )
+        elif category_intent == 'offtopic':
+            queryset = queryset.filter(classification__label__in=('offtopic', 'toxic'))
+
+        rows = queryset.distinct().order_by('-created_at')[:limit]
+        return [
+            self._serialize_result(message, 1.0, mode='classification')
+            for message in rows
+        ]
+
     @staticmethod
     def _cosine_similarity(left, right):
         if not left or not right:
@@ -179,8 +237,13 @@ class SemanticSearchView(APIView):
         return numerator / (left_norm * right_norm)
 
     @staticmethod
-    def _serialize_result(message, score):
+    def _normalize_similarity_score(score):
+        return max(0.0, min(1.0, float(score)))
+
+    @classmethod
+    def _serialize_result(cls, message, score, mode):
         classification = getattr(message, 'classification', None)
+        raw_score = float(score)
         return {
             'message_id': message.id,
             'chat_id': message.chat_id,
@@ -193,5 +256,7 @@ class SemanticSearchView(APIView):
             'message_type': message.message_type,
             'created_at': message.created_at,
             'classification': classification.label if classification else None,
-            'similarity_score': round(float(score), 6),
+            'similarity_score': round(cls._normalize_similarity_score(raw_score), 6),
+            'raw_similarity_score': round(raw_score, 6),
+            'search_mode': mode,
         }

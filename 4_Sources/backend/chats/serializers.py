@@ -121,7 +121,9 @@ class ChatSerializer(serializers.ModelSerializer):
 
         queryset = obj.messages.exclude(sender=user)
         receipt = self._get_receipt(obj)
-        if receipt and receipt.last_read_at:
+        if receipt and receipt.last_read_message_id:
+            queryset = queryset.filter(created_at__gt=receipt.last_read_message.created_at)
+        elif receipt and receipt.last_read_at:
             queryset = queryset.filter(created_at__gt=receipt.last_read_at)
         return queryset.count()
 

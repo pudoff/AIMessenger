@@ -4,8 +4,8 @@ const tagLabels = {
   default: 'Обычное',
   answer: 'Обычное',
   statement: 'Обычное',
-  toxic: 'Обычное',
-  offtopic: 'Обычное',
+  toxic: 'Токсичность',
+  offtopic: 'Токсичность',
   needs_review: 'На проверку',
   unknown: 'На проверку',
 };
@@ -20,6 +20,7 @@ function Tag({ value }) {
     Вопрос: 'tag tag--question',
     Задача: 'tag tag--task',
     Обычное: 'tag tag--default',
+    Токсичность: 'tag tag--toxic',
     'На проверку': 'tag tag--default',
   };
 

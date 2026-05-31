@@ -40,6 +40,18 @@ class ChatPredictorTests(unittest.TestCase):
 
         self.assertEqual(set(result["probabilities"].keys()), set(CANONICAL_CLASSES))
 
+    def test_imperative_request_is_task(self):
+        result = self.predictor.predict_one("Людочка, принеси мне чай")
+
+        self.assertEqual(result["class_name"], "task")
+        self.assertFalse(result["needs_review"])
+
+    def test_toxic_message_is_offtopic(self):
+        result = self.predictor.predict_one("ты дурак")
+
+        self.assertEqual(result["class_name"], "offtopic")
+        self.assertFalse(result["needs_review"])
+
 
 if __name__ == "__main__":
     unittest.main()

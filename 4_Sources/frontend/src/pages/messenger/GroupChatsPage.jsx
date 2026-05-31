@@ -8,6 +8,7 @@ import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatHeader from '../../components/chat/ChatHeader';
 import ChatList from '../../components/chat/ChatList';
 import ChatRoom from '../../components/chat/ChatRoom';
+import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 
 const formatGroup = (group) => ({
@@ -39,6 +40,7 @@ const formatMessage = (message, myId) => ({
   task_status: message.task_status,
   classification: message.classification,
   attachments: message.attachments || [],
+  sender_avatar_url: message.sender_avatar_url || null,
   tag: message.classification?.label || message.message_type,
   readStatus: message.isOptimistic ? 'sent' : (message.is_read ? 'read' : 'sent'),
 });
@@ -46,6 +48,7 @@ const formatMessage = (message, myId) => ({
 function GroupChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const {
     decorateChatsWithUnread,
     markChatRead,
@@ -269,6 +272,7 @@ function GroupChatsPage() {
       created_at: optimisticCreatedAt,
       tag: 'default',
       readStatus: 'sent',
+      sender_avatar_url: currentUser?.avatar_url || null,
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
@@ -343,7 +347,7 @@ function GroupChatsPage() {
         <div className="chat-semantic-search__results">
           {semanticResults.map((result) => (
             <button type="button" key={result.message_id} onClick={() => setSemanticQuery(result.text)}>
-              <strong>{Math.round(result.similarity_score * 100)}%</strong>
+              <strong>{Math.max(0, Math.min(100, Math.round((result.similarity_score || 0) * 100)))}%</strong>
               <span>{result.text}</span>
             </button>
           ))}

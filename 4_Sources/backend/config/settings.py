@@ -108,6 +108,9 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'aimessenger'),
         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
         'PORT': os.getenv('POSTGRES_PORT', '5433'),
+        'OPTIONS': {
+            'connect_timeout': int(os.getenv('POSTGRES_CONNECT_TIMEOUT', '5')),
+        },
     }
 }
 
@@ -158,6 +161,21 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+SERVE_MEDIA_FILES = os.getenv('SERVE_MEDIA_FILES', 'True').lower() == 'true'
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_SIZE_BYTES', str(20 * 1024 * 1024)))
+MAX_AVATAR_SIZE_BYTES = int(os.getenv('MAX_AVATAR_SIZE_BYTES', str(5 * 1024 * 1024)))
+MAX_ATTACHMENTS_PER_MESSAGE = int(os.getenv('MAX_ATTACHMENTS_PER_MESSAGE', '5'))
+ALLOWED_ATTACHMENT_CONTENT_TYPES = env_list(
+    'ALLOWED_ATTACHMENT_CONTENT_TYPES',
+    (
+        'image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,'
+        'application/msword,'
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document,'
+        'application/vnd.ms-excel,'
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,'
+        'application/zip'
+    ),
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

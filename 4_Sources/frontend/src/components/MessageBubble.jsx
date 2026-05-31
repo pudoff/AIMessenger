@@ -1,4 +1,58 @@
+import Avatar from './Avatar';
 import Tag from './Tag';
+
+const IMAGE_EXTENSION_RE = /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
+
+function getAttachmentUrl(attachment) {
+  return attachment.url || attachment.file_url || attachment.file || '';
+}
+
+function getAttachmentName(attachment) {
+  return attachment.original_name || attachment.name || 'Вложение';
+}
+
+function isImageAttachment(attachment) {
+  const contentType = (attachment.content_type || attachment.type || '').toLowerCase();
+  const url = getAttachmentUrl(attachment);
+  const name = getAttachmentName(attachment);
+
+  return contentType.startsWith('image/') || IMAGE_EXTENSION_RE.test(url) || IMAGE_EXTENSION_RE.test(name);
+}
+
+function AttachmentPreview({ attachment }) {
+  const url = getAttachmentUrl(attachment);
+  const name = getAttachmentName(attachment);
+
+  if (!url) {
+    return <span className="message__attachment">{name}</span>;
+  }
+
+  if (!isImageAttachment(attachment)) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="message__attachment">
+        {name}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="message__image-attachment"
+      aria-label={`Открыть изображение ${name}`}
+    >
+      <span className="message__image-thumb">
+        <img src={url} alt={name} loading="lazy" />
+      </span>
+      <span className="message__image-caption">{name}</span>
+      <span className="message__image-popover" aria-hidden="true">
+        <img src={url} alt="" loading="lazy" />
+      </span>
+    </a>
+  );
+}
 
 function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
   if (message.type === 'system') {
@@ -11,9 +65,18 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
   const readStatus = message.error ? 'error' : message.readStatus;
   const statusText = readStatus === 'read' ? '✓✓' : readStatus === 'sent' ? '✓' : '';
   const statusTitle = readStatus === 'read' ? 'Просмотрено' : readStatus === 'sent' ? 'Отправлено' : 'Ошибка отправки';
+  const initials = (message.author || currentUserName || '??').slice(0, 2).toUpperCase();
 
   return (
     <article className={`message ${mine ? 'message--mine' : ''} ${stateClass} ${className}`.trim()}>
+      {!mine && (
+        <Avatar
+          src={message.sender_avatar_url || message.avatar_url}
+          initials={initials}
+          title={message.author}
+          className="avatar--circle message__avatar"
+        />
+      )}
       <div className={`message__bubble ${mine ? 'message__bubble--mine' : ''}`}>
         <div className="message__meta">
           <strong>{message.author}</strong>
@@ -24,15 +87,10 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
         {message.attachments?.length > 0 && (
           <div className="message__attachments">
             {message.attachments.map((attachment) => (
-              <a
-                key={attachment.id || attachment.url}
-                href={attachment.url}
-                target="_blank"
-                rel="noreferrer"
-                className="message__attachment"
-              >
-                {attachment.original_name || 'attachment'}
-              </a>
+              <AttachmentPreview
+                key={attachment.id || getAttachmentUrl(attachment) || getAttachmentName(attachment)}
+                attachment={attachment}
+              />
             ))}
           </div>
         )}
@@ -46,6 +104,14 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
           </span>
         )}
       </div>
+      {mine && (
+        <Avatar
+          src={message.sender_avatar_url || message.avatar_url}
+          initials={initials}
+          title={message.author || currentUserName}
+          className="avatar--circle message__avatar"
+        />
+      )}
     </article>
   );
 }

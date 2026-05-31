@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Message, MessageClassification, MessageReadReceipt
+from .models import Message, MessageAttachment, MessageClassification, MessageEmbedding, MessageReadReceipt
 
 
 @admin.register(Message)
@@ -19,6 +19,24 @@ class MessageClassificationAdmin(admin.ModelAdmin):
     search_fields = ('message__text', 'label')
     autocomplete_fields = ('message',)
     readonly_fields = ('classified_at',)
+
+
+@admin.register(MessageAttachment)
+class MessageAttachmentAdmin(admin.ModelAdmin):
+    list_display = ('message', 'original_name', 'content_type', 'size', 'uploaded_at')
+    list_filter = ('content_type', 'uploaded_at')
+    search_fields = ('original_name', 'message__text', 'message__sender__username')
+    autocomplete_fields = ('message',)
+    readonly_fields = ('uploaded_at',)
+
+
+@admin.register(MessageEmbedding)
+class MessageEmbeddingAdmin(admin.ModelAdmin):
+    list_display = ('message', 'model_name', 'dimensions', 'source', 'updated_at')
+    list_filter = ('source', 'model_name', 'updated_at')
+    search_fields = ('message__text', 'model_name')
+    autocomplete_fields = ('message',)
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(MessageReadReceipt)

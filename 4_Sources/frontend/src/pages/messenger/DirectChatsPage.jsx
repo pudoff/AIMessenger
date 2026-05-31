@@ -7,6 +7,8 @@ import ChatHeader from '../../components/chat/ChatHeader';
 import ChatList from '../../components/chat/ChatList';
 import ChatRoom from '../../components/chat/ChatRoom';
 import SectionHeader from '../../components/SectionHeader';
+import Avatar from '../../components/Avatar';
+import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 
 // Получение текущего пользователя
@@ -34,6 +36,7 @@ const formatChat = (c, myId) => {
     status: 'Онлайн',
     preview: c.last_message?.text || 'Нет сообщений',
     initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    avatar_url: detail.avatar_url || null,
     chat_type: c.chat_type,
     members,
     last_message: c.last_message,
@@ -58,6 +61,7 @@ const formatMessage = (m, myId) => ({
   task_status: m.task_status,
   classification: m.classification,
   attachments: m.attachments || [],
+  sender_avatar_url: m.sender_avatar_url || null,
   tag: m.classification?.label || m.message_type,
   readStatus: m.isOptimistic ? 'sent' : (m.is_read ? 'read' : 'sent'),
 });
@@ -66,6 +70,7 @@ export default function DirectChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuth();
   const {
     decorateChatsWithUnread,
     markChatRead,
@@ -344,6 +349,7 @@ export default function DirectChatsPage() {
       created_at: optimisticCreatedAt,
       tag: 'default',
       readStatus: 'sent',
+      sender_avatar_url: currentUser?.avatar_url || null,
     };
 
     // Оптимистичное обновление UI
@@ -451,7 +457,7 @@ export default function DirectChatsPage() {
               key={result.message_id}
               onClick={() => setSemanticQuery(result.text)}
             >
-              <strong>{Math.round(result.similarity_score * 100)}%</strong>
+              <strong>{Math.max(0, Math.min(100, Math.round((result.similarity_score || 0) * 100)))}%</strong>
               <span>{result.text}</span>
             </button>
           ))}
@@ -468,7 +474,8 @@ export default function DirectChatsPage() {
       position: '',
       status: 'Онлайн',
       preview: '',
-      initials: location.state.contactInitials || '?'
+      initials: location.state.contactInitials || '?',
+      avatar_url: location.state.contactAvatarUrl || null,
     } : null);
 
   // Представление с открытым чатом
@@ -478,7 +485,20 @@ export default function DirectChatsPage() {
         left={null}
         right={(
           <section className="panel panel--chat-only" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <ChatHeader title={selectedChat?.name} subtitle={selectedChat?.position} onBack={() => navigate('/app/direct')} compact />
+            <ChatHeader
+              title={selectedChat?.name}
+              subtitle={selectedChat?.position}
+              onBack={() => navigate('/app/direct')}
+              avatars={selectedChat ? (
+                <Avatar
+                  src={selectedChat.avatar_url}
+                  initials={selectedChat.initials}
+                  title={selectedChat.name}
+                  className="avatar--circle"
+                />
+              ) : null}
+              compact
+            />
             <ChatRoom
               messages={messages}
               loadingMessages={loadingMessages}

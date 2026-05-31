@@ -31,6 +31,7 @@ const formatDirectChat = (c, myId) => {
     status: 'Онлайн',
     preview: c.last_message?.text || 'Нет сообщений',
     initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    avatar_url: detail.avatar_url || null,
     chat_type: 'direct',
     last_message: c.last_message,
     unread_count: c.unread_count,

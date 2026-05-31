@@ -47,7 +47,7 @@ urlpatterns = [
     path('api/admin/email/broadcast/', AdminEmailBroadcastView.as_view(), name='api-admin-email-broadcast'),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or settings.SERVE_MEDIA_FILES:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 try:

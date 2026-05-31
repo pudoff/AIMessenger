@@ -1,5 +1,6 @@
 from unittest.mock import patch
 from io import StringIO
+import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -11,8 +12,10 @@ from rest_framework.test import APITestCase
 
 from chats.models import Chat, ChatMember
 from users.models import User
+from .classification import _mock_predict
 from .models import Message, MessageAttachment, MessageClassification, MessageEmbedding, MessageReadReceipt
 from .tasks import build_message_embedding_task, classify_message_task, fallback_embedding, text_hash
+from .views import SemanticSearchView
 
 
 def results(response):
@@ -128,7 +131,7 @@ class MessageAccessTests(APITestCase):
         created = Message.objects.get(id=response.json()['id'])
         self.assertEqual(created.sender, self.member)
         self.assertIn('classification', response.json())
-        self.assertIsNone(response.json()['classification'])
+        self.assertEqual(response.json()['classification']['status'], MessageClassification.Status.PENDING)
         classify_task.assert_called_once()
         embedding_task.assert_called_once()
 
@@ -315,23 +318,46 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(classification.source, MessageClassification.Source.FALLBACK)
         self.assertFalse(classification.needs_review)
 
+    def test_local_fallback_detects_imperative_and_toxicity(self):
+        task_result = _mock_predict('Людочка, принеси мне чай')
+        toxic_result = _mock_predict('ты дурак')
+
+        self.assertEqual(task_result['label'], 'task')
+        self.assertEqual(toxic_result['label'], 'offtopic')
+
     def test_message_create_accepts_attachment(self):
         self.client.force_authenticate(self.member)
         uploaded = SimpleUploadedFile('note.txt', b'hello file', content_type='text/plain')
 
-        with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
-            with self.captureOnCommitCallbacks(execute=True):
-                response = self.client.post(
-                    reverse('message-list'),
-                    {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
-                    format='multipart',
-                )
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        response = self.client.post(
+                            reverse('message-list'),
+                            {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                            format='multipart',
+                        )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         message = Message.objects.get(id=response.json()['id'])
         attachment = MessageAttachment.objects.get(message=message)
         self.assertEqual(attachment.original_name, 'note.txt')
         self.assertEqual(response.json()['attachments'][0]['original_name'], 'note.txt')
+
+    def test_message_attachment_size_limit_is_validated(self):
+        self.client.force_authenticate(self.member)
+        uploaded = SimpleUploadedFile('large.txt', b'hello file', content_type='text/plain')
+
+        with override_settings(MAX_UPLOAD_SIZE_BYTES=4):
+            response = self.client.post(
+                reverse('message-list'),
+                {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                format='multipart',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('attachments', response.json()['field_errors'])
 
     def test_classification_task_clears_stale_values_while_pending(self):
         MessageClassification.objects.create(
@@ -448,6 +474,25 @@ class SemanticSearchTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn(self.no_embedding.id, [item['message_id'] for item in response.json()['results']])
+
+    def test_category_query_returns_classified_questions_without_embedding(self):
+        question = Message.objects.create(chat=self.chat, sender=self.owner, text='Как дела?')
+        task = Message.objects.create(chat=self.chat, sender=self.owner, text='Людочка, принеси мне чай')
+        MessageClassification.objects.create(message=question, label='question', confidence=0.9)
+        MessageClassification.objects.create(message=task, label='task', confidence=0.9)
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'вопросы', 'chat': self.chat.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json()['results']
+        self.assertEqual([item['message_id'] for item in results], [question.id])
+        self.assertEqual(results[0]['search_mode'], 'classification')
+        self.assertEqual(results[0]['similarity_score'], 1.0)
+
+    def test_similarity_score_is_clamped_for_display(self):
+        self.assertEqual(SemanticSearchView._normalize_similarity_score(-0.25), 0.0)
+        self.assertEqual(SemanticSearchView._normalize_similarity_score(1.25), 1.0)
 
     def test_semantic_search_rejects_invalid_limit(self):
         self.client.force_authenticate(self.member)
