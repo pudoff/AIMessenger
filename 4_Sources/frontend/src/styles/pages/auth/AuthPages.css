@@ -172,11 +172,11 @@
   gap: 10px;
   font-size: 0.9rem;
   color: var(--text-soft);
-  cursor: pointer;
   text-align: left;
 }
 
 .auth-form__checkbox input[type="checkbox"] {
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
   margin-top: 2px;
@@ -184,13 +184,35 @@
   cursor: pointer;
 }
 
+.auth-form__checkbox-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.auth-form__checkbox-text label {
+  display: inline;
+  width: auto;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.auth-form__link-btn,
 .auth-form__checkbox a {
+  background: none;
+  border: 0;
+  padding: 0;
   color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
   transition: border-color 0.2s;
 }
 
+.auth-form__link-btn:hover,
 .auth-form__checkbox a:hover {
   border-bottom-color: currentColor;
 }

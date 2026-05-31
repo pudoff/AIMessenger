@@ -12,13 +12,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', encoding='utf-8-sig')
 
 
 def env_list(name, default=''):
@@ -32,7 +33,7 @@ def join_env_list(values):
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY') or os.getenv('\ufeffSECRET_KEY')
 if not SECRET_KEY:
     raise RuntimeError('SECRET_KEY environment variable is required')
 
@@ -58,6 +59,11 @@ INSTALLED_APPS = [
     'chats',
     'messages.apps.MessagesConfig',
 ]
+
+if find_spec('drf_spectacular'):
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('users'), 'drf_spectacular')
+if find_spec('pgvector'):
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('users'), 'pgvector.django')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -102,6 +108,9 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'aimessenger'),
         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
         'PORT': os.getenv('POSTGRES_PORT', '5433'),
+        'OPTIONS': {
+            'connect_timeout': int(os.getenv('POSTGRES_CONNECT_TIMEOUT', '5')),
+        },
     }
 }
 
@@ -150,6 +159,23 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+SERVE_MEDIA_FILES = os.getenv('SERVE_MEDIA_FILES', 'True').lower() == 'true'
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_SIZE_BYTES', str(20 * 1024 * 1024)))
+MAX_AVATAR_SIZE_BYTES = int(os.getenv('MAX_AVATAR_SIZE_BYTES', str(5 * 1024 * 1024)))
+MAX_ATTACHMENTS_PER_MESSAGE = int(os.getenv('MAX_ATTACHMENTS_PER_MESSAGE', '5'))
+ALLOWED_ATTACHMENT_CONTENT_TYPES = env_list(
+    'ALLOWED_ATTACHMENT_CONTENT_TYPES',
+    (
+        'image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,'
+        'application/msword,'
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document,'
+        'application/vnd.ms-excel,'
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,'
+        'application/zip'
+    ),
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -169,8 +195,13 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     'https://api.elephantaimessenger.ru',
 ]
 
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
-CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', join_env_list(CORS_ALLOWED_ORIGINS))
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "True").lower() == "true"
+CORS_ALLOWED_ORIGINS = (
+    []
+    if CORS_ALLOW_ALL_ORIGINS
+    else env_list("CORS_ALLOWED_ORIGINS", join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
+)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", join_env_list(DEFAULT_CORS_ALLOWED_ORIGINS))
 
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
@@ -182,18 +213,22 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-repl
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '15'))
 
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:5173').rstrip('/')
+BACKEND_PUBLIC_BASE_URL = os.getenv('BACKEND_PUBLIC_BASE_URL', '').rstrip('/')
 REGISTRATION_CONFIRM_REDIRECT_PATH = os.getenv(
     'REGISTRATION_CONFIRM_REDIRECT_PATH',
-    '/register?registration=confirmed',
+    '/login?registration=confirmed',
 )
 REGISTRATION_CONFIRM_INVALID_REDIRECT_PATH = os.getenv(
     'REGISTRATION_CONFIRM_INVALID_REDIRECT_PATH',
-    '/register?registration=invalid',
+    '/login?registration=invalid',
 )
 PASSWORD_RESET_FRONTEND_PATH = os.getenv(
     'PASSWORD_RESET_FRONTEND_PATH',
     '/reset-password/{uidb64}/{token}',
 )
+
+USE_X_FORWARDED_HOST = os.getenv('USE_X_FORWARDED_HOST', 'True').lower() == 'true'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -206,8 +241,36 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': int(os.getenv('API_PAGE_SIZE', '20')),
+    'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
 }
+
+if find_spec('drf_spectacular'):
+    REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 ML_CELERY_QUEUE = os.getenv("ML_CELERY_QUEUE", "ml")
+BACKEND_CELERY_QUEUE = os.getenv("BACKEND_CELERY_QUEUE", "backend")
+CELERY_TASK_DEFAULT_QUEUE = BACKEND_CELERY_QUEUE
+CELERY_TASK_ROUTES = {
+    "messages.tasks.classify_message_task": {"queue": BACKEND_CELERY_QUEUE},
+    "messages.tasks.build_message_embedding_task": {"queue": BACKEND_CELERY_QUEUE},
+    "ml_service.classify_message": {"queue": ML_CELERY_QUEUE},
+    "ml_service.embed_text": {"queue": ML_CELERY_QUEUE},
+}
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+ML_TASK_TIMEOUT_SECONDS = int(os.getenv("ML_TASK_TIMEOUT_SECONDS", "30"))
+SEMANTIC_SEARCH_ML_TIMEOUT_SECONDS = float(os.getenv("SEMANTIC_SEARCH_ML_TIMEOUT_SECONDS", "3"))
+ML_CONFIDENCE_THRESHOLD = float(os.getenv("ML_CONFIDENCE_THRESHOLD", "0.55"))
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AIMessenger Backend API",
+    "DESCRIPTION": "Auth, users, contacts, chats, messages, async ML classification and semantic search.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}

@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
@@ -8,10 +10,59 @@ from .models import Contact, User
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'role', 'avatar_url')
         read_only_fields = fields
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        if not obj.avatar:
+            return None
+        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+
+
+class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
+    username = serializers.CharField(label='Логин или e-mail', write_only=True)
+    password = serializers.CharField(
+        label='Пароль',
+        style={'input_type': 'password'},
+        trim_whitespace=False,
+        write_only=True,
+    )
+
+    def validate(self, attrs):
+        identifier = attrs.get('username')
+        password = attrs.get('password')
+
+        if not identifier or not password:
+            raise serializers.ValidationError(
+                'Введите логин или e-mail и пароль.',
+                code='authorization',
+            )
+
+        username = identifier
+        if '@' in identifier:
+            user_by_email = User.objects.filter(email__iexact=identifier).first()
+            if user_by_email:
+                username = user_by_email.get_username()
+
+        user = authenticate(
+            request=self.context.get('request'),
+            username=username,
+            password=password,
+        )
+
+        if not user:
+            raise serializers.ValidationError(
+                'Невозможно войти с предоставленными учетными данными.',
+                code='authorization',
+            )
+
+        attrs['user'] = user
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -171,6 +222,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class CurrentUserSerializer(serializers.ModelSerializer):
+    current_password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -181,11 +236,64 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'last_name',
             'birth_date',
             'phone_number',
+            'avatar',
+            'avatar_url',
             'accepted_user_agreement',
             'accepted_privacy_policy',
             'role',
+            'current_password',
+            'new_password',
         )
-        read_only_fields = fields
+        read_only_fields = (
+            'id',
+            'username',
+            'accepted_user_agreement',
+            'accepted_privacy_policy',
+            'role',
+            'avatar_url',
+        )
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        if not obj.avatar:
+            return None
+        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+
+    def validate(self, attrs):
+        new_password = attrs.get('new_password')
+        current_password = attrs.get('current_password')
+        if new_password and not current_password:
+            raise serializers.ValidationError({'current_password': 'Введите текущий пароль.'})
+        if new_password and not self.instance.check_password(current_password):
+            raise serializers.ValidationError({'current_password': 'Текущий пароль указан неверно.'})
+
+        avatar = attrs.get('avatar', serializers.empty)
+        if avatar not in (serializers.empty, None, ''):
+            if avatar.size > settings.MAX_AVATAR_SIZE_BYTES:
+                max_mb = settings.MAX_AVATAR_SIZE_BYTES // (1024 * 1024)
+                raise serializers.ValidationError({'avatar': f'Файл аватара превышает лимит {max_mb} МБ.'})
+
+            content_type = getattr(avatar, 'content_type', '') or ''
+            if not content_type.startswith('image/'):
+                raise serializers.ValidationError({'avatar': 'Аватар должен быть изображением.'})
+        return attrs
+
+    def update(self, instance, validated_data):
+        new_password = validated_data.pop('new_password', None)
+        validated_data.pop('current_password', None)
+        avatar = validated_data.pop('avatar', serializers.empty)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if avatar is not serializers.empty:
+            if avatar in (None, '') and instance.avatar:
+                instance.avatar.delete(save=False)
+                instance.avatar = None
+            else:
+                instance.avatar = avatar
+        if new_password:
+            instance.set_password(new_password)
+        instance.save()
+        return instance
 
 
 class ContactSerializer(serializers.ModelSerializer):

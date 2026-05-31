@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '../Avatar';
 
 export default function ChatList({ items = [], selectedId, onSelect, loading, error, emptyNode, topNode }) {
   return (
@@ -11,21 +12,40 @@ export default function ChatList({ items = [], selectedId, onSelect, loading, er
       ))}
 
       <div className="list-stack">
-        {items.map((chat) => (
-          <button
-            className={`chat-card chat-card--button ${String(chat.id) === String(selectedId) ? 'chat-card--active' : ''}`}
-            key={chat.id}
-            type="button"
-            onClick={() => onSelect?.(chat.id)}
-          >
-            <div className="chat-card__top">
-              <h3>{chat.name}</h3>
-              {chat.badge != null && <span className="badge">{chat.badge}</span>}
-            </div>
-            <p>{chat.preview}</p>
-            <small>{chat.position || chat.description || ''}</small>
-          </button>
-        ))}
+        {items.map((chat) => {
+          const unreadCount = Number(chat.unreadCount || 0);
+          const hasUnread = unreadCount > 0 || chat.hasUnread;
+
+          return (
+            <button
+              className={`chat-card chat-card--button ${String(chat.id) === String(selectedId) ? 'chat-card--active' : ''} ${hasUnread ? 'chat-card--unread' : ''}`}
+              key={chat.id}
+              type="button"
+              onClick={() => onSelect?.(chat.id)}
+            >
+              <div className="chat-card__top">
+                <span className="chat-card__identity">
+                  <Avatar
+                    src={chat.avatar_url}
+                    initials={chat.initials}
+                    title={chat.name}
+                    className="avatar--circle"
+                    clickable={false}
+                  />
+                  <h3>{chat.name}</h3>
+                </span>
+                {chat.badge != null && <span className="badge">{chat.badge}</span>}
+              </div>
+              <p>{chat.preview}</p>
+              <small>{chat.position || chat.description || ''}</small>
+              {unreadCount > 0 && (
+                <span className="chat-card__unread-count" aria-label={`Непрочитанных сообщений: ${unreadCount}`}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </section>
   );

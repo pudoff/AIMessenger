@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,78 @@ LEGACY_LABELS = {
     2: "task",
     3: "offtopic",
 }
+TOXIC_PATTERNS = (
+    r"\bдурак\b",
+    r"\bдура\b",
+    r"\bидиот\b",
+    r"\bидиотка\b",
+    r"\bдебил\b",
+    r"\bтупица\b",
+    r"\bтупой\b",
+    r"\bтупая\b",
+    r"\bкретин\b",
+    r"\bурод\b",
+    r"\bхам\b",
+    r"\bзаткнись\b",
+)
+IMPERATIVE_VERBS = (
+    "добавь",
+    "добавьте",
+    "забронируй",
+    "забронируйте",
+    "загрузи",
+    "загрузите",
+    "закрой",
+    "закройте",
+    "заполни",
+    "заполните",
+    "купи",
+    "купите",
+    "найди",
+    "найдите",
+    "напиши",
+    "напишите",
+    "напомни",
+    "напомните",
+    "обнови",
+    "обновите",
+    "открой",
+    "откройте",
+    "отправь",
+    "отправьте",
+    "передай",
+    "передайте",
+    "перешли",
+    "перешлите",
+    "подготовь",
+    "подготовьте",
+    "позвони",
+    "позвоните",
+    "покажи",
+    "покажите",
+    "посмотри",
+    "посмотрите",
+    "проверь",
+    "проверьте",
+    "принеси",
+    "принесите",
+    "распечатай",
+    "распечатайте",
+    "сделай",
+    "сделайте",
+    "скачай",
+    "скачайте",
+    "собери",
+    "соберите",
+    "создай",
+    "создайте",
+    "уточни",
+    "уточните",
+)
+IMPERATIVE_RE = re.compile(
+    r"(?:^|[\s,;:])(" + "|".join(re.escape(verb) for verb in IMPERATIVE_VERBS) + r")(?:$|[\s,.!?;:])",
+    re.IGNORECASE,
+)
 
 
 class ChatPredictor:
@@ -43,6 +116,10 @@ class ChatPredictor:
         text = self._clean_message(message)
         if len(text) < self.min_message_length:
             return self._needs_review(text, confidence=0.0, reason="too_short")
+
+        rule_label = self._predict_by_priority_rules(text)
+        if rule_label:
+            return self._rule_result(text, rule_label)
 
         raw_prediction = self.model.predict([text])[0]
         probabilities = self._predict_probabilities(text)
@@ -102,6 +179,31 @@ class ChatPredictor:
             "review_reason": reason,
             "message": text,
         }
+
+    def _rule_result(self, text: str, label: str) -> dict[str, Any]:
+        confidence = 0.94 if label == "offtopic" else 0.9
+        other_probability = (1.0 - confidence) / (len(CANONICAL_CLASSES) - 1)
+        probabilities = {class_name: other_probability for class_name in CANONICAL_CLASSES}
+        probabilities[label] = confidence
+        return {
+            "label": label,
+            "class_name": label,
+            "confidence": confidence,
+            "max_probability": confidence,
+            "probabilities": probabilities,
+            "needs_review": False,
+            "message": text,
+            "source": "rules",
+        }
+
+    @staticmethod
+    def _predict_by_priority_rules(text: str) -> str | None:
+        lowered = text.lower().replace("ё", "е")
+        if any(re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in TOXIC_PATTERNS):
+            return "offtopic"
+        if IMPERATIVE_RE.search(lowered):
+            return "task"
+        return None
 
     def _to_class_name(self, raw_label: Any) -> str:
         if isinstance(raw_label, str):

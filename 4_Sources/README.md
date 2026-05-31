@@ -73,6 +73,20 @@ docker compose -f docker-compose.local.yml --env-file .env up -d --build
 docker compose -f docker-compose.local.yml --env-file .env ps
 ```
 
+Если PyPI недоступен из Docker build, можно передать альтернативный index:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PIP_INDEX_URL=https://pypi.org/simple backend
+```
+
+Если одновременно недоступен Docker Hub, используйте зеркала для базового Python image и PyPI:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=mirror.gcr.io/library/python:3.12-slim --build-arg PIP_INDEX_URL=https://pypi.mirrors.ustc.edu.cn/simple backend
+```
+
+Backend image по умолчанию использует Python 3.12, потому что текущие Celery-зависимости стабильнее собираются на этой версии.
+
 Backend container сам выполняет:
 
 - `python manage.py migrate --noinput`;
@@ -117,15 +131,29 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 npm run build
 ```
 
+В интерфейсе доступны:
+
+- вложения в сообщениях через кнопку со скрепкой в composer;
+- раздел `/app/settings` для изменения e-mail, телефона, пароля и аватара;
+- семантический поиск внутри открытого личного или группового чата;
+- кнопка "Поиск по чатам" в разделе AI Ассистент.
+
 ## ML-service
 
-На текущем backend sprint ML-интеграция временно синхронная:
+ML-интеграция работает через Celery/Redis:
 
-- backend пытается загрузить `ml-service/predictor.py`;
-- если модель или Python-зависимости недоступны, используется mock fallback;
-- результат сохраняется в `MessageClassification` и возвращается в `MessageSerializer.classification`.
+- `backend-worker` слушает очередь `backend` и выполняет `messages.tasks.classify_message_task` и `messages.tasks.build_message_embedding_task`;
+- `ml-worker` обязателен для полноценной классификации и embeddings, слушает очередь `ml`;
+- ML-задачи `ml_service.classify_message` и `ml_service.embed_text` отправляются только в очередь `ml`;
+- если `ml-worker` недоступен, backend-задача пишет fallback-классификацию и hash embedding.
 
-Отдельный сервис/Celery/Redis для ML-классификации описан как будущая схема в `backend/Readme.md`.
+Для локального полного запуска используйте:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env up -d --build postgres redis ml-worker backend backend-worker frontend
+```
+
+Идея RAG-расширения через QWEN API описана в `RAG_QWEN_PROPOSAL.md`.
 
 ## Остановка
 

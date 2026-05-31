@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'; //  добавили useEffect
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { formatPhone, cleanPhone } from '../../utils/phoneMask';
 import { LEGAL_CONTENT } from '../../data/legalContent';
@@ -8,26 +8,73 @@ import { validateField, parseBackendErrors, PASSWORD_REQUIREMENTS } from '../../
 import Logo from '../../components/Logo';
 import LegalModal from '../../components/auth/LegalModal';
 
+const REGISTER_DRAFT_KEY = 'register_form_draft';
+
+const emptyForm = {
+  firstName: '',
+  lastName: '',
+  birthDate: '',
+  username: '',
+  phone: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  accepted_user_agreement: false,
+  accepted_privacy_policy: false
+};
+
+const loadRegisterDraft = () => {
+  try {
+    const savedDraft = JSON.parse(sessionStorage.getItem(REGISTER_DRAFT_KEY) || '{}');
+    return {
+      ...emptyForm,
+      ...savedDraft,
+      password: '',
+      confirmPassword: '',
+    };
+  } catch {
+    return emptyForm;
+  }
+};
+
+const getCurrentFormErrors = (formValues, extraErrors = {}) => {
+  const errors = { ...extraErrors };
+
+  for (const [name, value] of Object.entries(formValues)) {
+    const err = validateField(name, value, formValues);
+
+    if (err) {
+      errors[name] = err;
+    } else {
+      delete errors[name];
+    }
+  }
+
+  return errors;
+};
+
 function RegisterPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { register, loading, error: globalError, clearError } = useAuth();
   const registrationStatus = searchParams.get('registration');
 
-  const [form, setForm] = useState({
-    firstName: '', lastName: '', birthDate: '', username: '',
-    phone: '', email: '', password: '', confirmPassword: '',
-    accepted_user_agreement: false, accepted_privacy_policy: false
-  });
+  const [form, setForm] = useState(loadRegisterDraft);
   
   const [fieldErrors, setFieldErrors] = useState({}); //  Ошибки по полям
+  const [serverErrors, setServerErrors] = useState({});
   const [touched, setTouched] = useState({}); //  Отслеживаем, было ли поле сфокусировано
   const [activeModal, setActiveModal] = useState(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   
+  useEffect(() => {
+    const { password, confirmPassword, ...draft } = form;
+    sessionStorage.setItem(REGISTER_DRAFT_KEY, JSON.stringify(draft));
+  }, [form]);
 
   //  Валидация поля при изменении (только если поле уже "трогали")
   useEffect(() => {
-    const errors = {};
+    const errors = { ...serverErrors };
     for (const [name, value] of Object.entries(form)) {
       if (touched[name] || value) { // Валидируем, если поле трогали или оно не пустое
         const err = validateField(name, value, form);
@@ -35,10 +82,23 @@ function RegisterPage() {
       }
     }
     setFieldErrors(errors);
-  }, [form, touched]);
+  }, [form, touched, serverErrors]);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
+    setSubmitError('');
+    setServerErrors(prev => {
+      const next = { ...prev };
+      delete next[name];
+      delete next._global;
+      if (name === 'phone') delete next.phone;
+      if (name === 'password') {
+        delete next.password;
+        delete next.confirmPassword;
+      }
+      if (name === 'confirmPassword') delete next.confirmPassword;
+      return next;
+    });
     
     if (name === 'phone') {
       const cleaned = cleanPhone(value);
@@ -59,20 +119,17 @@ function RegisterPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     clearError();
+    setSubmitError('');
+    setServerErrors({});
     
     //  Валидируем ВСЕ поля перед отправкой
     const newTouched = {};
-    const newErrors = {};
-    let hasError = false;
-    
     for (const field of Object.keys(form)) {
       newTouched[field] = true;
-      const err = validateField(field, form[field], form);
-      if (err) {
-        newErrors[field] = err;
-        hasError = true;
-      }
     }
+
+    const newErrors = getCurrentFormErrors(form);
+    const hasError = Object.keys(newErrors).length > 0;
     
     setTouched(newTouched);
     setFieldErrors(newErrors);
@@ -99,12 +156,45 @@ function RegisterPage() {
     const result = await register(payload);
     
     if (result.success) {
-      setIsSubmitted(true);
+      sessionStorage.removeItem(REGISTER_DRAFT_KEY);
+      navigate('/login', {
+        replace: true,
+        state: {
+          notice: `Регистрация создана. Мы отправили письмо подтверждения на ${form.email.trim().toLowerCase()}.`,
+        },
+      });
     } else {
+      setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+
       const backendErrors = parseBackendErrors(result.errors || {});
+      const existingAccountError = [backendErrors.username, backendErrors.email]
+        .find((message) => typeof message === 'string' && message.toLowerCase().includes('существ'));
+
+      if (existingAccountError) {
+        navigate('/login', {
+          replace: true,
+          state: {
+            error: `${existingAccountError} Попробуйте войти или восстановить доступ.`,
+          },
+        });
+        return;
+      }
+
+      setServerErrors(backendErrors);
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));
+      setTouched(prev => ({
+        ...prev,
+        ...Object.keys(backendErrors).reduce((acc, field) => ({ ...acc, [field]: true }), {}),
+      }));
+      setSubmitError(
+        backendErrors._global ||
+        backendErrors.username ||
+        backendErrors.email ||
+        result.message ||
+        'Не удалось зарегистрироваться. Проверьте данные и попробуйте еще раз.'
+      );
       
-      const firstBackendError = Object.keys(backendErrors)[0];
+      const firstBackendError = Object.keys(backendErrors).find((field) => field !== '_global');
       if (firstBackendError) {
         const element = document.querySelector(`[name="${firstBackendError}"]`);
         element?.focus();
@@ -112,36 +202,8 @@ function RegisterPage() {
     }
   };
 
-  //  Форма валидна, если нет ошибок в тронутых полях и все обязательные заполнены
-  const isFormValid = 
-    !Object.values(fieldErrors).some(err => err) &&
-    form.firstName.trim() && form.lastName.trim() && form.birthDate &&
-    form.username.trim() && form.phone.length === 10 &&
-    form.email.trim() && form.password && form.confirmPassword &&
-    form.password === form.confirmPassword &&
-    form.accepted_user_agreement && form.accepted_privacy_policy;
-
-  if (isSubmitted) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <Logo hideText />
-          <div className="auth-card__heading">
-            <h1>Проверьте почту</h1>
-            <p>Мы отправили ссылку для завершения регистрации на <strong>{form.email}</strong>.</p>
-          </div>
-          <div className="auth-form">
-            <div className="form-success">
-              Перейдите по ссылке из письма. После подтверждения аккаунта вы сможете войти в мессенджер.
-            </div>
-            <Link to="/login" className="secondary-button">
-              Перейти ко входу
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const currentFormErrors = getCurrentFormErrors(form, serverErrors);
+  const isFormValid = Object.keys(currentFormErrors).length === 0;
 
   // ─────────────────────────────────────────────────────────
   //  Экран успеха
@@ -379,8 +441,9 @@ function RegisterPage() {
 
           {/* Чекбоксы соглашений */}
           <div className="auth-form__agreements">
-            <label className={`auth-form__checkbox ${fieldErrors.accepted_user_agreement && touched.accepted_user_agreement ? 'auth-form__checkbox--error' : ''}`}>
+            <div className={`auth-form__checkbox ${fieldErrors.accepted_user_agreement && touched.accepted_user_agreement ? 'auth-form__checkbox--error' : ''}`}>
               <input 
+                id="accepted_user_agreement"
                 type="checkbox" 
                 name="accepted_user_agreement" 
                 checked={form.accepted_user_agreement} 
@@ -389,19 +452,20 @@ function RegisterPage() {
                 required 
                 disabled={loading} 
               />
-              <span>
-                Я принимаю{' '}
+              <div className="auth-form__checkbox-text">
+                <label htmlFor="accepted_user_agreement">Я принимаю</label>{' '}
                 <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('terms')} disabled={loading}>
                   пользовательское соглашение
                 </button>{' '}
                 *
-              </span>
-              {fieldErrors.accepted_user_agreement && touched.accepted_user_agreement && (
-                <span className="auth-form__field-error">{fieldErrors.accepted_user_agreement}</span>
-              )}
-            </label>
-            <label className={`auth-form__checkbox ${fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy ? 'auth-form__checkbox--error' : ''}`}>
+                {fieldErrors.accepted_user_agreement && touched.accepted_user_agreement && (
+                  <span className="auth-form__field-error">{fieldErrors.accepted_user_agreement}</span>
+                )}
+              </div>
+            </div>
+            <div className={`auth-form__checkbox ${fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy ? 'auth-form__checkbox--error' : ''}`}>
               <input 
+                id="accepted_privacy_policy"
                 type="checkbox" 
                 name="accepted_privacy_policy" 
                 checked={form.accepted_privacy_policy} 
@@ -410,20 +474,26 @@ function RegisterPage() {
                 required 
                 disabled={loading} 
               />
-              <span>
-                Я соглашаюсь с{' '}
+              <div className="auth-form__checkbox-text">
+                <label htmlFor="accepted_privacy_policy">Я соглашаюсь с</label>{' '}
                 <button type="button" className="auth-form__link-btn" onClick={() => setActiveModal('privacy')} disabled={loading}>
                   политикой конфиденциальности
                 </button>{' '}
                 *
-              </span>
-              {fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy && (
-                <span className="auth-form__field-error">{fieldErrors.accepted_privacy_policy}</span>
-              )}
-            </label>
+                {fieldErrors.accepted_privacy_policy && touched.accepted_privacy_policy && (
+                  <span className="auth-form__field-error">{fieldErrors.accepted_privacy_policy}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Глобальная ошибка (не по полям) */}
+          {submitError && (
+            <div className="form-error">
+              {submitError}{' '}
+              <Link to="/login" className="auth-form__footer-link">Перейти ко входу</Link>
+            </div>
+          )}
           {globalError && <div className="form-error">{globalError}</div>}
 
           <button 

@@ -10,10 +10,12 @@ export default function ChatRoom({
   placeholder,
   endRef,
   composerDisabled = false,
+  searchNode = null,
 }) {
   return (
     <section className="panel panel--chat panel--chat-only" style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: 0 }}>
       <div className="messages-feed" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {searchNode}
         {messageError && <div className="contacts-error">{messageError}</div>}
 
         {messages.map((msg) => (

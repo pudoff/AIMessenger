@@ -3,35 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatList from '../../components/chat/ChatList';
 import SectionHeader from '../../components/SectionHeader';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import { request as apiRequest } from '../../api/client';
+import { useUnread } from '../../context/UnreadContext';
 
 // Получение текущего пользователя
 const getCurrentUser = async () => {
@@ -58,8 +31,12 @@ const formatDirectChat = (c, myId) => {
     status: 'Онлайн',
     preview: c.last_message?.text || 'Нет сообщений',
     initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    avatar_url: detail.avatar_url || null,
     chat_type: 'direct',
     last_message: c.last_message,
+    unread_count: c.unread_count,
+    last_read_message: c.last_read_message,
+    last_read_at: c.last_read_at,
   };
 };
 
@@ -72,6 +49,10 @@ const formatGroup = (g) => ({
   preview: g.last_message?.text || 'Нет сообщений',
   position: `Участников: ${g.members_count || 0}`,
   chat_type: 'group',
+  last_message: g.last_message,
+  unread_count: g.unread_count,
+  last_read_message: g.last_read_message,
+  last_read_at: g.last_read_at,
 });
 
 // Форматирование сообщества
@@ -84,10 +65,15 @@ const formatCommunity = (c) => ({
   preview: 'Сообщество',
   position: `${c.members_count || 0} участников`,
   chat_type: 'corporate',
+  last_message: c.last_message,
+  unread_count: c.unread_count,
+  last_read_message: c.last_read_message,
+  last_read_at: c.last_read_at,
 });
 
 function MessengerPage() {
   const navigate = useNavigate();
+  const { decorateChatsWithUnread } = useUnread();
   const [searchQuery, setSearchQuery] = useState('');
   const [allChats, setAllChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,9 +111,21 @@ function MessengerPage() {
           apiRequest('/chats/?type=corporate'),
         ]);
 
-        const directList = (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId));
-        const groupList = (groupRes?.results || groupRes || []).map(formatGroup);
-        const corporateList = (corporateRes?.results || corporateRes || []).map(formatCommunity);
+        const directList = decorateChatsWithUnread(
+          'direct',
+          (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId)),
+          { currentUserId: myId },
+        );
+        const groupList = decorateChatsWithUnread(
+          'group',
+          (groupRes?.results || groupRes || []).map(formatGroup),
+          { currentUserId: myId },
+        );
+        const corporateList = decorateChatsWithUnread(
+          'corporate',
+          (corporateRes?.results || corporateRes || []).map(formatCommunity),
+          { currentUserId: myId },
+        );
 
         const all = [...directList, ...groupList, ...corporateList].sort((a, b) => {
           const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
@@ -135,7 +133,6 @@ function MessengerPage() {
           return bTime - aTime;
         });
 
-        console.log('[MessengerPage] Загружено чатов:', { direct: directList.length, group: groupList.length, corporate: corporateList.length, total: all.length });
         setAllChats(all);
         setError(null);
       } catch (e) {
@@ -151,7 +148,7 @@ function MessengerPage() {
     // Опрос для обновления каждые 5 секунд
     const pollInterval = setInterval(fetchAllChats, 5000);
     return () => clearInterval(pollInterval);
-  }, [myId]);
+  }, [myId, decorateChatsWithUnread]);
 
   // Фильтрация по поиску
   const filteredChats = allChats.filter(chat => {
@@ -168,8 +165,6 @@ function MessengerPage() {
   });
 
   const handleSelectChat = (chatId) => {
-    console.log('[MessengerPage.handleSelectChat] Получен ID:', chatId, 'Всего чатов:', allChats.length);
-    
     // chatId приходит просто ID, ищем тип чата
     const foundChat = allChats.find(c => String(c.id) === String(chatId));
     
@@ -179,7 +174,6 @@ function MessengerPage() {
     }
 
     const chatType = foundChat.chat_type;
-    console.log('[MessengerPage.handleSelectChat] Найден чат:', { id: chatId, type: chatType, name: foundChat.name });
 
     let url = '';
     // Навигация в зависимости от типа чата с replace
@@ -187,7 +181,7 @@ function MessengerPage() {
       url = `/app/direct/${chatId}`;
       navigate(url, { replace: true });
     } else if (chatType === 'group') {
-      url = `/app/group/${chatId}`;
+      url = `/app/groups/${chatId}`;
       navigate(url, { replace: true });
     } else if (chatType === 'corporate') {
       url = `/app/community/${chatId}`;
@@ -197,8 +191,6 @@ function MessengerPage() {
       url = `/app/direct/${chatId}`;
       navigate(url, { replace: true });
     }
-    
-    console.log('[MessengerPage.handleSelectChat] Переход по адресу:', url);
   };
 
   return (

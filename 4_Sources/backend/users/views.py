@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -13,7 +14,10 @@ from django.utils.html import format_html
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils import timezone
 from rest_framework import generics, views, viewsets
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import serializers, status
@@ -22,14 +26,74 @@ from chats.models import Chat, ChatMember
 from messages.models import Message
 from .models import Contact, User
 from .permissions import IsProjectAdminUser, is_project_admin
-from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
+from .serializers import AdminEmailBroadcastSerializer, ContactSerializer, CurrentUserSerializer, EmailOrUsernameAuthTokenSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PublicUserSerializer, RegisterSerializer, UserSerializer
 from .tokens import email_confirmation_token
+
+
+logger = logging.getLogger(__name__)
+
+
+class EmailDeliveryError(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = 'Не удалось отправить письмо. Проверьте настройки почты или попробуйте позже.'
+    default_code = 'email_delivery_failed'
+
+
+class EmailOrUsernameAuthTokenView(ObtainAuthToken):
+    serializer_class = EmailOrUsernameAuthTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        token, _ = Token.objects.get_or_create(user=serializer.validated_data['user'])
+        return Response({'token': token.key})
 
 
 def frontend_url(path):
     if path.startswith(('http://', 'https://')):
         return path
     return f'{settings.FRONTEND_BASE_URL}{path}'
+
+
+def backend_url(request, path):
+    if path.startswith(('http://', 'https://')):
+        return path
+    if settings.BACKEND_PUBLIC_BASE_URL:
+        return f'{settings.BACKEND_PUBLIC_BASE_URL}{path}'
+    return request.build_absolute_uri(path)
+
+
+def send_registration_confirmation_email(request, user):
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = email_confirmation_token.make_token(user)
+    path = reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
+    confirmation_url = backend_url(request, path)
+
+    plain_message = (
+        'Добрый день!\n\n'
+        'Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+        f'зарегистрироваться ({confirmation_url})\n\n'
+        'Если это не вы, просто удалите сообщение.'
+    )
+    html_message = format_html(
+        '<p>Добрый день!</p>'
+        '<p>Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
+        '<a href="{}">зарегистрироваться</a></p>'
+        '<p>Если это не вы, просто удалите сообщение.</p>',
+        confirmation_url,
+    )
+
+    send_mail(
+        subject='Подтверждение регистрации в мессенджере "Наш Слон"',
+        message=plain_message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+        html_message=html_message,
+    )
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -131,10 +195,7 @@ class ContactViewSet(viewsets.ModelViewSet):
             user=request.user,
             role__in=(ChatMember.Role.OWNER, ChatMember.Role.ADMIN),
         ).exists():
-            return Response(
-                {'detail': 'У вас нет прав добавлять участников в этот чат.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionDenied('У вас нет прав добавлять участников в этот чат.')
 
         member, created = ChatMember.objects.get_or_create(
             chat=chat,
@@ -157,7 +218,11 @@ class RegisterView(generics.CreateAPIView):
 
         with transaction.atomic():
             user = serializer.save()
-            self.send_confirmation_email(request, user)
+            try:
+                send_registration_confirmation_email(request, user)
+            except Exception as exc:
+                logger.exception('Failed to send registration confirmation email for user %s', user.pk)
+                raise EmailDeliveryError() from exc
 
         headers = self.get_success_headers(serializer.data)
         return Response(
@@ -168,36 +233,6 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
             headers=headers,
         )
-
-    def send_confirmation_email(self, request, user):
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        token = email_confirmation_token.make_token(user)
-        path = reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
-        confirmation_url = request.build_absolute_uri(path)
-
-        plain_message = (
-            'Добрый день!\n\n'
-            'Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
-            f'зарегистрироваться ({confirmation_url})\n\n'
-            'Если это не вы, просто удалите сообщение.'
-        )
-        html_message = format_html(
-            '<p>Добрый день!</p>'
-            '<p>Для завершения регистрации в мессенджере "Наш Слон" перейдите по ссылке: '
-            '<a href="{}">зарегистрироваться</a></p>'
-            '<p>Если это не вы, просто удалите сообщение.</p>',
-            confirmation_url,
-        )
-
-        send_mail(
-            subject='Подтверждение регистрации в мессенджере "Наш Слон"',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-            html_message=html_message,
-        )
-
 
 class ConfirmRegistrationView(views.APIView):
     permission_classes = (AllowAny,)
@@ -231,12 +266,19 @@ class PasswordResetRequestView(views.APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
-        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        user = User.objects.filter(email__iexact=email).first()
         if user:
-            self.send_reset_email(request, user)
+            try:
+                if user.is_active:
+                    self.send_reset_email(request, user)
+                else:
+                    send_registration_confirmation_email(request, user)
+            except Exception as exc:
+                logger.exception('Failed to send password/reset confirmation email for user %s', user.pk)
+                raise EmailDeliveryError() from exc
 
         return Response({
-            'detail': 'Если пользователь с таким email существует, письмо для восстановления пароля будет отправлено.',
+            'detail': 'Если пользователь с таким email существует, письмо с дальнейшими инструкциями будет отправлено.',
         })
 
     def send_reset_email(self, request, user):
@@ -280,7 +322,7 @@ class PasswordResetConfirmView(views.APIView):
         return Response({'detail': 'Ваш пароль успешно изменен.'})
 
 
-class CurrentUserView(generics.RetrieveAPIView):
+class CurrentUserView(generics.RetrieveUpdateAPIView):
     serializer_class = CurrentUserSerializer
 
     def get_object(self):

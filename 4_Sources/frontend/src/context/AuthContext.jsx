@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       return { success: true, data };
     } catch (err) {
-      setError(err.message);
+      setError(null);
       return { success: false, message: err.message, errors: err.data };
     } finally {
       setLoading(false);
@@ -86,6 +86,12 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   };
 
+  const refreshProfile = async () => {
+    const user = await authAPI.getMe();
+    setCurrentUser(user);
+    return user;
+  };
+
   const value = useMemo(() => ({
     currentUser,
     isAuthenticated: !!currentUser,
@@ -94,6 +100,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    refreshProfile,
     clearError: () => setError(null)
   }), [currentUser, loading, error]);
 

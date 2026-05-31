@@ -131,3 +131,28 @@ result = predictor.predict_one("Кто отвечает за API?")
 3. ML-worker возвращает классификацию.
 4. Backend обновляет `MessageClassification`.
 5. Frontend получает обновленный тег через polling или websocket.
+
+## Sprint update: embeddings
+
+`ml-service` also exposes Celery embedding tasks:
+
+- `ml_service.embed_text(text)`
+- `ml_service.embed_texts(texts)`
+
+The default multilingual model is `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, suitable for Russian and English MVP semantic search. The response contract:
+
+```json
+{
+  "embedding": [0.01, 0.02],
+  "model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "dimensions": 384
+}
+```
+
+Empty or one-character texts raise validation errors. If `sentence-transformers` is unavailable in a local dev environment, `embedder.py` falls back to a deterministic 384-dimensional hash embedding so backend smoke-tests can still run without GPU or model downloads.
+
+Smoke tests:
+
+```powershell
+python -m pytest tests
+```

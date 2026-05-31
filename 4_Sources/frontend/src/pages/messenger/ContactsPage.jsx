@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate, useParams, useNavigate } from 'react-router-dom';
 import SectionHeader from '../../components/SectionHeader';
+import Avatar from '../../components/Avatar';
 import { contactsAPI } from '../../api/contacts';
 
 // Форматеры (без изменений)
@@ -13,6 +14,7 @@ const formatContact = (c) => ({
   email: c.contact_detail?.email || '',
   role: c.contact_detail?.role || 'user',
   username: c.contact_detail?.username || '',
+  avatar_url: c.contact_detail?.avatar_url || null,
   location: 'Не указан',
   department: 'Не указано',
   bio: 'Нет информации',
@@ -24,6 +26,7 @@ const formatSearchResult = (u) => ({
   initials: ((`${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username).slice(0, 2) || '??').toUpperCase(),
   username: u.username,
   email: u.email,
+  avatar_url: u.avatar_url || null,
 });
 
 function ContactsPage() {
@@ -112,7 +115,11 @@ function ContactsPage() {
 
       navigate(`/app/direct/${finalChatId}`, {
         replace: true,
-        state: { contactName: selectedContact.fullName, contactInitials: selectedContact.initials }
+        state: {
+          contactName: selectedContact.fullName,
+          contactInitials: selectedContact.initials,
+          contactAvatarUrl: selectedContact.avatar_url,
+        }
       });
     } catch (err) {
       alert(err.message || 'Не удалось открыть чат');
@@ -151,7 +158,13 @@ function ContactsPage() {
               <div key={item.userId} className={`contact-row ${active ? 'contact-row--active' : ''}`}>
                 <Link className="contact-row__link" to={isSearchMode ? '' : `/app/contacts/${item.id}`} onClick={(e) => isSearchMode && e.preventDefault()}>
                   <div className="contact-row__left">
-                    <div className="avatar avatar--circle">{item.initials}</div>
+                    <Avatar
+                      src={item.avatar_url}
+                      initials={item.initials}
+                      title={item.fullName}
+                      className="avatar--circle"
+                      clickable={false}
+                    />
                     <div className="contact-row__text">
                       <strong>{item.fullName}</strong>
                       <span>{item.username}</span>
@@ -187,7 +200,12 @@ function ContactsPage() {
         {!loading && selectedContact ? (
           <div className="contact-profile">
             <div className="contact-profile__hero">
-              <div className="avatar avatar--primary avatar--xl avatar--circle">{selectedContact.initials}</div>
+              <Avatar
+                src={selectedContact.avatar_url}
+                initials={selectedContact.initials}
+                title={selectedContact.fullName}
+                className="avatar--xl avatar--circle"
+              />
               <div className="contact-profile__head">
                 <h2>{selectedContact.fullName}</h2>
                 <p>{selectedContact.role === 'admin' ? 'Администратор' : 'Сотрудник'}</p>

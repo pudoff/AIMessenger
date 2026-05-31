@@ -1,35 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import SectionHeader from '../../components/SectionHeader';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import { request as apiRequest } from '../../api/client';
 
 // Форматирование сообщества
 const formatCommunity = (c) => ({

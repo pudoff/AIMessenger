@@ -100,10 +100,20 @@
   margin-bottom: 6px;
 }
 
+.chat-card__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .chat-card__top h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-card p {

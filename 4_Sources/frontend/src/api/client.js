@@ -1,12 +1,14 @@
 import { API_BASE } from './config';
+import { getFirstBackendError } from '../utils/validation';
 
 const getAuthToken = () => localStorage.getItem('auth_token');
 const clearAuthToken = () => localStorage.removeItem('auth_token');
 
 const buildHeaders = (options = {}) => {
   const token = getAuthToken();
+  const isFormData = options.body instanceof FormData;
   return {
-    'Content-Type': 'application/json',
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Token ${token}` }),
     ...options.headers,
   };
@@ -42,9 +44,7 @@ export const request = async (endpoint, options = {}) => {
       clearAuthToken();
     }
 
-    const error = new Error(
-      data?.detail || data?.non_field_errors?.[0] || 'Ошибка запроса'
-    );
+    const error = new Error(getFirstBackendError(data));
     error.status = response.status;
     error.data = data;
     throw error;
