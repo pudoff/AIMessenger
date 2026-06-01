@@ -145,6 +145,17 @@ services:
       timeout: 3s
       retries: 5
 
+  dozzle:
+    image: amir20/dozzle:v10.0.6
+    container_name: dozzle
+    environment:
+      DOZZLE_BASE: /
+      DOZZLE_FILTER: ""
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+
 volumes:
   aimessenger_pgvector_data:
   aimessenger_static_data:
