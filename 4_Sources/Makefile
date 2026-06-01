@@ -1,3 +1,8 @@
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 OPTIONS := --env-file .env up -d --build --force-recreate --remove-orphans
 UNAME_S := $(shell uname -s 2>/dev/null || echo unknown)
 
