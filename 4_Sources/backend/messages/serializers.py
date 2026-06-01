@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from chats.models import ChatMember
+from config.media import build_public_media_url
 from users.permissions import is_project_admin
 from .models import Message, MessageClassification, MessageReadReceipt
 
@@ -68,8 +69,7 @@ class MessageSerializer(serializers.ModelSerializer):
         attachments = []
         for attachment in obj.attachments.all():
             url = attachment.file.url if attachment.file else ''
-            if request and url:
-                url = request.build_absolute_uri(url)
+            url = build_public_media_url(request, url)
             attachments.append({
                 'id': attachment.id,
                 'url': url,
@@ -85,7 +85,7 @@ class MessageSerializer(serializers.ModelSerializer):
         avatar = getattr(obj.sender, 'avatar', None)
         if not avatar:
             return None
-        return request.build_absolute_uri(avatar.url) if request else avatar.url
+        return build_public_media_url(request, avatar.url)
 
     def get_is_read(self, obj):
         request = self.context.get('request')

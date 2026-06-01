@@ -6,6 +6,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 
+from config.media import build_public_media_url
 from .models import Contact, User
 
 
@@ -21,7 +22,7 @@ class PublicUserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not obj.avatar:
             return None
-        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return build_public_media_url(request, obj.avatar.url)
 
 
 class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
@@ -257,7 +258,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not obj.avatar:
             return None
-        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return build_public_media_url(request, obj.avatar.url)
 
     def validate(self, attrs):
         new_password = attrs.get('new_password')

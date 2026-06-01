@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import SectionHeader from '../components/SectionHeader';
+import Avatar from '../components/Avatar';
 import { authAPI } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +11,7 @@ function SettingsPage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
 
   useEffect(() => {
     setForm((prev) => ({
@@ -18,6 +20,17 @@ function SettingsPage() {
       phone_number: currentUser?.phone_number || '',
     }));
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!avatar) {
+      setAvatarPreviewUrl('');
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(avatar);
+    setAvatarPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [avatar]);
 
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -65,9 +78,12 @@ function SettingsPage() {
       <SectionHeader title="Настройки" subtitle="Профиль, контакты и безопасность аккаунта" />
       <form className="settings-form" onSubmit={handleSubmit}>
         <section className="settings-form__avatar">
-          <div className="avatar avatar--primary settings-form__avatar-preview">
-            {currentUser?.avatar_url ? <img src={currentUser.avatar_url} alt="" /> : (currentUser?.username?.slice(0, 2) || '??').toUpperCase()}
-          </div>
+          <Avatar
+            src={avatarPreviewUrl || currentUser?.avatar_url}
+            initials={currentUser?.username?.slice(0, 2) || '??'}
+            title="Фото профиля"
+            className="avatar--circle settings-form__avatar-preview"
+          />
           <label className="secondary-button">
             Изменить фото
             <input type="file" accept="image/*" onChange={(event) => setAvatar(event.target.files?.[0] || null)} />

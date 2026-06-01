@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function Avatar({
   src,
@@ -8,11 +8,19 @@ function Avatar({
   clickable = true,
 }) {
   const [open, setOpen] = useState(false);
-  const hasImage = Boolean(src);
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(src) && !imageFailed;
   const normalizedInitials = (initials || '??').slice(0, 2).toUpperCase();
   const classes = `avatar ${hasImage ? 'avatar--image' : 'avatar--primary'} ${className}`.trim();
 
-  const content = hasImage ? <img src={src} alt={title} loading="lazy" /> : normalizedInitials;
+  useEffect(() => {
+    setImageFailed(false);
+    setOpen(false);
+  }, [src]);
+
+  const content = hasImage ? (
+    <img src={src} alt={title} loading="lazy" onError={() => setImageFailed(true)} />
+  ) : normalizedInitials;
 
   if (!hasImage || !clickable) {
     return (
