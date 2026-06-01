@@ -20,7 +20,3 @@ local:
 .PHONY: prod
 prod:
 	docker compose -f docker-compose.yml ${OPTIONS}
-
-.PHONY: prod-pull
-prod-pull:
-	docker compose -f docker-compose.yml ${OPTIONS} --pull always
