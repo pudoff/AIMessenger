@@ -54,7 +54,7 @@ function AdminChats() {
         chat_type: 'corporate',
       });
       setCorporateChatName('');
-      alert('Корпоративный чат создан');
+      alert('Групповой чат создан');
       // Перезагружаем список чатов
       const chatList = await adminAPI.getCorporateChats();
       if (chatList.length) {
@@ -70,11 +70,11 @@ function AdminChats() {
 
   return (
     <div className="admin-page">
-      <SectionHeader title="Корпоративные чаты" subtitle="Просмотр и создание корпоративных чатов" />
+      <SectionHeader title="Групповые чаты" subtitle="Просмотр и создание групповых чатов" />
 
       <section className="admin-grid">
         <article className="panel">
-          <div className="panel__title">Список корпоративных чатов</div>
+          <div className="panel__title">Список групповых чатов</div>
           <div className="table-wrap">
             {loading ? (
               <div className="contacts-empty">Загрузка чатов...</div>
@@ -93,7 +93,7 @@ function AdminChats() {
                   {chats.length === 0 ? (
                     <tr>
                       <td colSpan="3" className="data-table__empty-cell">
-                        Корпоративные чаты отсутствуют
+                        Групповые чаты отсутствуют
                       </td>
                     </tr>
                   ) : (
@@ -112,7 +112,7 @@ function AdminChats() {
         </article>
 
         <article className="panel">
-          <div className="panel__title">Создать корпоративный чат</div>
+          <div className="panel__title">Создать групповой чат</div>
           <div className="form-stack">
             <div className="form-group">
               <label htmlFor="corporate-chat-name">Название чата</label>

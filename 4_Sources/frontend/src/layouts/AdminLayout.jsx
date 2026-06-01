@@ -16,13 +16,13 @@ function AdminLayout() {
         <Logo compact />
         <nav className="admin-menu">
           <NavLink to="/admin" end className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
-            Дашборд
+            Главное
           </NavLink>
           <NavLink to="/admin/users" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
             Пользователи
           </NavLink>
           <NavLink to="/admin/chats" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
-            Корпоративные чаты
+            Групповые чаты
           </NavLink>
           <NavLink to="/admin/broadcast" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
             E-mail рассылка

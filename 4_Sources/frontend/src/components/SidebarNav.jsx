@@ -15,7 +15,7 @@ import settingsIcon from '../assets/icons_final/06_settings.png';
 const items = [
   { to: '/app', label: 'Чаты', icon: chatIcon, unreadKey: 'all' },
   { to: '/app/direct', label: 'Личные сообщения', icon: directIcon, unreadKey: 'direct' },
-  { to: '/app/groups', label: 'Корпоративные чаты', icon: groupsIcon, unreadKey: 'groups' },
+  { to: '/app/groups', label: 'Групповые чаты', icon: groupsIcon, unreadKey: 'groups' },
   { to: '/app/communities', label: 'Сообщества', icon: communitiesIcon },
   { to: '/app/contacts', label: 'Контакты', icon: contactsIcon },
   { to: '/app/assistant', label: 'AI-ассистент', icon: assistantIcon },

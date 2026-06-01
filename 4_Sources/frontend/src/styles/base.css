@@ -30,7 +30,9 @@ body,
 }
 
 body {
-  font-family: 'Manrope', sans-serif;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(126, 137, 217, 0.22), transparent 32%),

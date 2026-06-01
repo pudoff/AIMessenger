@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../../api/auth';
 import Logo from '../../components/Logo';
-import logoAuth from '../../assets/logo_new.png';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -59,7 +58,7 @@ function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Logo src={logoAuth} hideText />
+        <Logo hideText />
         <div className="auth-card__heading">
           <h1>Восстановление доступа</h1>
           <p>Введите email, указанный при регистрации. Мы отправим ссылку для смены пароля.</p>
