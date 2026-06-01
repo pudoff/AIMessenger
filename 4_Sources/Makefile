@@ -24,3 +24,10 @@ prod:
 .PHONY: prod-pull
 prod-pull:
 	docker compose -f docker-compose.yml ${OPTIONS} --pull always
+
+.PHONY: traefik-base-auth
+traefik-base-auth:
+	@if [ -z "${BASE_AUTH_PASS}" ]; then echo "BASE_AUTH_PASS is empty"; exit 1; fi
+	@mkdir -p ./infra/traefik
+	@printf "admin:%s\n" "$$(openssl passwd -apr1 "${BASE_AUTH_PASS}")" > ./infra/traefik/usersfile
+	@echo "Generated ./infra/traefik/usersfile"
