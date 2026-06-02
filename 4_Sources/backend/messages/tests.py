@@ -345,6 +345,24 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(attachment.original_name, 'note.txt')
         self.assertEqual(response.json()['attachments'][0]['original_name'], 'note.txt')
 
+    def test_message_attachment_uses_public_media_base_url(self):
+        self.client.force_authenticate(self.member)
+        uploaded = SimpleUploadedFile('image.png', b'png bytes', content_type='image/png')
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root, BACKEND_PUBLIC_BASE_URL='https://api.example.test'):
+                with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        response = self.client.post(
+                            reverse('message-list'),
+                            {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                            format='multipart',
+                        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attachment_url = response.json()['attachments'][0]['url']
+        self.assertTrue(attachment_url.startswith('https://api.example.test/media/message_attachments/'))
+
     def test_message_attachment_size_limit_is_validated(self):
         self.client.force_authenticate(self.member)
         uploaded = SimpleUploadedFile('large.txt', b'hello file', content_type='text/plain')

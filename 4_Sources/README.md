@@ -100,13 +100,30 @@ Backend container сам выполняет:
 docker compose -f docker-compose.local.yml --env-file .env exec backend python manage.py seed_demo_data
 ```
 
-Если Docker Hub не скачивает образы из-за DNS/IPv6, можно один раз скачать через Google mirror и проставить стандартные теги:
+Если Docker Hub не скачивает образы из-за DNS/IPv6, можно заранее скачать нужные образы и проставить стандартные теги:
 
 ```powershell
-docker pull mirror.gcr.io/library/postgres:18.3
+docker pull docker.1ms.run/pgvector/pgvector:0.8.2-pg17-trixie
+docker pull docker.1ms.run/library/node:24-alpine
+docker pull docker.1ms.run/library/nginx:1.27-alpine
 docker pull mirror.gcr.io/library/redis:alpine
-docker tag mirror.gcr.io/library/postgres:18.3 postgres:18.3
+docker tag docker.1ms.run/pgvector/pgvector:0.8.2-pg17-trixie pgvector/pgvector:0.8.2-pg17-trixie
+docker tag docker.1ms.run/library/node:24-alpine node:24-alpine
+docker tag docker.1ms.run/library/nginx:1.27-alpine nginx:1.27-alpine
 docker tag mirror.gcr.io/library/redis:alpine redis:alpine
+```
+
+Если `python:3.12-slim` не скачивается, но локальный `aimessenger-backend:latest` уже есть, можно пересобрать backend image поверх существующего образа с уже установленными зависимостями:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=aimessenger-backend:latest backend
+docker compose -f docker-compose.local.yml --env-file .env up -d --no-build --force-recreate backend
+```
+
+После пересборки проверьте, что backend отвечает актуальным кодом:
+
+```powershell
+curl.exe -I http://127.0.0.1:3000/api/
 ```
 
 ## Frontend
@@ -124,6 +141,13 @@ npm run dev
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
+
+Media files:
+
+- message images and profile avatars are returned by the backend as `/media/...` URLs;
+- in production set `BACKEND_PUBLIC_BASE_URL=https://api.elephantaimessenger.ru` in `4_Sources/.env` so API responses contain a public media host;
+- the frontend normalizes media links before rendering, including relative `/media/...` paths and accidental internal Docker hosts;
+- chat messages render Telegram-style date separators (`Сегодня`, `Вчера`, or full date) above message groups from different days.
 
 Проверка сборки:
 

@@ -1,10 +1,11 @@
 import Avatar from './Avatar';
 import Tag from './Tag';
+import { resolveMediaUrl } from '../utils/media';
 
 const IMAGE_EXTENSION_RE = /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
 
 function getAttachmentUrl(attachment) {
-  return attachment.url || attachment.file_url || attachment.file || '';
+  return resolveMediaUrl(attachment.url || attachment.file_url || attachment.file || '');
 }
 
 function getAttachmentName(attachment) {

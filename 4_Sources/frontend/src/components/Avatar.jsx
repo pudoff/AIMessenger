@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { resolveMediaUrl } from '../utils/media';
 
 function Avatar({
   src,
@@ -9,7 +10,8 @@ function Avatar({
 }) {
   const [open, setOpen] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const hasImage = Boolean(src) && !imageFailed;
+  const imageUrl = resolveMediaUrl(src);
+  const hasImage = Boolean(imageUrl) && !imageFailed;
   const normalizedInitials = (initials || '??').slice(0, 2).toUpperCase();
   const classes = `avatar ${hasImage ? 'avatar--image' : 'avatar--primary'} ${className}`.trim();
 
@@ -19,7 +21,7 @@ function Avatar({
   }, [src]);
 
   const content = hasImage ? (
-    <img src={src} alt={title} loading="lazy" onError={() => setImageFailed(true)} />
+    <img src={imageUrl} alt={title} loading="lazy" onError={() => setImageFailed(true)} />
   ) : normalizedInitials;
 
   if (!hasImage || !clickable) {
@@ -48,7 +50,7 @@ function Avatar({
           onClick={() => setOpen(false)}
           aria-label="Закрыть фото"
         >
-          <img src={src} alt={title} />
+          <img src={imageUrl} alt={title} />
         </button>
       )}
     </>

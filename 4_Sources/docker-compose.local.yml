@@ -101,7 +101,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: pgvector/pgvector:0.8.2-pg18-trixie
+    image: pgvector/pgvector:0.8.2-pg17-trixie
     restart: always
     container_name: postgres
     ports:
@@ -115,7 +115,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: [ "CMD-SHELL", "test -f /usr/share/postgresql/$${PG_MAJOR}/extension/vector.control && pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
       interval: 5s
       timeout: 1s
       retries: 10
