@@ -154,15 +154,27 @@ class AuthApiTests(APITestCase):
         self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
         self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
 
-    def test_password_reset_request_does_not_disclose_unknown_email(self):
+    def test_password_reset_request_warns_for_unknown_email(self):
         response = self.client.post(
             reverse('api-password-reset'),
             {'email': 'missing@example.com'},
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.json()['field_errors'])
+        self.assertEqual(response.json()['field_errors']['email'], 'Не зарегистрировано')
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_login_warns_when_user_is_not_registered(self):
+        response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'missing', 'password': 'StrongPassword123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['field_errors']['non_field_errors'][0], 'Не зарегистрировано')
 
     def test_user_can_reset_password_with_valid_token(self):
         user = User.objects.create_user(

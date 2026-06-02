@@ -176,6 +176,24 @@
   overflow: auto;
 }
 
+.chat-semantic-search__nav,
+.chat-semantic-search__empty {
+  grid-column: 1 / -1;
+}
+
+.chat-semantic-search__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-semantic-search__nav span,
+.chat-semantic-search__empty {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
 .chat-semantic-search__results button {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -185,6 +203,11 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
+}
+
+.chat-semantic-search__results button.is-active {
+  border-color: rgba(255, 214, 102, 0.8);
+  background: rgba(255, 214, 102, 0.2);
 }
 
 .chat-semantic-search__results span {

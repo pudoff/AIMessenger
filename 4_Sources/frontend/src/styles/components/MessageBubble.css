@@ -4,6 +4,27 @@
   gap: 10px;
 }
 
+.message-focus-anchor {
+  border-radius: 22px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-focus-anchor--active {
+  background: rgba(255, 214, 102, 0.22);
+  box-shadow: 0 0 0 3px rgba(255, 214, 102, 0.55);
+  animation: message-focus-pulse 1.6s ease-out 1;
+}
+
+@keyframes message-focus-pulse {
+  0% {
+    box-shadow: 0 0 0 8px rgba(255, 214, 102, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px rgba(255, 214, 102, 0.55);
+  }
+}
+
 .message-date-divider {
   align-self: center;
   margin: 10px 0 4px;

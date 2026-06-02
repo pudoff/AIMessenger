@@ -6,6 +6,7 @@ import random
 try:
     from celery import shared_task
     from celery.exceptions import CeleryError, TimeoutError
+    from celery.result import allow_join_result
 except ImportError:
     class CeleryError(Exception):
         pass
@@ -42,6 +43,13 @@ except ImportError:
             return _EagerTask(func)
 
         return decorator
+
+    class allow_join_result:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -128,7 +136,8 @@ def classify_message_task(self, message_id):
 
     try:
         async_result = ml_tasks.classify_message(message.text)
-        result = async_result.get(timeout=settings.ML_TASK_TIMEOUT_SECONDS)
+        with allow_join_result():
+            result = async_result.get(timeout=settings.ML_TASK_TIMEOUT_SECONDS)
         source = MessageClassification.Source.ML_WORKER
     except (CeleryError, TimeoutError) as exc:
         if self.request.retries < self.max_retries:
@@ -186,7 +195,8 @@ def build_message_embedding_task(self, message_id):
 
     try:
         async_result = ml_tasks.embed_text(message.text)
-        result = async_result.get(timeout=settings.ML_TASK_TIMEOUT_SECONDS)
+        with allow_join_result():
+            result = async_result.get(timeout=settings.ML_TASK_TIMEOUT_SECONDS)
         vector = result["embedding"]
         model_name = result.get("model_name", "unknown")
         source = "ml_worker"

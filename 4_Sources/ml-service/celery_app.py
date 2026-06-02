@@ -17,4 +17,7 @@ app.conf.update(
     result_serializer="json",
     timezone="Asia/Yekaterinburg",
     enable_utc=True,
+    task_time_limit=int(os.getenv("CELERY_TASK_TIME_LIMIT", os.getenv("ML_CELERY_TASK_TIME_LIMIT", "300"))),
+    task_soft_time_limit=int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", os.getenv("ML_CELERY_TASK_SOFT_TIME_LIMIT", "240"))),
+    worker_prefetch_multiplier=int(os.getenv("CELERY_WORKER_PREFETCH_MULTIPLIER", os.getenv("ML_CELERY_WORKER_PREFETCH_MULTIPLIER", "1"))),
 )

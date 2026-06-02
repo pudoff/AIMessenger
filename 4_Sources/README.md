@@ -171,6 +171,14 @@ ML-интеграция работает через Celery/Redis:
 - ML-задачи `ml_service.classify_message` и `ml_service.embed_text` отправляются только в очередь `ml`;
 - если `ml-worker` недоступен, backend-задача пишет fallback-классификацию и hash embedding.
 
+Celery limits and worker sizing can be configured separately from the main app `.env`:
+
+```powershell
+Copy-Item celery.env.example celery.env
+```
+
+`celery.env` is ignored by git. It controls backend and ML worker concurrency, prefetch, max tasks per child, and hard/soft task time limits.
+
 Для локального полного запуска используйте:
 
 ```powershell

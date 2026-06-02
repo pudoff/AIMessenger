@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import MessageBubble from '../../components/MessageBubble';
 import ChatComposer from '../../components/ChatComposer';
 
@@ -50,7 +50,20 @@ export default function ChatRoom({
   endRef,
   composerDisabled = false,
   searchNode = null,
+  focusedMessageId = null,
 }) {
+  const messageRefs = useRef({});
+
+  useEffect(() => {
+    if (!focusedMessageId) {
+      return;
+    }
+    messageRefs.current[String(focusedMessageId)]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  }, [focusedMessageId]);
+
   return (
     <section className="panel panel--chat panel--chat-only" style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: 0 }}>
       <div className="messages-feed" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -68,10 +81,21 @@ export default function ChatRoom({
               {showDateDivider && (
                 <div className="message-date-divider">{formatDateDivider(msg.createdAtRaw || msg.created_at || msg.optimisticCreatedAt)}</div>
               )}
-              <MessageBubble
-                message={msg}
-                className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
-              />
+              <div
+                ref={(node) => {
+                  if (node) {
+                    messageRefs.current[String(msg.id)] = node;
+                  } else {
+                    delete messageRefs.current[String(msg.id)];
+                  }
+                }}
+                className={String(msg.id) === String(focusedMessageId) ? 'message-focus-anchor message-focus-anchor--active' : 'message-focus-anchor'}
+              >
+                <MessageBubble
+                  message={msg}
+                  className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
+                />
+              </div>
             </React.Fragment>
           );
         })}

@@ -11,6 +11,8 @@ import ChatRoom from '../../components/chat/ChatRoom';
 import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 
+const SEMANTIC_SCORE_THRESHOLD = 0.6;
+
 const formatGroup = (group) => ({
   id: group.id,
   name: group.title,
@@ -67,6 +69,9 @@ function GroupChatsPage() {
   const [semanticQuery, setSemanticQuery] = useState('');
   const [semanticResults, setSemanticResults] = useState([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
+  const [hasSemanticSearched, setHasSemanticSearched] = useState(false);
+  const [focusedMessageId, setFocusedMessageId] = useState(null);
+  const [activeSemanticIndex, setActiveSemanticIndex] = useState(-1);
 
   const [messages, setMessages] = useState([]);
   const [pendingMessages, setPendingMessages] = useState([]);
@@ -115,6 +120,10 @@ function GroupChatsPage() {
     hasLoadedMessagesRef.current = false;
     isFetchingMessagesRef.current = false;
     setLoadingMessages(false);
+    setSemanticResults([]);
+    setHasSemanticSearched(false);
+    setFocusedMessageId(null);
+    setActiveSemanticIndex(-1);
   }, [chatId]);
 
   useEffect(() => {
@@ -260,12 +269,18 @@ function GroupChatsPage() {
 
     const tempId = `temp-${Date.now()}`;
     const optimisticCreatedAt = new Date().toISOString();
+    const optimisticAttachments = files.map((file) => ({
+      id: `${tempId}-${file.name}`,
+      original_name: file.name,
+      content_type: file.type,
+      preview_url: URL.createObjectURL(file),
+    }));
     const optimisticMessage = {
       id: tempId,
       author: 'Вы',
       time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
       text,
-      attachments: files.map((file) => ({ id: `${tempId}-${file.name}`, original_name: file.name })),
+      attachments: optimisticAttachments,
       isOptimistic: true,
       isOwn: true,
       optimisticCreatedAt,
@@ -290,6 +305,7 @@ function GroupChatsPage() {
       });
 
       if (res) {
+        optimisticAttachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview_url));
         setPendingMessages((prev) => prev.filter((pending) => pending.id !== tempId));
         registerOutgoingMessage('group', chatId, res.id);
         setMessages((prev) => prev.map((message) => (
@@ -303,6 +319,7 @@ function GroupChatsPage() {
       setMessages((prev) => prev.map((message) => (
         message.id === tempId ? { ...message, error: true, isOwn: true } : message
       )));
+      optimisticAttachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview_url));
     } finally {
       setIsSending(false);
     }
@@ -323,14 +340,25 @@ function GroupChatsPage() {
     const query = semanticQuery.trim();
     if (!query || !chatId) return;
     setSemanticLoading(true);
+    setHasSemanticSearched(true);
     try {
       const data = await messagesAPI.semanticSearch({ q: query, chat: chatId, limit: 8 });
-      setSemanticResults(data.results || []);
+      const results = (data.results || []).filter((result) => Number(result.similarity_score || 0) >= SEMANTIC_SCORE_THRESHOLD);
+      setSemanticResults(results);
+      setActiveSemanticIndex(results.length ? 0 : -1);
+      setFocusedMessageId(results[0]?.message_id || null);
     } catch (e) {
       setMessageError(`Не удалось выполнить семантический поиск: ${e.message}`);
     } finally {
       setSemanticLoading(false);
     }
+  };
+
+  const focusSemanticResult = (index) => {
+    if (!semanticResults.length) return;
+    const normalizedIndex = (index + semanticResults.length) % semanticResults.length;
+    setActiveSemanticIndex(normalizedIndex);
+    setFocusedMessageId(semanticResults[normalizedIndex].message_id);
   };
 
   const semanticSearchNode = (
@@ -344,14 +372,33 @@ function GroupChatsPage() {
         {semanticLoading ? 'Поиск...' : 'Найти'}
       </button>
       {semanticResults.length > 0 && (
+        <div className="chat-semantic-search__nav">
+          <button className="secondary-button" type="button" onClick={() => focusSemanticResult(activeSemanticIndex - 1)}>
+            ↑
+          </button>
+          <button className="secondary-button" type="button" onClick={() => focusSemanticResult(activeSemanticIndex + 1)}>
+            ↓
+          </button>
+          <span>{activeSemanticIndex + 1} / {semanticResults.length}</span>
+        </div>
+      )}
+      {semanticResults.length > 0 && (
         <div className="chat-semantic-search__results">
-          {semanticResults.map((result) => (
-            <button type="button" key={result.message_id} onClick={() => setSemanticQuery(result.text)}>
+          {semanticResults.map((result, index) => (
+            <button
+              type="button"
+              key={result.message_id}
+              className={index === activeSemanticIndex ? 'is-active' : ''}
+              onClick={() => focusSemanticResult(index)}
+            >
               <strong>{Math.max(0, Math.min(100, Math.round((result.similarity_score || 0) * 100)))}%</strong>
               <span>{result.text}</span>
             </button>
           ))}
         </div>
+      )}
+      {!semanticLoading && hasSemanticSearched && semanticQuery.trim() && semanticResults.length === 0 && (
+        <div className="chat-semantic-search__empty">Нет совпадений от 60%</div>
       )}
     </form>
   );
@@ -482,6 +529,7 @@ function GroupChatsPage() {
               endRef={endRef}
               composerDisabled={isSending}
               searchNode={semanticSearchNode}
+              focusedMessageId={focusedMessageId}
             />
           </section>
         )}
