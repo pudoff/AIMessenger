@@ -37,17 +37,6 @@ http:
         - rate-limiter
         - common-headers
 
-    webhook:
-      rule: "Host(`4dd83a12-17cf-4fe7-8a9d-d63078438705.elephantaimessenger.ru`)"
-      entryPoints:
-        - websecure
-      service: webhook
-      tls:
-        certResolver: traefik
-      middlewares:
-        - rate-limiter
-        - common-headers
-
     dozzle:
       rule: "Host(`dozzle.elephantaimessenger.ru`)"
       entryPoints:
