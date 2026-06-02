@@ -100,12 +100,11 @@ Backend container сам выполняет:
 docker compose -f docker-compose.local.yml --env-file .env exec backend python manage.py seed_demo_data
 ```
 
-Если Docker Hub не скачивает образы из-за DNS/IPv6, можно один раз скачать через Google mirror и проставить стандартные теги:
+Если Docker Hub не скачивает образы из-за DNS/IPv6, можно заранее скачать нужные образы и проставить стандартные теги:
 
 ```powershell
-docker pull mirror.gcr.io/library/postgres:18.3
+docker pull pgvector/pgvector:0.8.2-pg17-trixie
 docker pull mirror.gcr.io/library/redis:alpine
-docker tag mirror.gcr.io/library/postgres:18.3 postgres:18.3
 docker tag mirror.gcr.io/library/redis:alpine redis:alpine
 ```
 
