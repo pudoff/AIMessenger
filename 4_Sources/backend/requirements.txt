@@ -1,7 +1,9 @@
 celery[redis]>=5.4,<6.0
 Django==5.2.13
 django-cors-headers==4.9.0
+drf-spectacular==0.28.0
 djangorestframework==3.17.1
+pgvector==0.4.1
 psycopg[binary]==3.2.13
 python-dotenv==1.2.2
 gunicorn==26.0.0

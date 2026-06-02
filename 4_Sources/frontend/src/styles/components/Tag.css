@@ -29,3 +29,8 @@
   color: var(--accent-strong);
   background: rgba(126, 137, 217, 0.16);
 }
+
+.tag--toxic {
+  color: #9f2d2d;
+  background: rgba(185, 109, 109, 0.18);
+}

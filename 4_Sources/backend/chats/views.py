@@ -1,8 +1,12 @@
 from django.db import transaction
+from django.db.models import Prefetch
+from django.utils import timezone
+from rest_framework.decorators import action
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from messages.models import Message, MessageReadReceipt
 from users.permissions import is_project_admin
 from .models import Chat, ChatMember
 from .permissions import IsChatMember, IsChatMemberRecordVisible, IsChatOwnerOrAdminForUnsafe
@@ -14,7 +18,11 @@ class ChatViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, IsChatMember, IsChatOwnerOrAdminForUnsafe)
 
     def get_queryset(self):
-        queryset = Chat.objects.select_related('created_by').prefetch_related('chat_members__user')
+        last_message_queryset = Message.objects.select_related('sender').order_by('-created_at')[:1]
+        queryset = Chat.objects.select_related('created_by').prefetch_related(
+            'chat_members__user',
+            Prefetch('messages', queryset=last_message_queryset, to_attr='last_prefetched_messages'),
+        )
         user = self.request.user
         if not is_project_admin(user):
             queryset = queryset.filter(chat_members__user=user)
@@ -27,6 +35,53 @@ class ChatViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='mark-read')
+    def mark_read(self, request, pk=None):
+        chat = self.get_object()
+        last_message_id = request.data.get('last_message_id')
+
+        if last_message_id:
+            try:
+                last_message_id = int(last_message_id)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({'last_message_id': 'Value must be an integer.'})
+
+            last_message = chat.messages.filter(id=last_message_id).first()
+            if last_message is None:
+                raise serializers.ValidationError({'last_message_id': 'Message was not found in this chat.'})
+        else:
+            last_message = chat.messages.order_by('-created_at').first()
+
+        receipt = MessageReadReceipt.objects.filter(chat=chat, user=request.user).select_related(
+            'last_read_message',
+        ).first()
+        if (
+            receipt
+            and receipt.last_read_message_id
+            and last_message
+            and receipt.last_read_message.created_at > last_message.created_at
+        ):
+            last_message = receipt.last_read_message
+
+        receipt, _ = MessageReadReceipt.objects.update_or_create(
+            chat=chat,
+            user=request.user,
+            defaults={
+                'last_read_message': last_message,
+                'last_read_at': timezone.now(),
+            },
+        )
+
+        return Response(
+            {
+                'chat': chat.id,
+                'last_read_message': receipt.last_read_message_id,
+                'last_read_at': receipt.last_read_at,
+                'unread_count': 0,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

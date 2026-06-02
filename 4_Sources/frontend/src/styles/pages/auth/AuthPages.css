@@ -110,6 +110,16 @@
   text-align: left;
 }
 
+.form-success {
+  padding: 12px 14px;
+  color: #23614d;
+  background: rgba(66, 166, 123, 0.14);
+  border: 1px solid rgba(66, 166, 123, 0.25);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
 /*  Кнопка отправки  */
 .auth-form__submit {
   width: 100%;
@@ -162,11 +172,11 @@
   gap: 10px;
   font-size: 0.9rem;
   color: var(--text-soft);
-  cursor: pointer;
   text-align: left;
 }
 
 .auth-form__checkbox input[type="checkbox"] {
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
   margin-top: 2px;
@@ -174,18 +184,73 @@
   cursor: pointer;
 }
 
+.auth-form__checkbox-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.auth-form__checkbox-text label {
+  display: inline;
+  width: auto;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.auth-form__link-btn,
 .auth-form__checkbox a {
+  background: none;
+  border: 0;
+  padding: 0;
   color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
   transition: border-color 0.2s;
 }
 
+.auth-form__link-btn:hover,
 .auth-form__checkbox a:hover {
   border-bottom-color: currentColor;
 }
 
 /* Адаптив: на мобильных имя/фамилия в столбик */
+@media (max-width: 1024px) {
+  .auth-card {
+    width: min(100%, 520px);
+    padding: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-page {
+    padding: 16px;
+  }
+
+  .auth-card {
+    width: 100%;
+    padding: 26px;
+    border-radius: 24px;
+  }
+
+  .auth-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form__footer {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .auth-form__footer-link {
+    word-break: keep-all;
+  }
+}
+
 @media (max-width: 520px) {
   .auth-form__row {
     grid-template-columns: 1fr;
@@ -377,4 +442,35 @@ button.auth-form__footer-link {
 /* Плавный скролл к ошибке */
 html {
   scroll-behavior: smooth;
+}
+
+/* Стили для формы восстановления пароля */
+.auth-form--recovery {
+  text-align: left;
+  padding: 0 8px;
+  margin-top: 24px;
+}
+
+.auth-form__actions-center {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.auth-form__actions-center .secondary-button {
+  flex: 1;
+}
+
+.auth-form__back-link {
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  flex: 1;
+}
+
+.auth-form__info-text {
+  color: var(--text-soft);
+  margin-bottom: 24px;
 }

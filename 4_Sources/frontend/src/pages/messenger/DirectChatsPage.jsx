@@ -1,38 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import ChatComposer from '../../components/ChatComposer';
-import MessageBubble from '../../components/MessageBubble';
+import { chatsAPI, messagesAPI } from '../../api/chats';
+import { request as apiRequest } from '../../api/client';
+import ChatPageShell from '../../components/chat/ChatPageShell';
+import ChatHeader from '../../components/chat/ChatHeader';
+import ChatList from '../../components/chat/ChatList';
+import ChatRoom from '../../components/chat/ChatRoom';
 import SectionHeader from '../../components/SectionHeader';
-import { messagesAPI } from '../../api/chats';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import Avatar from '../../components/Avatar';
+import { useAuth } from '../../context/AuthContext';
+import { useUnread } from '../../context/UnreadContext';
 
 // Получение текущего пользователя
 const getCurrentUser = async () => {
@@ -59,9 +36,13 @@ const formatChat = (c, myId) => {
     status: 'Онлайн',
     preview: c.last_message?.text || 'Нет сообщений',
     initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    avatar_url: detail.avatar_url || null,
     chat_type: c.chat_type,
     members,
     last_message: c.last_message,
+    unread_count: c.unread_count,
+    last_read_message: c.last_read_message,
+    last_read_at: c.last_read_at,
     other_user: other?.user
   };
 };
@@ -79,13 +60,27 @@ const formatMessage = (m, myId) => ({
   message_type: m.message_type,
   task_status: m.task_status,
   classification: m.classification,
-  tag: m.classification?.label || m.message_type
+  attachments: m.attachments || [],
+  sender_avatar_url: m.sender_avatar_url || null,
+  tag: m.classification?.label || m.message_type,
+  readStatus: m.isOptimistic ? 'sent' : (m.is_read ? 'read' : 'sent'),
 });
 
 export default function DirectChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const location = useLocation();
+  const { currentUser } = useAuth();
+  const {
+    decorateChatsWithUnread,
+    markChatRead,
+    registerOutgoingMessage,
+  } = useUnread();
+
+  const queryParams = new URLSearchParams(location.search);
+  const tabFromQuery = queryParams.get('tab');
+  const savedTab = sessionStorage.getItem('messenger_active_tab') || 'direct';
+  const backTab = tabFromQuery || savedTab;
 
   const [myId, setMyId] = useState(null);
   const [chats, setChats] = useState([]);
@@ -98,13 +93,20 @@ export default function DirectChatsPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState(null);
   const [messageError, setMessageError] = useState(null);
-  const [isSending, setIsSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [semanticResults, setSemanticResults] = useState([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
 
   const pollRef = useRef(null);
   const chatPollRef = useRef(null);
   const endRef = useRef(null);
   const pendingMessagesRef = useRef([]);
   const chatMetaRef = useRef({});
+  const messagesRef = useRef([]);
+  const lastMarkedReadMessageRef = useRef(null);
+  const hasLoadedMessagesRef = useRef(false);
+  const isFetchingMessagesRef = useRef(false);
 
   // Инициализация: получение ID текущего пользователя
   useEffect(() => {
@@ -125,15 +127,32 @@ export default function DirectChatsPage() {
     initUser();
   }, []);
 
-  // Автоскролл к последнему сообщению
+  // Автоскролл к последнему сообщению только при новых сообщениях
+  const prevMessagesLengthRef = useRef(0);
+  
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Скроллим вниз только если количество сообщений увеличилось (новые сообщения)
+    if (messages.length > prevMessagesLengthRef.current && messages.length > 0) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
   // Синхронизация рефа для актуальных pending-сообщений
   useEffect(() => {
     pendingMessagesRef.current = pendingMessages;
   }, [pendingMessages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    lastMarkedReadMessageRef.current = null;
+    hasLoadedMessagesRef.current = false;
+    isFetchingMessagesRef.current = false;
+    setLoadingMessages(false);
+  }, [chatId]);
 
   // Синхронизация рефа для текущих меток чатов
   useEffect(() => {
@@ -174,8 +193,14 @@ export default function DirectChatsPage() {
             return new Date(bTime) - new Date(aTime);
           });
 
-        setChats(formattedChats);
-        setChatMeta(formattedChats.reduce((meta, chat) => {
+        const unreadChats = decorateChatsWithUnread(
+          'direct',
+          formattedChats,
+          { activeChatId: chatId, currentUserId: myId },
+        );
+
+        setChats(unreadChats);
+        setChatMeta(unreadChats.reduce((meta, chat) => {
           meta[chat.id] = {
             lastMessageId: chat.lastMessageId,
             hasUnread: chat.hasUnread,
@@ -201,14 +226,22 @@ export default function DirectChatsPage() {
     return () => {
       if (chatPollRef.current) clearInterval(chatPollRef.current);
     };
-  }, [myId, chatId]);
+  }, [myId, chatId, decorateChatsWithUnread]);
 
   // Загрузка сообщений для выбранного чата с опросом
   useEffect(() => {
     if (!chatId || !myId) return;
 
     const fetchMessages = async () => {
-      setLoadingMessages(true);
+      if (isFetchingMessagesRef.current) {
+        return;
+      }
+
+      isFetchingMessagesRef.current = true;
+      const showInitialLoader = !hasLoadedMessagesRef.current && messagesRef.current.length === 0;
+      if (showInitialLoader) {
+        setLoadingMessages(true);
+      }
       try {
         const data = await messagesAPI.getList(chatId, 1, MESSAGE_PAGE_SIZE);
         const list = data.results || data || [];
@@ -228,6 +261,25 @@ export default function DirectChatsPage() {
         ].sort((a, b) => new Date(a.createdAtRaw).getTime() - new Date(b.createdAtRaw).getTime());
 
         setMessages(mergedMessages);
+        hasLoadedMessagesRef.current = true;
+        const lastMessage = mergedMessages[mergedMessages.length - 1];
+        if (lastMessage?.id) {
+          if (String(lastMarkedReadMessageRef.current) === String(lastMessage.id)) {
+            setMessageError(null);
+            return;
+          }
+          lastMarkedReadMessageRef.current = lastMessage.id;
+          chatsAPI.markRead(chatId, lastMessage.id).catch((e) => {
+            lastMarkedReadMessageRef.current = null;
+            console.error('Не удалось отметить личный чат прочитанным:', e);
+          });
+          markChatRead('direct', chatId, lastMessage.id);
+          setChats((prev) => prev.map((chat) => (
+            String(chat.id) === String(chatId)
+              ? { ...chat, hasUnread: false, unreadCount: 0 }
+              : chat
+          )));
+        }
         setMessageError(null);
       } catch (e) {
         console.error('Ошибка загрузки сообщений:', e);
@@ -235,7 +287,10 @@ export default function DirectChatsPage() {
           setMessageError('Не удалось загрузить сообщения: ' + e.message);
         }
       } finally {
-        setLoadingMessages(false);
+        isFetchingMessagesRef.current = false;
+        if (showInitialLoader) {
+          setLoadingMessages(false);
+        }
       }
     };
 
@@ -247,11 +302,12 @@ export default function DirectChatsPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [chatId, myId]);
+  }, [chatId, myId, markChatRead]);
 
   useEffect(() => {
     if (!chatId) return;
 
+    markChatRead('direct', chatId);
     setChatMeta((prev) => ({
       ...prev,
       [chatId]: {
@@ -262,14 +318,22 @@ export default function DirectChatsPage() {
     }));
     setChats((prev) => prev.map((chat) => (
       String(chat.id) === String(chatId)
-        ? { ...chat, hasUnread: false, isNewChat: false }
+        ? { ...chat, hasUnread: false, isNewChat: false, unreadCount: 0 }
         : chat
     )));
-  }, [chatId]);
+  }, [chatId, markChatRead]);
 
   // Отправка сообщения
-  const handleSend = async (text) => {
-    if (!chatId || !text.trim() || !myId || isSending) return;
+  const handleSend = async (text, files = []) => {
+    if (!text.trim() && files.length === 0) return;
+    if (!chatId) {
+      setMessageError('Чат не выбран.');
+      return;
+    }
+    if (!myId) {
+      setMessageError('Не удалось определить текущего пользователя. Обновите страницу или войдите заново.');
+      return;
+    }
 
     const tempId = `temp-${Date.now()}`;
     const optimisticCreatedAt = new Date().toISOString();
@@ -278,33 +342,35 @@ export default function DirectChatsPage() {
       author: 'Вы',
       time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
       text,
+      attachments: files.map((file) => ({ id: `${tempId}-${file.name}`, original_name: file.name })),
       isOptimistic: true,
       isOwn: true,
       optimisticCreatedAt,
       created_at: optimisticCreatedAt,
       tag: 'default',
+      readStatus: 'sent',
+      sender_avatar_url: currentUser?.avatar_url || null,
     };
 
     // Оптимистичное обновление UI
     setMessages(prev => [...prev, optimisticMessage]);
     setPendingMessages(prev => [...prev, optimisticMessage]);
-    setIsSending(true);
+    registerOutgoingMessage('direct', chatId, tempId);
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
       const messageData = {
         chat: parseInt(chatId),
         text,
-        message_type: 'default'
+        message_type: 'default',
+        attachments: files,
       };
 
-      const res = await apiRequest('/messages/', {
-        method: 'POST',
-        body: JSON.stringify(messageData)
-      });
+      const res = await messagesAPI.send(messageData);
 
       if (res) {
         setPendingMessages(prev => prev.filter((pending) => pending.id !== tempId));
+        registerOutgoingMessage('direct', chatId, res.id);
 
         // Заменить оптимистичное сообщение на реальное
         setMessages(prev =>
@@ -323,7 +389,11 @@ export default function DirectChatsPage() {
             const bTime = b.last_message?.created_at || 0;
             return new Date(bTime) - new Date(aTime);
           });
-        setChats(formattedChats);
+        setChats(decorateChatsWithUnread(
+          'direct',
+          formattedChats,
+          { activeChatId: chatId, currentUserId: myId },
+        ));
       }
     } catch (e) {
       console.error('Ошибка отправки сообщения:', e);
@@ -332,8 +402,6 @@ export default function DirectChatsPage() {
       setMessages(prev =>
         prev.map(m => m.id === tempId ? { ...m, error: true, isOwn: true } : m)
       );
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -341,6 +409,10 @@ export default function DirectChatsPage() {
   const handleSelectChat = (id) => {
     setLastSelectedChatId(String(id));
     localStorage.setItem('last_direct_chat_id', String(id));
+    chatsAPI.markRead(id).catch((e) => {
+      console.error('Не удалось отметить личный чат прочитанным:', e);
+    });
+    markChatRead('direct', id);
     setChatMeta((prev) => ({
       ...prev,
       [id]: {
@@ -352,110 +424,155 @@ export default function DirectChatsPage() {
     navigate(`/app/direct/${id}`, { replace: true });
   };
 
+  const handleSemanticSearch = async (event) => {
+    event.preventDefault();
+    const query = semanticQuery.trim();
+    if (!query || !chatId) return;
+    setSemanticLoading(true);
+    try {
+      const data = await messagesAPI.semanticSearch({ q: query, chat: chatId, limit: 8 });
+      setSemanticResults(data.results || []);
+    } catch (e) {
+      setMessageError(`Не удалось выполнить семантический поиск: ${e.message}`);
+    } finally {
+      setSemanticLoading(false);
+    }
+  };
+
+  const semanticSearchNode = (
+    <form className="chat-semantic-search" onSubmit={handleSemanticSearch}>
+      <input
+        value={semanticQuery}
+        onChange={(event) => setSemanticQuery(event.target.value)}
+        placeholder="Семантический поиск в этом чате"
+      />
+      <button className="secondary-button" type="submit" disabled={semanticLoading || !semanticQuery.trim()}>
+        {semanticLoading ? 'Поиск...' : 'Найти'}
+      </button>
+      {semanticResults.length > 0 && (
+        <div className="chat-semantic-search__results">
+          {semanticResults.map((result) => (
+            <button
+              type="button"
+              key={result.message_id}
+              onClick={() => setSemanticQuery(result.text)}
+            >
+              <strong>{Math.max(0, Math.min(100, Math.round((result.similarity_score || 0) * 100)))}%</strong>
+              <span>{result.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </form>
+  );
+
   // Получить данные выбранного чата
   const selectedChat = chats.find(c => String(c.id) === chatId) ||
-    (chatId && state ? {
+    (chatId && location.state ? {
       id: chatId,
-      name: state.contactName || 'Диалог',
+      name: location.state.contactName || 'Диалог',
       position: '',
       status: 'Онлайн',
       preview: '',
-      initials: state.contactInitials || '?'
+      initials: location.state.contactInitials || '?',
+      avatar_url: location.state.contactAvatarUrl || null,
     } : null);
 
   // Представление с открытым чатом
   if (chatId) {
     return (
-      <div className="workspace workspace--messenger">
-        <section className="panel panel--chat panel--chat-only">
-          <div className="chat-toolbar chat-toolbar--stack">
-            <div className="chat-toolbar__head">
-              <button
-                className="secondary-button secondary-button--back"
-                type="button"
-                onClick={() => navigate('/app/direct')}
-              >
-                Назад к списку
-              </button>
-              <div>
-                <strong>{selectedChat?.name}</strong>
-                <p>{selectedChat?.position}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="messages-feed">
-            {loadingMessages && messages.length === 0 && (
-              <div className="contacts-empty">Загрузка сообщений...</div>
-            )}
-            {messageError && (
-              <div className="contacts-error">{messageError}</div>
-            )}
-            {!loadingMessages && messages.length === 0 && (
-              <div className="contacts-empty" style={{ padding: '40px' }}>
-                Начните диалог — напишите первое сообщение
-              </div>
-            )}
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
-              />
-            ))}
-            <div ref={endRef} />
-          </div>
-
-          <ChatComposer
-            placeholder={`Сообщение для ${selectedChat?.name}`}
-            onSend={handleSend}
-            disabled={loadingMessages || isSending}
-          />
-        </section>
-      </div>
+      <ChatPageShell
+        left={null}
+        right={(
+          <section className="panel panel--chat-only" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <ChatHeader
+              title={selectedChat?.name}
+              subtitle={selectedChat?.position}
+              onBack={() => navigate('/app/direct')}
+              avatars={selectedChat ? (
+                <Avatar
+                  src={selectedChat.avatar_url}
+                  initials={selectedChat.initials}
+                  title={selectedChat.name}
+                  className="avatar--circle"
+                />
+              ) : null}
+              compact
+            />
+            <ChatRoom
+              messages={messages}
+              loadingMessages={loadingMessages}
+              messageError={messageError}
+              onSend={handleSend}
+              placeholder={`Сообщение для ${selectedChat?.name}`}
+              endRef={endRef}
+              composerDisabled={false}
+              searchNode={semanticSearchNode}
+            />
+          </section>
+        )}
+        split={false}
+      />
     );
   }
 
+  const filteredChats = chats.filter(chat =>
+    searchQuery.trim() === '' ||
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Представление только со списком чатов
   return (
-    <div className="workspace workspace--split">
-      <section className="panel panel--list panel--list-only">
-        <SectionHeader title="Личные сообщения" subtitle="Личные диалоги с участниками команды" />
-        {loading && <div className="contacts-empty">Загрузка...</div>}
-        {error && <div className="contacts-error">{error}</div>}
-        {!loading && chats.length === 0 && (
-          <div className="contacts-empty" style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <h3>У вас пока нет личных чатов</h3>
-            <p style={{ color: 'var(--text-soft)', marginBottom: '24px' }}>
-              Начните диалог через страницу контактов
-            </p>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => navigate('/app/contacts')}
-            >
-              Перейти к контактам
-            </button>
+    <ChatPageShell
+      left={(
+        <section className="panel panel--list panel--list-only">
+          <SectionHeader title="Личные сообщения" subtitle="Личные диалоги с участниками команды" />
+          <div className="chat-search-wrapper">
+            <input
+              type="text"
+              placeholder="Поиск чатов..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="chat-search-input"
+            />
           </div>
-        )}
-        <div className="list-stack">
-          {chats.map((chat) => (
-            <button
-              className={`chat-card chat-card--button ${String(chat.id) === String(lastSelectedChatId) ? 'chat-card--active' : ''}`}
-              key={chat.id}
-              type="button"
-              onClick={() => handleSelectChat(chat.id)}
-            >
-              <div className="chat-card__top">
-                <h3>{chat.name}</h3>
-                <span className="status-text">{chat.status}</span>
+          <ChatList
+            items={filteredChats}
+            selectedId={lastSelectedChatId}
+            onSelect={handleSelectChat}
+            loading={loading}
+            error={error}
+            emptyNode={(
+              <div className="contacts-empty contacts-empty--large">
+                {searchQuery ? (
+                  <>
+                    <h3>Ничего не найдено</h3>
+                    <p className="contacts-empty__text">
+                      По запросу «{searchQuery}» чатов не найдено
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3>У вас пока нет личных чатов</h3>
+                    <p className="contacts-empty__text">
+                      Начните диалог через страницу контактов
+                    </p>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => navigate('/app/contacts')}
+                    >
+                      Перейти к контактам
+                    </button>
+                  </>
+                )}
               </div>
-              <p>{chat.preview}</p>
-              <small>{chat.position}</small>
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
+            )}
+          />
+        </section>
+      )}
+      right={null}
+      split={true}
+    />
   );
 }

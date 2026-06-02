@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
+import Avatar from '../components/Avatar';
 import Logo from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,14 +14,22 @@ function AdminLayout() {
     <div className="admin-shell">
       <aside className="admin-shell__sidebar">
         <Logo compact />
-        <div className="admin-menu">
-          <div className="admin-menu__item admin-menu__item--active">Панель администратора</div>
-          <div className="admin-menu__item">Управление пользователями</div>
-          <div className="admin-menu__item">Корпоративные чаты</div>
-          <div className="admin-menu__item">Системные события</div>
-        </div>
+        <nav className="admin-menu">
+          <NavLink to="/admin" end className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
+            Дашборд
+          </NavLink>
+          <NavLink to="/admin/users" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
+            Пользователи
+          </NavLink>
+          <NavLink to="/admin/chats" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
+            Корпоративные чаты
+          </NavLink>
+          <NavLink to="/admin/broadcast" className={({ isActive }) => `admin-menu__item${isActive ? ' admin-menu__item--active' : ''}`}>
+            E-mail рассылка
+          </NavLink>
+        </nav>
         <div className="profile-card">
-          <div className="avatar avatar--primary">{initials}</div>
+          <Avatar src={currentUser?.avatar_url} initials={initials} title={fullName} className="avatar--circle" />
           <div className="profile-card__text">
             <strong>{fullName}</strong>
             <span>Администратор</span>

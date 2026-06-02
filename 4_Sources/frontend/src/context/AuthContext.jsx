@@ -64,13 +64,19 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     setError(null);
+    setLoading(true);
     try {
-      await authAPI.register(userData);
-      // После успешной регистрации — сразу логиним
-      return await login(userData.username, userData.password);
+      const data = await authAPI.register(userData);
+      // Ждем подтверждения email, поэтому не авторизуем пользователя сразу.
+      localStorage.removeItem('auth_token');
+      setToken(null);
+      setCurrentUser(null);
+      return { success: true, data };
     } catch (err) {
-      setError(err.message);
+      setError(null);
       return { success: false, message: err.message, errors: err.data };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,6 +84,12 @@ export function AuthProvider({ children }) {
     await authAPI.logout();
     setToken(null);
     setCurrentUser(null);
+  };
+
+  const refreshProfile = async () => {
+    const user = await authAPI.getMe();
+    setCurrentUser(user);
+    return user;
   };
 
   const value = useMemo(() => ({
@@ -88,6 +100,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    refreshProfile,
     clearError: () => setError(null)
   }), [currentUser, loading, error]);
 

@@ -1,4 +1,4 @@
-import defaultLogo from '../assets/logo_new.png';
+import defaultLogo from '../assets/logo_final/01_full_logo_horizontal.png';
 
 function Logo({ compact = false, src = defaultLogo, hideText = false }) {
   return (

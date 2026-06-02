@@ -7,6 +7,56 @@
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border);
   border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.composer--stack {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.composer__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer__file-input {
+  display: none;
+}
+
+.composer__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.composer__attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(126, 137, 217, 0.08);
+  font-size: 0.82rem;
+}
+
+.composer__attachment button {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  line-height: 1;
+  background: rgba(30, 42, 72, 0.12);
+}
+
+/* В режиме только чата уменьшаем отступ composer'а и делаем его фиксированным */
+.panel--chat-only .composer {
+  margin-top: 8px;
+  padding: 8px;
+  flex-shrink: 0;
 }
 
 .composer__input {
@@ -14,4 +64,35 @@
   background: transparent;
   padding: 8px 4px;
   width: 100%;
+  resize: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  max-height: 120px;
+  min-height: 24px;
+}
+
+.composer__input:focus {
+  outline: none;
+}
+
+.composer__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.composer__submit {
+  white-space: nowrap;
+}
+
+.composer .icon-button:disabled,
+.composer .primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.composer--sending {
+  opacity: 0.7;
+  pointer-events: none;
 }

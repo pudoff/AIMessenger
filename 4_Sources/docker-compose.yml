@@ -11,6 +11,7 @@ services:
     volumes:
       - ./infra/traefik/static.yml:/etc/traefik/traefik.yml:ro
       - ./infra/traefik/dynamic.yml:/etc/traefik/conf.d/dynamic.yml:ro
+      - ./infra/traefik/usersfile:/etc/traefik/usersfile:ro
       - aimessenger_traefik_acme:/etc/traefik/acme
     networks:
       - backend
@@ -18,8 +19,6 @@ services:
       backend:
         condition: service_started
       frontend:
-        condition: service_started
-      webhook:
         condition: service_started
 
   backend:
@@ -29,14 +28,42 @@ services:
     volumes:
       - ./.env:/app/.env:ro
       - aimessenger_static_data:/app/staticfiles
+      - aimessenger_media_data:/app/media
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       ML_CELERY_QUEUE: ml
+      BACKEND_CELERY_QUEUE: backend
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     entrypoint: /app/entrypoint.sh
     networks:
       - backend
     depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  backend-worker:
+    image: magnificent8/ai-messenger:backend-latest
+    container_name: backend-worker
+    restart: always
+    volumes:
+      - ./.env:/app/.env:ro
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ML_CELERY_QUEUE: ml
+      BACKEND_CELERY_QUEUE: backend
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    command: celery -A config worker -Q backend --loglevel=info
+    networks:
+      - backend
+    depends_on:
+      ml-worker:
+        condition: service_started
       redis:
         condition: service_healthy
       postgres:
@@ -66,24 +93,8 @@ services:
       redis:
         condition: service_healthy
 
-  webhook:
-    image: magnificent8/ai-messenger:webhook-latest
-    container_name: webhook
-    restart: always
-    volumes:
-      - ./.env:/app/.env:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    networks:
-      - backend
-    depends_on:
-      redis:
-        condition: service_healthy
-
   postgres:
-    image: postgres:18.3
+    image: pgvector/pgvector:0.8.2-pg17-trixie
     restart: always
     container_name: postgres
     environment:
@@ -91,7 +102,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - aimessenger_postgres_data:/var/lib/postgresql/18/main
+      - aimessenger_pgvector_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
@@ -118,9 +129,21 @@ services:
       timeout: 3s
       retries: 5
 
+  dozzle:
+    image: amir20/dozzle:v10.0.6
+    container_name: dozzle
+    environment:
+      DOZZLE_BASE: /
+      DOZZLE_FILTER: ""
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+
 volumes:
-  aimessenger_postgres_data:
+  aimessenger_pgvector_data:
   aimessenger_static_data:
+  aimessenger_media_data:
   aimessenger_traefik_acme:
 
 networks:

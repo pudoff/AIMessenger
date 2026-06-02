@@ -1,32 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import SectionHeader from '../../components/SectionHeader';
-
-// API utility for auth
-const getAuthToken = () => localStorage.getItem('auth_token');
-
-const apiRequest = async (endpoint, opts = {}) => {
-  const token = getAuthToken();
-  const response = await fetch(`/api${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Token ${token}` }),
-      ...opts.headers,
-    },
-  });
-
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return null;
-  }
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.detail || data.non_field_errors?.[0] || `Ошибка ${response.status}`);
-  }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-};
+import { request as apiRequest } from '../../api/client';
 
 // Форматирование сообщества
 const formatCommunity = (c) => ({
@@ -36,13 +11,24 @@ const formatCommunity = (c) => ({
   members: c.members_count || 0,
   category: 'Корпоративное',
   highlights: ['Обсуждение проектов', 'Новости компании', 'Командная работа'],
+  chat_type: 'corporate',
 });
 
 function CommunitiesPage() {
+  const { communityId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const tabFromQuery = queryParams.get('tab');
+
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCommunityId, setSelectedCommunityId] = useState(null);
+  const [selectedCommunityId, setSelectedCommunityId] = useState(() => {
+    // Приоритет: communityId из URL > communityId из сохраненного > первый из списка
+    return communityId || localStorage.getItem('last_community_id');
+  });
 
   // Загрузка сообществ
   useEffect(() => {
@@ -50,8 +36,14 @@ function CommunitiesPage() {
       try {
         const data = await apiRequest('/chats/?type=corporate');
         const list = data.results || data || [];
-        setCommunities(list.map(formatCommunity));
-        if (list.length > 0) setSelectedCommunityId(list[0].id);
+        const formatted = list.map(formatCommunity);
+        setCommunities(formatted);
+        
+        // Устанавливаем selectedCommunityId при первой загрузке
+        if (formatted.length > 0) {
+          const idToUse = communityId || localStorage.getItem('last_community_id') || String(formatted[0].id);
+          setSelectedCommunityId(idToUse);
+        }
         setError(null);
       } catch (e) {
         console.error('Ошибка загрузки сообществ:', e);
@@ -62,9 +54,18 @@ function CommunitiesPage() {
     };
 
     fetchCommunities();
-  }, []);
+  }, [communityId]);
 
-  const selectedCommunity = communities.find((community) => community.id === selectedCommunityId) || communities[0];
+  const selectedCommunity = communities.find((community) => community.id === selectedCommunityId || String(community.id) === String(selectedCommunityId)) || communities[0];
+
+  // Сохранение выбранного сообщества в localStorage и URL при изменении
+  const handleSelectCommunity = (communityId) => {
+    setSelectedCommunityId(communityId);
+    localStorage.setItem('last_community_id', String(communityId));
+    navigate(`/app/community/${communityId}${tabFromQuery ? '?tab=' + tabFromQuery : ''}`, { 
+      state: { from: 'communities' } 
+    });
+  };
 
   return (
     <div className="workspace workspace--contacts">
@@ -73,13 +74,21 @@ function CommunitiesPage() {
 
         <div className="list-stack">
           {loading && <div className="contacts-empty">Загрузка...</div>}
-          {error && <div className="contacts-empty">{error}</div>}
+          {error && <div className="contacts-error">{error}</div>}
+          {!loading && !error && communities.length === 0 && (
+            <div className="contacts-empty contacts-empty--large">
+              <h3>Нет сообществ</h3>
+              <p className="contacts-empty__text">
+                Корпоративные сообщества пока не созданы
+              </p>
+            </div>
+          )}
           {!loading && !error && communities.map((community) => (
             <button
               key={community.id}
               type="button"
-              className={`chat-card chat-card--button ${community.id === selectedCommunity?.id ? 'chat-card--active' : ''}`}
-              onClick={() => setSelectedCommunityId(community.id)}
+              className={`chat-card chat-card--button ${String(community.id) === String(selectedCommunityId) ? 'chat-card--active' : ''}`}
+              onClick={() => handleSelectCommunity(community.id)}
             >
               <div className="chat-card__top">
                 <h3>{community.name}</h3>

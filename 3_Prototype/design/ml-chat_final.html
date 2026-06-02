@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>НашСлон — Мессенджер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oranienbaum&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ДИЗАЙН-СИСТЕМА: ТОКЕНЫ
+   ============================================================ */
+:root,[data-theme="light"] {
+  --brand:       #2C4A7C;
+  --brand-dark:  #1E3460;
+  --brand-light: #3D5F96;
+  --brand-pale:  #EDF1F9;
+  --grad:        linear-gradient(90deg,#E8334A 0%,#C4306E 25%,#8B3DA8 55%,#4A5BC4 80%,#2C4A7C 100%);
+  --grad-btn:    linear-gradient(105deg,#E8334A 0%,#C4306E 30%,#8B3DA8 65%,#4A6AE0 100%);
+  --grad-glow:   rgba(200,48,110,.3);
+  --bg:          #C8D6EC;
+  --surface:     #F0F4FA;
+  --surface-2:   #E2E8F2;
+  --surface-3:   #D4DCF0;
+  --border:      #B8C8DE;
+  --border-lt:   #D0DCEE;
+  --text-1:      #1A2C48;
+  --text-2:      #3A5070;
+  --text-3:      #6A7E98;
+  --text-inv:    #FFFFFF;
+  --success:     #1A9E5A;
+  --warning:     #D4820A;
+  --danger:      #C0392B;
+  --info:        #2C6EA8;
+  --tag-q:  #2C6EA8; --tag-t: #7B3DAE; --tag-a: #1A9E5A;
+  --tag-n:  #5A6E8A; --tag-x: #C0392B; --tag-l: #D4820A;
+  --font:        'Oranienbaum', Georgia, serif;
+  --r-sm:4px; --r-md:10px; --r-lg:16px; --r-xl:24px; --r-full:9999px;
+  --sh-sm: 0 1px 4px rgba(44,74,124,.10);
+  --sh-md: 0 4px 16px rgba(44,74,124,.13);
+  --sh-lg: 0 12px 40px rgba(44,74,124,.18);
+  --ease:  0.22s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"] {
+  --brand:       #4A7FCC;
+  --brand-dark:  #1A2C50;
+  --brand-light: #6A9FE8;
+  --brand-pale:  #1A2440;
+  --grad:        linear-gradient(90deg,#FF3A54 0%,#D43580 25%,#9640C8 55%,#5060E8 80%,#3060FF 100%);
+  --grad-btn:    linear-gradient(105deg,#FF3A54 0%,#D43580 30%,#9640C8 65%,#5060E8 100%);
+  --grad-glow:   rgba(212,53,128,.4);
+  --bg:          #0F1119;
+  --surface:     #1A1D2E;
+  --surface-2:   #222538;
+  --surface-3:   #2A2E48;
+  --border:      #333560;
+  --border-lt:   #2A2E50;
+  --text-1:      #E8ECF8;
+  --text-2:      #A8B4D0;
+  --text-3:      #6A78A0;
+  --text-inv:    #FFFFFF;
+  --success:     #2ECC80; --warning:#F5A623; --danger:#FF5252; --info:#4A9EE8;
+  --tag-q:#4A9EE8; --tag-t:#9B5DE5; --tag-a:#2ECC80;
+  --tag-n:#8899BB; --tag-x:#FF5252; --tag-l:#F5A623;
+  --font:'Oranienbaum',Georgia,serif;
+  --r-sm:4px;--r-md:10px;--r-lg:16px;--r-xl:24px;--r-full:9999px;
+  --sh-sm:0 1px 4px rgba(0,0,0,.3);
+  --sh-md:0 4px 16px rgba(0,0,0,.4);
+  --sh-lg:0 12px 40px rgba(0,0,0,.5);
+  --ease:.22s cubic-bezier(.4,0,.2,1);
+}
+
+/* BASE */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text-1);min-height:100vh;overflow-x:hidden;transition:background var(--ease),color var(--ease);}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 80px,rgba(44,74,124,.025) 80px,rgba(44,74,124,.025) 81px),
+  repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(44,74,124,.018) 60px,rgba(44,74,124,.018) 61px),
+  radial-gradient(ellipse 80% 60% at 20% 30%,rgba(160,190,240,.18) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 70%,rgba(140,170,220,.12) 0%,transparent 60%);}
+[data-theme="dark"] body::before{background:repeating-linear-gradient(90deg,transparent,transparent 80px,rgba(74,127,232,.03) 80px,rgba(74,127,232,.03) 81px),repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(74,127,232,.025) 60px,rgba(74,127,232,.025) 61px),radial-gradient(ellipse 70% 50% at 15% 20%,rgba(44,80,160,.12) 0%,transparent 60%);}
+.page{position:relative;z-index:1;display:none;min-height:100vh;flex-direction:column;animation:fadeIn .3s ease;}
+.page.active{display:flex;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--brand-dark);border-bottom:3px solid transparent;border-image:var(--grad) 1;position:sticky;top:0;z-index:200;box-shadow:var(--sh-sm);flex-shrink:0;}
+.header-logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;}
+.header-logo img{height:40px;object-fit:contain;}
+[data-theme="light"] .header-logo img{filter:brightness(0) invert(1);}
+.header-nav{display:flex;align-items:center;gap:10px;}
+.theme-sw{display:flex;align-items:center;background:rgba(255,255,255,.1);border-radius:var(--r-full);padding:3px;gap:2px;}
+.theme-btn{width:30px;height:26px;border:none;border-radius:var(--r-full);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;background:transparent;color:rgba(255,255,255,.65);transition:all var(--ease);}
+.theme-btn:hover{background:rgba(255,255,255,.15);color:#fff;}
+.theme-btn.active{background:rgba(255,255,255,.22);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.theme-btn:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;}
+.btn-hdr{padding:6px 16px;border-radius:var(--r-md);font-family:var(--font);font-size:13px;cursor:pointer;transition:all var(--ease);border:1.5px solid transparent;white-space:nowrap;}
+.btn-hdr-ghost{background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.3);}
+.btn-hdr-ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.6);color:#fff;}
+.hdr-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 12px;border-radius:var(--r-full);transition:background var(--ease);}
+.hdr-user:hover{background:rgba(255,255,255,.1);}
+.hdr-name{font-size:13px;color:rgba(255,255,255,.85);}
+
+/* AVATARS */
+.avatar{border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;font-weight:400;color:#fff;flex-shrink:0;font-family:var(--font);}
+.av-sm{width:28px;height:28px;font-size:11px;}
+.av-md{width:36px;height:36px;font-size:14px;}
+.av-lg{width:48px;height:48px;font-size:18px;}
+.av-brand{background:var(--grad-btn);}
+.av-navy{background:#2C4A7C;}
+.av-teal{background:#1A9E8A;}
+.av-violet{background:#7B3DAE;}
+.av-coral{background:#E05A3A;}
+.av-green{background:#1A9E5A;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:var(--r-md);font-family:var(--font);font-size:15px;cursor:pointer;border:1.5px solid transparent;transition:all var(--ease);position:relative;overflow:hidden;white-space:nowrap;}
+.btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.25);border-radius:50%;transform:translate(-50%,-50%);transition:width .5s,height .5s,opacity .5s;opacity:0;pointer-events:none;}
+.btn:active::after{width:260px;height:260px;opacity:0;}
+.btn:active{transform:scale(.97);}
+.btn:focus-visible{outline:3px solid var(--brand-light);outline-offset:2px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;}
+.btn-primary{background:var(--grad-btn);color:#fff;}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 6px 20px var(--grad-glow);}
+.btn-secondary{background:transparent;color:var(--brand);border-color:var(--brand);}
+.btn-secondary:hover{background:var(--brand);color:#fff;}
+.btn-ghost{background:transparent;color:var(--text-2);border-color:var(--border);}
+.btn-ghost:hover{border-color:var(--brand);color:var(--brand);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{filter:brightness(1.1);}
+.btn-sm{padding:6px 13px;font-size:13px;}
+.btn-lg{padding:14px 24px;font-size:16px;}
+.btn-block{width:100%;}
+
+/* FIELDS */
+.field{margin-bottom:18px;}
+.field-label{display:block;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--text-2);margin-bottom:6px;}
+.field-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-md);font-family:var(--font);font-size:15px;color:var(--text-1);background:var(--surface);transition:border-color var(--ease),box-shadow var(--ease);outline:none;}
+.field-input::placeholder{color:var(--text-3);}
+.field-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(44,74,124,.12);}
+.field-input.err{border-color:var(--danger);box-shadow:0 0 0 3px rgba(192,57,43,.12);}
+.field-err{font-size:11px;color:var(--danger);margin-top:4px;display:none;}
+.field-err.on{display:block;}
+
+/* CHECKBOX */
+.check-row{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:18px;}
+.check-row input{display:none;}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--ease);}
+.check-row input:checked+.check-box{background:var(--brand);border-color:var(--brand);}
+.check-row input:checked+.check-box::after{content:'✓';color:#fff;font-size:11px;}
+.check-label{font-size:13px;color:var(--text-2);}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:var(--r-full);font-size:11px;white-space:nowrap;}
+.badge-success{background:var(--success);color:#fff;}
+.badge-count{min-width:18px;height:18px;padding:0 5px;background:var(--grad-btn);color:#fff;font-size:10px;}
+
+/* MSG TAGS */
+.mtag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:var(--r-full);font-size:10px;border:1px solid currentColor;margin-top:3px;white-space:nowrap;}
+.mt-q{color:var(--tag-q);background:rgba(44,110,168,.1);}
+.mt-t{color:var(--tag-t);background:rgba(123,61,174,.1);}
+.mt-a{color:var(--tag-a);background:rgba(26,158,90,.1);}
+.mt-n{color:var(--tag-n);background:rgba(90,110,138,.1);}
+.mt-x{color:var(--tag-x);background:rgba(192,57,43,.1);}
+.mt-l{color:var(--tag-l);background:rgba(212,130,10,.1);}
+
+/* PASSWORD STRENGTH */
+.str-bars{display:flex;gap:3px;margin-top:5px;}
+.str-bar{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s;}
+.str-w{background:var(--danger);} .str-m{background:var(--warning);} .str-s{background:var(--success);}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:12px;color:var(--text-3);font-size:13px;margin:18px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* CARD */
+.card{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--border-lt);box-shadow:var(--sh-sm);overflow:hidden;}
+
+/* ── AUTH ── */
+.auth-wrap{flex:1;display:flex;flex-direction:column;}
+.auth-body{flex:1;display:grid;grid-template-columns:1fr 460px;align-items:center;max-width:1020px;margin:0 auto;padding:48px 24px;gap:32px;width:100%;}
+.auth-deco{background:var(--surface);border-radius:var(--r-lg);padding:36px;border:1px solid var(--border-lt);min-height:420px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.auth-deco::after{content:'🐘';position:absolute;bottom:12px;right:12px;font-size:90px;opacity:.05;transform:scaleX(-1);}
+.auth-deco-tag{display:inline-block;background:var(--grad-btn);color:#fff;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:var(--r-full);margin-bottom:16px;}
+.auth-deco-title{font-size:26px;color:var(--text-1);line-height:1.3;margin-bottom:20px;}
+.auth-deco-list{list-style:none;display:flex;flex-direction:column;gap:12px;}
+.auth-deco-list li{font-size:13px;color:var(--text-2);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.auth-deco-list li::before{content:'✦';color:var(--brand);font-size:10px;margin-top:3px;flex-shrink:0;}
+.auth-card{background:var(--surface);border-radius:var(--r-lg);padding:36px;border:1px solid var(--border-lt);box-shadow:var(--sh-lg);position:relative;overflow:hidden;}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+.auth-logo{display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
+.auth-logo img{height:72px;object-fit:contain;}
+[data-theme="light"] .auth-logo img{filter:invert(18%) sepia(65%) saturate(650%) hue-rotate(200deg) brightness(.7) contrast(1.1);}
+.auth-title{font-size:22px;text-align:center;color:var(--text-1);margin-bottom:24px;}
+
+/* ── REG ── */
+.reg-body{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px;}
+.reg-card{background:var(--surface);border-radius:var(--r-lg);padding:36px;border:1px solid var(--border-lt);box-shadow:var(--sh-lg);width:100%;max-width:500px;position:relative;overflow:hidden;}
+.reg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+.reg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* ── APP LAYOUT ── */
+.app-layout{display:grid;grid-template-columns:60px 260px 1fr;height:calc(100vh - 56px);overflow:hidden;}
+
+/* Иконочный сайдбар */
+.sidebar{background:var(--brand-dark);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;border-right:1px solid rgba(255,255,255,.07);}
+.nav-ic{width:44px;height:44px;border:none;border-radius:var(--r-md);background:transparent;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--ease);position:relative;}
+.nav-ic:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}
+.nav-ic.active{background:rgba(255,255,255,.18);color:#fff;}
+.nav-ic:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;}
+.nav-ic::after{content:attr(data-label);position:absolute;left:calc(100% + 8px);background:var(--surface-3,#2A2E48);color:var(--text-1);font-family:var(--font);font-size:11px;padding:3px 8px;border-radius:var(--r-sm);white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-4px);transition:all var(--ease);z-index:10;}
+.nav-ic:hover::after{opacity:1;transform:translateX(0);}
+.nav-spacer{flex:1;}
+
+/* Левая панель раздела */
+.sec-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.panel-title{font-size:15px;color:var(--text-1);}
+.panel-search{display:flex;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);padding:7px 12px;gap:8px;margin:10px 14px;flex-shrink:0;}
+.panel-search input{border:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text-1);outline:none;flex:1;width:0;}
+.panel-search input::placeholder{color:var(--text-3);}
+.panel-body{flex:1;overflow-y:auto;}
+
+/* ── ЧАТЫ ── */
+.chat-item{padding:10px 14px;cursor:pointer;transition:background var(--ease);border-bottom:1px solid var(--border-lt);display:flex;align-items:center;gap:10px;position:relative;}
+.chat-item:hover{background:var(--surface-2);}
+.chat-item.active{background:var(--brand-pale);border-left:3px solid var(--brand);}
+.chat-info{flex:1;min-width:0;}
+.chat-name{font-size:13px;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.chat-preview{font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.chat-time{font-size:10px;color:var(--text-3);}
+
+/* Основная область чата */
+.chat-main{display:flex;flex-direction:column;background:var(--surface);overflow:hidden;}
+.chat-hdr{padding:0 18px;height:54px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.chat-hdr-info{display:flex;align-items:center;gap:10px;}
+.chat-hdr-title{font-size:15px;color:var(--text-1);}
+.chat-hdr-sub{font-size:11px;color:var(--text-3);}
+.chat-hdr-actions{display:flex;gap:6px;}
+.icon-btn{width:34px;height:34px;border:none;border-radius:var(--r-md);background:var(--surface-2);color:var(--text-2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--ease);}
+.icon-btn:hover{background:var(--brand-pale);color:var(--brand);transform:scale(1.05);}
+.icon-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+
+/* Сообщения */
+.chat-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px;}
+.msg{display:flex;flex-direction:column;max-width:68%;}
+.msg.out{align-self:flex-end;align-items:flex-end;}
+.msg.in{align-self:flex-start;align-items:flex-start;}
+.msg.ai{align-self:flex-start;align-items:flex-start;max-width:82%;}
+.msg-bbl{padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.55;word-break:break-word;}
+.msg.out .msg-bbl{background:var(--brand);color:#fff;border-bottom-right-radius:4px;}
+.msg.in  .msg-bbl{background:var(--surface-2);color:var(--text-1);border:1px solid var(--border-lt);border-bottom-left-radius:4px;}
+.msg.ai  .msg-bbl{background:linear-gradient(135deg,rgba(44,74,124,.07),rgba(123,61,174,.07));border:1px solid rgba(44,74,124,.2);color:var(--text-1);border-bottom-left-radius:4px;}
+.msg-meta{font-size:10px;color:var(--text-3);margin-top:3px;display:flex;align-items:center;gap:6px;}
+.msg-sender{font-size:10px;color:var(--brand);margin-bottom:2px;}
+.msg-sending .msg-bbl{opacity:.65;}
+.ai-sender{font-size:11px;color:var(--brand);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+
+/* Typing indicator */
+.typing-ind{display:flex;align-items:center;gap:3px;padding:9px 13px;background:linear-gradient(135deg,rgba(44,74,124,.07),rgba(123,61,174,.07));border:1px solid rgba(44,74,124,.2);border-radius:14px;border-bottom-left-radius:4px;align-self:flex-start;width:fit-content;}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:typBounce 1.2s infinite;}
+.typing-dot:nth-child(2){animation-delay:.2s;}
+.typing-dot:nth-child(3){animation-delay:.4s;}
+@keyframes typBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* Sources */
+.ai-sources{margin-top:8px;padding-top:7px;border-top:1px solid rgba(44,74,124,.15);font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.src-chip{background:var(--surface-3,#2A2E48);border-radius:var(--r-full);padding:1px 7px;font-size:10px;color:var(--text-2);cursor:pointer;transition:background var(--ease);}
+.src-chip:hover{background:var(--brand-pale);color:var(--brand);}
+[data-theme="light"] .src-chip{background:var(--surface-3);}
+
+/* Пустое/ошибка */
+.chat-empty,.chat-error{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-3);text-align:center;padding:40px;}
+.empty-icon{font-size:48px;opacity:.25;}
+
+/* Composer */
+.chat-composer{padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:8px;background:var(--surface);flex-shrink:0;}
+.composer-input{flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:14px;font-family:var(--font);font-size:13px;color:var(--text-1);background:var(--surface-2);resize:none;outline:none;transition:border-color var(--ease),box-shadow var(--ease);max-height:120px;overflow-y:auto;line-height:1.5;}
+.composer-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(44,74,124,.1);}
+.composer-input::placeholder{color:var(--text-3);}
+.cbtn{width:37px;height:37px;border:none;border-radius:var(--r-md);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--ease);}
+.cbtn-att,.cbtn-em{background:var(--surface-2);color:var(--text-2);}
+.cbtn-att:hover,.cbtn-em:hover{background:var(--surface-3);}
+.cbtn-send{background:var(--grad-btn);color:#fff;}
+.cbtn-send:hover{filter:brightness(1.12);transform:scale(1.08) rotate(-5deg);}
+.cbtn-send:active{transform:scale(.93);}
+.cbtn-send:focus-visible{outline:2px solid var(--brand-light);outline-offset:2px;}
+
+/* ── КОНТАКТЫ ── */
+.contact-card{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background var(--ease);border-bottom:1px solid var(--border-lt);}
+.contact-card:hover{background:var(--surface-2);}
+.contact-info{flex:1;min-width:0;}
+.contact-name{font-size:13px;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact-role{font-size:11px;color:var(--text-3);}
+.contact-acts{display:flex;gap:4px;opacity:0;transition:opacity var(--ease);}
+.contact-card:hover .contact-acts{opacity:1;}
+.contact-acts .icon-btn{width:28px;height:28px;font-size:13px;}
+
+/* ── СООБЩЕСТВА ── */
+.comm-card{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:background var(--ease);border-bottom:1px solid var(--border-lt);}
+.comm-card:hover{background:var(--surface-2);}
+.comm-info{flex:1;min-width:0;}
+.comm-name{font-size:13px;color:var(--text-1);margin-bottom:2px;}
+.comm-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:10px;}
+.comm-dot{width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block;}
+.comm-acts{display:flex;gap:6px;align-items:center;}
+
+/* ── ИИ-АССИСТЕНТ ── */
+.ai-layout{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.ai-quick{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ai-quick-title{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-bottom:10px;}
+.ai-quick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.ai-qbtn{padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);font-family:var(--font);font-size:11px;color:var(--text-2);cursor:pointer;text-align:left;transition:all var(--ease);display:flex;flex-direction:column;gap:3px;}
+.ai-qbtn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-pale);}
+.ai-qbtn-icon{font-size:16px;}
+.ai-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.ai-answer-card{background:linear-gradient(135deg,rgba(44,74,124,.06),rgba(123,61,174,.06));border:1px solid rgba(44,74,124,.18);border-radius:var(--r-lg);padding:14px;}
+.ai-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.ai-card-label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--brand);text-transform:uppercase;letter-spacing:.6px;}
+.ai-conf{font-size:10px;padding:2px 8px;border-radius:var(--r-full);background:rgba(26,158,90,.1);color:var(--success);}
+.ai-card-text{font-size:13px;color:var(--text-1);line-height:1.6;}
+.ai-err-card{background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.2);border-radius:var(--r-lg);padding:14px;display:flex;align-items:flex-start;gap:10px;}
+.ai-err-icon{font-size:20px;color:var(--danger);flex-shrink:0;}
+.ai-err-text{font-size:13px;color:var(--text-2);}
+.ai-user-msg{background:var(--brand-pale);border-radius:14px;padding:9px 13px;font-size:13px;color:var(--text-1);align-self:flex-end;max-width:80%;}
+
+/* ── АДМИН ── */
+.admin-layout{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.admin-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px;flex-shrink:0;}
+.metric-card{background:var(--surface);border:1px solid var(--border-lt);border-radius:var(--r-lg);padding:14px 18px;}
+.metric-val{font-size:28px;color:var(--text-1);line-height:1;}
+.metric-lbl{font-size:10px;color:var(--text-3);margin-top:4px;text-transform:uppercase;letter-spacing:.6px;}
+.metric-delta{font-size:11px;margin-top:5px;}
+.delta-up{color:var(--success);} .delta-dn{color:var(--danger);} .delta-warn{color:var(--warning);}
+.admin-tbl-wrap{flex:1;overflow:auto;padding:0 18px 18px;}
+.admin-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.admin-tbl th{text-align:left;padding:9px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--surface);}
+.admin-tbl td{padding:9px 14px;border-bottom:1px solid var(--border-lt);color:var(--text-1);vertical-align:middle;}
+.admin-tbl tr:hover td{background:var(--surface-2);}
+.role-badge{padding:2px 8px;border-radius:var(--r-full);font-size:10px;}
+.rb-admin{background:rgba(44,74,124,.12);color:var(--brand);}
+.rb-mod{background:rgba(123,61,174,.12);color:#7B3DAE;}
+.rb-user{background:var(--surface-3);color:var(--text-2);}
+.st-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;}
+.st-on{background:var(--success);} .st-off{background:var(--text-3);}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;pointer-events:none;transition:opacity var(--ease);}
+.modal-ov.open{opacity:1;pointer-events:auto;}
+.modal{background:var(--surface);border-radius:var(--r-lg);padding:28px;max-width:380px;width:90%;box-shadow:var(--sh-lg);border:1px solid var(--border-lt);transform:scale(.95);transition:transform var(--ease);}
+.modal-ov.open .modal{transform:scale(1);}
+.modal-title{font-size:18px;color:var(--text-1);margin-bottom:10px;}
+.modal-text{font-size:13px;color:var(--text-2);margin-bottom:20px;line-height:1.5;}
+.modal-acts{display:flex;gap:10px;justify-content:flex-end;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--brand-dark);color:#fff;padding:11px 16px;border-radius:var(--r-lg);font-family:var(--font);font-size:13px;box-shadow:var(--sh-lg);z-index:9999;transform:translateY(80px);opacity:0;transition:all .32s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:10px;max-width:300px;border-top:2px solid transparent;border-image:var(--grad) 1;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(44,74,124,.2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(44,74,124,.4);}
+
+/* FOCUS / A11Y */
+*:focus-visible{outline:3px solid var(--brand-light);outline-offset:2px;}
+button:focus{outline:none;}
+button:focus-visible{outline:3px solid var(--brand-light);outline-offset:2px;}
+input:focus-visible{outline:none;}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .auth-body{grid-template-columns:1fr;}
+  .auth-deco{display:none;}
+  .app-layout{grid-template-columns:60px 1fr;}
+  .admin-metrics{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:600px){
+  .app-layout{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .reg-row{grid-template-columns:1fr;}
+  .ai-quick-grid{grid-template-columns:1fr;}
+  .admin-metrics{grid-template-columns:1fr 1fr;}
+  .header{padding:0 14px;}
+  .hdr-name{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toast-icon">✓</span>
+  <span id="toast-msg">Готово</span>
+</div>
+
+<!-- МОДАЛЬНОЕ ПОДТВЕРЖДЕНИЕ -->
+<div class="modal-ov" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Подтверждение</div>
+    <div class="modal-text" id="modal-text">Вы уверены?</div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-danger btn-sm" id="modal-ok">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ АВТОРИЗАЦИЯ ══════════════ -->
+<div class="page active" id="page-auth">
+  <header class="header">
+    <a class="header-logo" href="#" onclick="return false" aria-label="НашСлон">
+      <img src="logo.png" alt="НашСлон" onerror="this.style.display='none'">
+    </a>
+    <nav class="header-nav">
+      <div class="theme-sw" role="group" aria-label="Тема">
+        <button class="theme-btn active" data-theme="light" onclick="setTheme('light')" aria-label="Светлая">☀️</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" aria-label="Тёмная">🌙</button>
+      </div>
+      <button class="btn-hdr btn-hdr-ghost" onclick="showPage('page-register')">Регистрация</button>
+    </nav>
+  </header>
+  <div class="auth-wrap">
+    <div class="auth-body">
+      <div class="auth-deco">
+        <span class="auth-deco-tag">ИИ-мессенджер</span>
+        <div class="auth-deco-title">Общайтесь умнее с НашСлон</div>
+        <ul class="auth-deco-list">
+          <li>Умная классификация сообщений по типу и приоритету</li>
+          <li>ИИ-ассистент отвечает на вопросы по вашим документам</li>
+          <li>Семантический поиск по всей истории переписки</li>
+          <li>Автосводки диалогов одним нажатием</li>
+          <li>Никаких сложных настроек — ИИ уже внутри</li>
+        </ul>
+      </div>
+      <div class="auth-card" role="main">
+        <div class="auth-logo">
+          <img src="logo.png" alt="НашСлон" onerror="this.style.display='none'">
+        </div>
+        <h1 class="auth-title">Вход в НашСлон</h1>
+        <div class="field">
+          <label class="field-label" for="ae">Email или логин</label>
+          <input class="field-input" type="email" id="ae" placeholder="ivan@company.ru" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()" aria-describedby="ae-err">
+          <div class="field-err" id="ae-err" role="alert">Введите корректный email</div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="ap">Пароль</label>
+          <input class="field-input" type="password" id="ap" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" aria-describedby="ap-err">
+          <div class="field-err" id="ap-err" role="alert">Введите пароль</div>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="ar">
+          <span class="check-box" aria-hidden="true"></span>
+          <span class="check-label">Запомнить меня</span>
+        </label>
+        <button class="btn btn-primary btn-block btn-lg" id="btn-login" onclick="doLogin()">Войти</button>
+        <div class="divider">или</div>
+        <button class="btn btn-secondary btn-block" onclick="showPage('page-register')">Создать аккаунт</button>
+        <div style="text-align:center;margin-top:14px">
+          <a href="#" onclick="toast('📧 Письмо отправлено','info');return false" style="font-size:13px;color:var(--text-3)">Забыли пароль?</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ РЕГИСТРАЦИЯ ══════════════ -->
+<div class="page" id="page-register">
+  <header class="header">
+    <a class="header-logo" href="#" onclick="showPage('page-auth');return false" aria-label="НашСлон">
+      <img src="logo.png" alt="НашСлон" onerror="this.style.display='none'">
+    </a>
+    <nav class="header-nav">
+      <div class="theme-sw" role="group" aria-label="Тема">
+        <button class="theme-btn active" data-theme="light" onclick="setTheme('light')" aria-label="Светлая">☀️</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" aria-label="Тёмная">🌙</button>
+      </div>
+      <button class="btn-hdr btn-hdr-ghost" onclick="showPage('page-auth')">Уже есть аккаунт?</button>
+    </nav>
+  </header>
+  <div class="reg-body">
+    <div class="reg-card" role="main">
+      <div class="auth-logo">
+        <img src="logo.png" alt="НашСлон" onerror="this.style.display='none'">
+      </div>
+      <h1 class="auth-title">Создать аккаунт</h1>
+      <div style="text-align:center;font-size:13px;color:var(--text-3);margin-bottom:20px">Присоединяйтесь к умному корпоративному мессенджеру</div>
+      <div class="reg-row">
+        <div class="field">
+          <label class="field-label" for="rn">Имя</label>
+          <input class="field-input" type="text" id="rn" placeholder="Иван" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label class="field-label" for="rs">Фамилия</label>
+          <input class="field-input" type="text" id="rs" placeholder="Петров" autocomplete="family-name">
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="re">Email</label>
+        <input class="field-input" type="email" id="re" placeholder="ivan@company.ru" autocomplete="email">
+      </div>
+      <div class="field">
+        <label class="field-label" for="ro">Организация (необязательно)</label>
+        <input class="field-input" type="text" id="ro" placeholder="ООО «Название»">
+      </div>
+      <div class="field">
+        <label class="field-label" for="rp">Пароль</label>
+        <input class="field-input" type="password" id="rp" placeholder="Минимум 8 символов" oninput="checkStr(this.value)" aria-describedby="str-hint">
+        <div class="str-bars" id="str-hint" aria-label="Сила пароля">
+          <div class="str-bar" id="s1"></div><div class="str-bar" id="s2"></div><div class="str-bar" id="s3"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="rp2">Повторите пароль</label>
+        <input class="field-input" type="password" id="rp2" placeholder="Повторите пароль">
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" id="btn-reg" onclick="doRegister()">🐘 Зарегистрироваться</button>
+      <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:14px;line-height:1.6">
+        Регистрируясь, вы принимаете <a href="#" onclick="toast('📄 Условия использования','info');return false">Условия</a> и <a href="#" onclick="toast('📄 Политика конфиденциальности','info');return false">Политику конфиденциальности</a>
+      </div>
+      <div class="divider">уже есть аккаунт?</div>
+      <button class="btn btn-secondary btn-block" onclick="showPage('page-auth')">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ПРИЛОЖЕНИЕ ══════════════ -->
+<div class="page" id="page-app">
+  <header class="header">
+    <a class="header-logo" href="#" onclick="return false" aria-label="НашСлон">
+      <img src="logo.png" alt="НашСлон" onerror="this.style.display='none'">
+    </a>
+    <nav class="header-nav">
+      <div class="theme-sw" role="group" aria-label="Тема">
+        <button class="theme-btn active" data-theme="light" onclick="setTheme('light')" aria-label="Светлая">☀️</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" aria-label="Тёмная">🌙</button>
+      </div>
+      <div class="hdr-user" onclick="toast('👤 Профиль','info')" role="button" tabindex="0" aria-label="Профиль">
+        <div class="avatar av-sm av-brand" id="hdr-av" aria-hidden="true">ИП</div>
+        <span class="hdr-name" id="hdr-name">Иван Петров</span>
+      </div>
+      <button class="btn-hdr btn-hdr-ghost" onclick="doLogout()">Выйти</button>
+    </nav>
+  </header>
+
+  <div class="app-layout" role="main">
+
+    <!-- Иконочный сайдбар -->
+    <nav class="sidebar" aria-label="Навигация">
+      <button class="nav-ic active" data-sec="chats"  data-label="Чаты"  onclick="switchSec('chats',this)"  aria-label="Чаты" aria-current="page">💬</button>
+      <button class="nav-ic" data-sec="contacts"      data-label="Контакты" onclick="switchSec('contacts',this)" aria-label="Контакты">👥</button>
+      <button class="nav-ic" data-sec="communities"   data-label="Сообщества" onclick="switchSec('communities',this)" aria-label="Сообщества">🏛️</button>
+      <button class="nav-ic" data-sec="ai"            data-label="ИИ-ассистент" onclick="switchSec('ai',this)" aria-label="ИИ-ассистент">🤖</button>
+      <div class="nav-spacer"></div>
+      <button class="nav-ic" data-sec="admin"         data-label="Администрирование" onclick="switchSec('admin',this)" aria-label="Администрирование">🛡️</button>
+      <button class="nav-ic"                          data-label="Настройки" onclick="toast('⚙️ Настройки в разработке','info')" aria-label="Настройки">⚙️</button>
+    </nav>
+
+    <!-- ЧАТЫ: левая панель -->
+    <div class="sec-panel" id="sec-chats">
+      <div class="panel-head">
+        <span class="panel-title">Чаты</span>
+        <button class="icon-btn" onclick="toast('＋ Новый чат','info')" aria-label="Новый чат" title="Новый чат">＋</button>
+      </div>
+      <div class="panel-search" role="search">
+        <span aria-hidden="true">🔍</span>
+        <input type="search" placeholder="Поиск чатов…" aria-label="Поиск" oninput="filterChats(this.value)">
+      </div>
+      <div class="panel-body" id="chat-list-body">
+        <div class="chat-item active" data-chat="Общий чат"    onclick="selChat(this,'Общий чат')"    tabindex="0" onkeydown="if(event.key==='Enter')selChat(this,'Общий чат')"    role="button" aria-pressed="true">
+          <div class="avatar av-md av-brand">ОЧ</div>
+          <div class="chat-info"><div class="chat-name">Общий чат</div><div class="chat-preview">Начните переписку</div></div>
+          <div class="chat-meta"><span class="chat-time" id="ct-Общий чат">сейчас</span></div>
+        </div>
+        <div class="chat-item" data-chat="ML-сервис"       onclick="selChat(this,'ML-сервис')"       tabindex="0" onkeydown="if(event.key==='Enter')selChat(this,'ML-сервис')"       role="button" aria-pressed="false">
+          <div class="avatar av-md av-violet">ML</div>
+          <div class="chat-info"><div class="chat-name">ML-сервис</div><div class="chat-preview">Анализ завершён</div></div>
+          <div class="chat-meta"><span class="chat-time">13:05</span></div>
+        </div>
+        <div class="chat-item" data-chat="ИИ-ассистент"    onclick="selChat(this,'ИИ-ассистент')"    tabindex="0" onkeydown="if(event.key==='Enter')selChat(this,'ИИ-ассистент')"    role="button" aria-pressed="false">
+          <div class="avatar av-md av-teal">ИИ</div>
+          <div class="chat-info"><div class="chat-name">🤖 ИИ-ассистент</div><div class="chat-preview">Чем могу помочь?</div></div>
+          <div class="chat-meta"><span class="chat-time">12:47</span><span class="badge badge-count" id="badge-ИИ-ассистент">1</span></div>
+        </div>
+        <div class="chat-item" data-chat="Финансы"         onclick="selChat(this,'Финансы')"         tabindex="0" onkeydown="if(event.key==='Enter')selChat(this,'Финансы')"         role="button" aria-pressed="false">
+          <div class="avatar av-md av-coral">Фн</div>
+          <div class="chat-info"><div class="chat-name">Финансы</div><div class="chat-preview">Отчёт Q1 загружен</div></div>
+          <div class="chat-meta"><span class="chat-time">Вчера</span></div>
+        </div>
+        <div class="chat-item" data-chat="HR-адаптация"    onclick="selChat(this,'HR-адаптация')"    tabindex="0" onkeydown="if(event.key==='Enter')selChat(this,'HR-адаптация')"    role="button" aria-pressed="false">
+          <div class="avatar av-md av-navy">HR</div>
+          <div class="chat-info"><div class="chat-name">HR-адаптация</div><div class="chat-preview">Добро пожаловать!</div></div>
+          <div class="chat-meta"><span class="chat-time">Пн</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- КОНТАКТЫ: левая панель -->
+    <div class="sec-panel" id="sec-contacts" style="display:none">
+      <div class="panel-head"><span class="panel-title">Контакты</span>
+        <button class="icon-btn" onclick="toast('＋ Добавить контакт','info')" aria-label="Добавить" title="Добавить">＋</button>
+      </div>
+      <div class="panel-search" role="search">
+        <span aria-hidden="true">🔍</span>
+        <input type="search" placeholder="Поиск…" aria-label="Поиск контактов" oninput="filterContacts(this.value)">
+      </div>
+      <div class="panel-body">
+        <div class="contact-card" tabindex="0">
+          <div class="avatar av-md av-brand">МК</div>
+          <div class="contact-info"><div class="contact-name">Мария Кузнецова</div><div class="contact-role">Менеджер продукта</div></div>
+          <div class="contact-acts">
+            <button class="icon-btn" onclick="startChatWith('Мария Кузнецова');event.stopPropagation()" title="Написать">💬</button>
+            <button class="icon-btn" onclick="toast('📞 Звонок: Мария Кузнецова','info');event.stopPropagation()" title="Позвонить">📞</button>
+            <button class="icon-btn" onclick="copyId('mk_001');event.stopPropagation()" title="Скопировать ID">📋</button>
+          </div>
+        </div>
+        <div class="contact-card" tabindex="0">
+          <div class="avatar av-md av-violet">АС</div>
+          <div class="contact-info"><div class="contact-name">Алексей Смирнов</div><div class="contact-role">ML-инженер</div></div>
+          <div class="contact-acts">
+            <button class="icon-btn" onclick="startChatWith('Алексей Смирнов');event.stopPropagation()" title="Написать">💬</button>
+            <button class="icon-btn" onclick="toast('📞 Звонок: Алексей Смирнов','info');event.stopPropagation()" title="Позвонить">📞</button>
+            <button class="icon-btn" onclick="copyId('as_002');event.stopPropagation()" title="Скопировать ID">📋</button>
+          </div>
+        </div>
+        <div class="contact-card" tabindex="0">
+          <div class="avatar av-md av-teal">ОП</div>
+          <div class="contact-info"><div class="contact-name">Ольга Павлова</div><div class="contact-role">HR-специалист</div></div>
+          <div class="contact-acts">
+            <button class="icon-btn" onclick="startChatWith('Ольга Павлова');event.stopPropagation()" title="Написать">💬</button>
+            <button class="icon-btn" onclick="toast('📞 Звонок: Ольга Павлова','info');event.stopPropagation()" title="Позвонить">📞</button>
+            <button class="icon-btn" onclick="copyId('op_003');event.stopPropagation()" title="Скопировать ID">📋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- СООБЩЕСТВА: левая панель -->
+    <div class="sec-panel" id="sec-communities" style="display:none">
+      <div class="panel-head"><span class="panel-title">Сообщества</span>
+        <button class="icon-btn" onclick="toast('＋ Создать сообщество','info')" aria-label="Создать" title="Создать">＋</button>
+      </div>
+      <div class="panel-body">
+        <div class="comm-card" tabindex="0">
+          <div class="avatar av-md av-brand">РД</div>
+          <div class="comm-info"><div class="comm-name">Разработка</div><div class="comm-meta"><span class="comm-dot"></span>42 участника · 12 онлайн</div></div>
+          <div class="comm-acts"><span class="badge badge-success">Участник</span>
+            <button class="icon-btn" onclick="leaveCom('Разработка')" title="Выйти">🚪</button></div>
+        </div>
+        <div class="comm-card" tabindex="0">
+          <div class="avatar av-md av-violet">МЛ</div>
+          <div class="comm-info"><div class="comm-name">ML & Data</div><div class="comm-meta"><span class="comm-dot"></span>18 участников · 5 онлайн</div></div>
+          <div class="comm-acts"><span class="badge badge-success">Участник</span>
+            <button class="icon-btn" onclick="leaveCom('ML & Data')" title="Выйти">🚪</button></div>
+        </div>
+        <div class="comm-card" tabindex="0">
+          <div class="avatar av-md av-coral">МК</div>
+          <div class="comm-info"><div class="comm-name">Маркетинг</div><div class="comm-meta">31 участник · 3 онлайн</div></div>
+          <div class="comm-acts"><button class="btn btn-secondary btn-sm" onclick="joinCom(this,'Маркетинг')">Вступить</button></div>
+        </div>
+        <div style="padding:32px;text-align:center;color:var(--text-3)">
+          <div style="font-size:36px;opacity:.25;margin-bottom:10px">🏛️</div>
+          <div style="font-size:13px">Больше сообществ нет</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="toast('＋ Создать сообщество','info')">Создать своё</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ИИ-АССИСТЕНТ: левая панель -->
+    <div class="sec-panel" id="sec-ai" style="display:none">
+      <div class="panel-head"><span class="panel-title">🤖 ИИ-ассистент</span>
+        <button class="icon-btn" onclick="clearAi()" title="Очистить" aria-label="Очистить чат">🗑️</button>
+      </div>
+      <div class="ai-layout">
+        <div class="ai-quick">
+          <div class="ai-quick-title">Быстрые действия</div>
+          <div class="ai-quick-grid">
+            <button class="ai-qbtn" onclick="aiQuick('Сделай сводку последних сообщений')"><span class="ai-qbtn-icon">📋</span>Сводка диалога</button>
+            <button class="ai-qbtn" onclick="aiQuick('Найди похожие документы')"><span class="ai-qbtn-icon">🔍</span>Семантический поиск</button>
+            <button class="ai-qbtn" onclick="aiQuick('Классифицируй последние сообщения')"><span class="ai-qbtn-icon">🏷️</span>Классификация</button>
+            <button class="ai-qbtn" onclick="aiQuick('Что мне нужно сделать сегодня?')"><span class="ai-qbtn-icon">✅</span>Мои задачи</button>
+          </div>
+        </div>
+        <div class="ai-msgs" id="ai-msgs">
+          <div class="ai-answer-card">
+            <div class="ai-card-head"><div class="ai-card-label">🤖 НашСлон ИИ</div><span class="ai-conf">готов</span></div>
+            <div class="ai-card-text">Привет! Выберите действие выше или напишите вопрос — отвечу на основе ваших документов и истории переписки.</div>
+            <div class="ai-sources"><span>Источники:</span>
+              <span class="src-chip" onclick="toast('📄 База знаний компании','info')">База знаний</span>
+              <span class="src-chip" onclick="toast('📝 История чатов','info')">История чатов</span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-composer">
+          <textarea class="composer-input" id="ai-input" placeholder="Спросите ИИ-ассистента…" rows="1" onkeydown="handleAiKey(event)" aria-label="Вопрос к ИИ"></textarea>
+          <button class="cbtn cbtn-send" onclick="sendAi()" aria-label="Отправить">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- АДМИНИСТРИРОВАНИЕ: занимает обе колонки (sec-panel + chat-main) -->
+    <div id="sec-admin" style="display:none;grid-column:2/4;background:var(--bg);overflow:hidden;flex-direction:column;">
+      <!-- Шапка -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;color:var(--text-1);">🛡️ Администрирование</span>
+          <span style="font-size:11px;color:var(--text-3);background:var(--surface-2);padding:3px 10px;border-radius:var(--r-full);">Роль: Администратор</span>
+        </div>
+        <!-- Вкладки -->
+        <div style="display:flex;gap:4px;background:var(--surface-2);border-radius:var(--r-md);padding:3px;">
+          <button class="admin-tab active" id="atab-users"   onclick="switchAdminTab('users')"  style="padding:5px 14px;border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:13px;cursor:pointer;background:var(--surface);color:var(--text-1);box-shadow:var(--sh-sm);transition:all var(--ease);">Пользователи</button>
+          <button class="admin-tab"        id="atab-mod"     onclick="switchAdminTab('mod')"    style="padding:5px 14px;border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:13px;cursor:pointer;background:transparent;color:var(--text-3);transition:all var(--ease);">Модерация <span style="background:var(--danger);color:#fff;border-radius:var(--r-full);padding:1px 6px;font-size:10px;margin-left:4px;">4</span></button>
+          <button class="admin-tab"        id="atab-stats"   onclick="switchAdminTab('stats')"  style="padding:5px 14px;border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:13px;cursor:pointer;background:transparent;color:var(--text-3);transition:all var(--ease);">Статистика</button>
+          <button class="admin-tab"        id="atab-settings" onclick="switchAdminTab('settings')" style="padding:5px 14px;border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:13px;cursor:pointer;background:transparent;color:var(--text-3);transition:all var(--ease);">Настройки</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="toast('＋ Пригласить пользователя','info')">＋ Пригласить</button>
+      </div>
+
+      <!-- Метрики -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 24px;flex-shrink:0;">
+        <div class="metric-card" style="border-left:3px solid var(--brand);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div><div class="metric-val" id="m-u">247</div><div class="metric-lbl">Пользователей</div></div>
+            <span style="font-size:24px;opacity:.4">👥</span>
+          </div>
+          <div class="metric-delta delta-up">↑ +12 за неделю</div>
+        </div>
+        <div class="metric-card" style="border-left:3px solid var(--success);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div><div class="metric-val">1 284</div><div class="metric-lbl">Сообщений/день</div></div>
+            <span style="font-size:24px;opacity:.4">💬</span>
+          </div>
+          <div class="metric-delta delta-up">↑ +8% к прошлой неделе</div>
+        </div>
+        <div class="metric-card" style="border-left:3px solid var(--warning);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div><div class="metric-val">38</div><div class="metric-lbl">Активных чатов</div></div>
+            <span style="font-size:24px;opacity:.4">🗂️</span>
+          </div>
+          <div class="metric-delta delta-dn">↓ −3 за вчера</div>
+        </div>
+        <div class="metric-card" style="border-left:3px solid var(--danger);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div><div class="metric-val">4</div><div class="metric-lbl">На модерации</div></div>
+            <span style="font-size:24px;opacity:.4">⚠️</span>
+          </div>
+          <div class="metric-delta delta-warn">⚠ требует внимания</div>
+        </div>
+      </div>
+
+      <!-- Контент вкладок -->
+      <div style="flex:1;overflow:auto;padding:0 24px 24px;">
+
+        <!-- Вкладка: Пользователи -->
+        <div id="aview-users">
+          <!-- Поиск и фильтры -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:7px 12px;gap:8px;flex:1;max-width:320px;">
+              <span style="color:var(--text-3)">🔍</span>
+              <input type="search" placeholder="Поиск пользователей…" style="border:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text-1);outline:none;flex:1;" oninput="filterAdminUsers(this.value)" aria-label="Поиск">
+            </div>
+            <select style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-md);font-family:var(--font);font-size:13px;color:var(--text-1);background:var(--surface);outline:none;cursor:pointer;" onchange="toast('Фильтр применён','info')">
+              <option>Все роли</option>
+              <option>Администратор</option>
+              <option>Модератор</option>
+              <option>Пользователь</option>
+            </select>
+            <select style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-md);font-family:var(--font);font-size:13px;color:var(--text-1);background:var(--surface);outline:none;cursor:pointer;" onchange="toast('Фильтр применён','info')">
+              <option>Все статусы</option>
+              <option>Онлайн</option>
+              <option>Оффлайн</option>
+            </select>
+          </div>
+          <table class="admin-tbl" aria-label="Пользователи" id="admin-users-tbl">
+            <thead><tr>
+              <th>Пользователь</th><th>Email</th><th>Организация</th><th>Роль</th><th>Статус</th><th>Последний вход</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="admin-tbody">
+              <tr data-name="Иван Петров">
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm av-brand">ИП</div><div><div style="font-size:13px;color:var(--text-1)">Иван Петров</div><div style="font-size:10px;color:var(--text-3)">ID: ip_001</div></div></div></td>
+                <td style="color:var(--text-2);font-size:13px">ivan@co.ru</td>
+                <td style="color:var(--text-3);font-size:13px">НашКо</td>
+                <td><span class="role-badge rb-admin">Администратор</span></td>
+                <td><div style="display:flex;align-items:center;gap:5px"><span class="st-dot st-on"></span><span style="font-size:13px;color:var(--text-2)">Онлайн</span></div></td>
+                <td style="color:var(--text-3);font-size:12px">сейчас</td>
+                <td><button class="btn btn-ghost btn-sm" onclick="chRole('Иван Петров')">Роль</button></td>
+              </tr>
+              <tr data-name="Мария Кузнецова">
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm av-violet">МК</div><div><div style="font-size:13px;color:var(--text-1)">Мария Кузнецова</div><div style="font-size:10px;color:var(--text-3)">ID: mk_002</div></div></div></td>
+                <td style="color:var(--text-2);font-size:13px">maria@co.ru</td>
+                <td style="color:var(--text-3);font-size:13px">НашКо</td>
+                <td><span class="role-badge rb-mod">Модератор</span></td>
+                <td><div style="display:flex;align-items:center;gap:5px"><span class="st-dot st-on"></span><span style="font-size:13px;color:var(--text-2)">Онлайн</span></div></td>
+                <td style="color:var(--text-3);font-size:12px">14:22</td>
+                <td><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" onclick="chRole('Мария Кузнецова')">Роль</button><button class="btn btn-danger btn-sm" onclick="blockU('Мария Кузнецова')">Блок</button></div></td>
+              </tr>
+              <tr data-name="Алексей Смирнов">
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm av-teal">АС</div><div><div style="font-size:13px;color:var(--text-1)">Алексей Смирнов</div><div style="font-size:10px;color:var(--text-3)">ID: as_003</div></div></div></td>
+                <td style="color:var(--text-2);font-size:13px">alex@co.ru</td>
+                <td style="color:var(--text-3);font-size:13px">НашКо</td>
+                <td><span class="role-badge rb-user">Пользователь</span></td>
+                <td><div style="display:flex;align-items:center;gap:5px"><span class="st-dot st-off"></span><span style="font-size:13px;color:var(--text-3)">Оффлайн</span></div></td>
+                <td style="color:var(--text-3);font-size:12px">вчера, 18:40</td>
+                <td><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" onclick="chRole('Алексей Смирнов')">Роль</button><button class="btn btn-danger btn-sm" onclick="blockU('Алексей Смирнов')">Блок</button></div></td>
+              </tr>
+              <tr data-name="Ольга Павлова">
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm av-coral">ОП</div><div><div style="font-size:13px;color:var(--text-1)">Ольга Павлова</div><div style="font-size:10px;color:var(--text-3)">ID: op_004</div></div></div></td>
+                <td style="color:var(--text-2);font-size:13px">olga@co.ru</td>
+                <td style="color:var(--text-3);font-size:13px">НашКо</td>
+                <td><span class="role-badge rb-user">Пользователь</span></td>
+                <td><div style="display:flex;align-items:center;gap:5px"><span class="st-dot st-on"></span><span style="font-size:13px;color:var(--text-2)">Онлайн</span></div></td>
+                <td style="color:var(--text-3);font-size:12px">13:05</td>
+                <td><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" onclick="chRole('Ольга Павлова')">Роль</button><button class="btn btn-danger btn-sm" onclick="blockU('Ольга Павлова')">Блок</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Вкладка: Модерация -->
+        <div id="aview-mod" style="display:none">
+          <div style="font-size:13px;color:var(--text-3);margin-bottom:14px;">Сообщения, помеченные ML-моделью как требующие проверки</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="background:var(--surface);border:1px solid var(--border-lt);border-left:3px solid var(--danger);border-radius:var(--r-md);padding:14px;display:flex;align-items:flex-start;gap:12px;">
+              <div class="avatar av-sm av-coral">НП</div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+                  <span style="font-size:13px;color:var(--text-1)">Николай Павлов</span>
+                  <span class="mtag mt-x">🚫 Модерация</span>
+                  <span style="font-size:10px;color:var(--text-3)">14:15</span>
+                </div>
+                <div style="font-size:13px;color:var(--text-2);background:var(--surface-2);padding:8px 12px;border-radius:var(--r-md);margin-bottom:8px;">«Это совершенно неприемлемо и я считаю что все тут...»</div>
+                <div style="font-size:11px;color:var(--warning);">⚠ ML-уверенность: 87% — токсичность</div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="toast('✓ Сообщение одобрено','success')">Одобрить</button>
+                  <button class="btn btn-danger btn-sm" onclick="toast('🗑️ Сообщение удалено','success')">Удалить</button>
+                  <button class="btn btn-ghost btn-sm" onclick="blockU('Николай Павлов')">Блокировать автора</button>
+                </div>
+              </div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border-lt);border-left:3px solid var(--warning);border-radius:var(--r-md);padding:14px;display:flex;align-items:flex-start;gap:12px;">
+              <div class="avatar av-sm av-green">СМ</div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+                  <span style="font-size:13px;color:var(--text-1)">Сергей Морозов</span>
+                  <span class="mtag mt-l">⚠️ Низкая уверенность</span>
+                  <span style="font-size:10px;color:var(--text-3)">12:50</span>
+                </div>
+                <div style="font-size:13px;color:var(--text-2);background:var(--surface-2);padding:8px 12px;border-radius:var(--r-md);margin-bottom:8px;">«Нужно срочно передать файлы на внешний сервер до...»</div>
+                <div style="font-size:11px;color:var(--warning);">⚠ ML-уверенность: 62% — возможная утечка данных</div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="toast('✓ Сообщение одобрено','success')">Одобрить</button>
+                  <button class="btn btn-danger btn-sm" onclick="toast('🗑️ Сообщение удалено','success')">Удалить</button>
+                  <button class="btn btn-ghost btn-sm" onclick="blockU('Сергей Морозов')">Блокировать автора</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вкладка: Статистика -->
+        <div id="aview-stats" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="metric-card">
+              <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;font-weight:400;">Активность по дням (сообщений)</div>
+              <div style="display:flex;align-items:flex-end;gap:6px;height:80px;">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--grad-btn);border-radius:3px;width:100%;height:45%"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Пн</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--grad-btn);border-radius:3px;width:100%;height:70%"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Вт</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--grad-btn);border-radius:3px;width:100%;height:60%"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Ср</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--grad-btn);border-radius:3px;width:100%;height:90%"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Чт</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--grad-btn);border-radius:3px;width:100%;height:100%"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Пт</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--brand-pale);border-radius:3px;width:100%;height:30%;border:1px solid var(--border)"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Сб</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%">
+                  <div style="background:var(--brand-pale);border-radius:3px;width:100%;height:20%;border:1px solid var(--border)"></div>
+                  <div style="font-size:9px;color:var(--text-3)">Вс</div>
+                </div>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Теги сообщений (ML)</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <div style="display:flex;align-items:center;gap:8px;"><span class="mtag mt-n">💬 Обычное</span><div style="flex:1;background:var(--surface-2);border-radius:3px;height:6px;"><div style="background:var(--tag-n);width:55%;height:100%;border-radius:3px;"></div></div><span style="font-size:11px;color:var(--text-3);width:30px;text-align:right;">55%</span></div>
+                <div style="display:flex;align-items:center;gap:8px;"><span class="mtag mt-q">❓ Вопрос</span><div style="flex:1;background:var(--surface-2);border-radius:3px;height:6px;"><div style="background:var(--tag-q);width:20%;height:100%;border-radius:3px;"></div></div><span style="font-size:11px;color:var(--text-3);width:30px;text-align:right;">20%</span></div>
+                <div style="display:flex;align-items:center;gap:8px;"><span class="mtag mt-t">✅ Задача</span><div style="flex:1;background:var(--surface-2);border-radius:3px;height:6px;"><div style="background:var(--tag-t);width:15%;height:100%;border-radius:3px;"></div></div><span style="font-size:11px;color:var(--text-3);width:30px;text-align:right;">15%</span></div>
+                <div style="display:flex;align-items:center;gap:8px;"><span class="mtag mt-x">🚫 Токсичное</span><div style="flex:1;background:var(--surface-2);border-radius:3px;height:6px;"><div style="background:var(--tag-x);width:3%;height:100%;border-radius:3px;"></div></div><span style="font-size:11px;color:var(--text-3);width:30px;text-align:right;">3%</span></div>
+                <div style="display:flex;align-items:center;gap:8px;"><span class="mtag mt-a">💡 Ответ</span><div style="flex:1;background:var(--surface-2);border-radius:3px;height:6px;"><div style="background:var(--tag-a);width:7%;height:100%;border-radius:3px;"></div></div><span style="font-size:11px;color:var(--text-3);width:30px;text-align:right;">7%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вкладка: Настройки -->
+        <div id="aview-settings" style="display:none;max-width:540px;">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="metric-card">
+              <div style="font-size:14px;color:var(--text-1);margin-bottom:12px;">Модерация ИИ</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                  <span style="font-size:13px;color:var(--text-2);">Автоматическая проверка сообщений</span>
+                  <input type="checkbox" checked onchange="toast('Настройка сохранена','success')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">
+                </label>
+                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                  <span style="font-size:13px;color:var(--text-2);">Блокировать токсичные сообщения автоматически</span>
+                  <input type="checkbox" onchange="toast('Настройка сохранена','success')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">
+                </label>
+                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                  <span style="font-size:13px;color:var(--text-2);">Уведомлять модераторов о подозрительных</span>
+                  <input type="checkbox" checked onchange="toast('Настройка сохранена','success')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">
+                </label>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                  <span style="font-size:13px;color:var(--text-2);">Порог уверенности ML (%)</span>
+                  <input type="number" value="75" min="50" max="99" style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--font);font-size:13px;color:var(--text-1);background:var(--surface);outline:none;" onchange="toast('Порог обновлён: '+this.value+'%','success')">
+                </div>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div style="font-size:14px;color:var(--text-1);margin-bottom:12px;">Доступ и безопасность</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                  <span style="font-size:13px;color:var(--text-2);">Двухфакторная аутентификация</span>
+                  <input type="checkbox" checked onchange="toast('2FA: настройка изменена','success')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">
+                </label>
+                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                  <span style="font-size:13px;color:var(--text-2);">Логировать все действия</span>
+                  <input type="checkbox" checked onchange="toast('Настройка сохранена','success')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">
+                </label>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="toast('✓ Настройки сохранены','success')">Сохранить настройки</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ОСНОВНОЙ ЧАТ -->
+    <div class="chat-main" id="chat-main">
+      <div class="chat-hdr">
+        <div class="chat-hdr-info">
+          <div class="avatar av-sm av-brand" id="chat-av" aria-hidden="true">ОЧ</div>
+          <div><div class="chat-hdr-title" id="chat-title">Общий чат</div><div class="chat-hdr-sub" id="chat-sub">все участники</div></div>
+        </div>
+        <div class="chat-hdr-actions">
+          <button class="icon-btn" onclick="toast('🔍 Поиск в чате','info')" title="Поиск" aria-label="Поиск">🔍</button>
+          <button class="icon-btn" onclick="toast('📎 Прикрепить файл','info')" title="Файл" aria-label="Прикрепить">📎</button>
+          <button class="icon-btn" onclick="showChatInfo()" title="Информация" aria-label="Информация">ℹ️</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="chat-msgs" role="log" aria-live="polite" aria-label="Сообщения"></div>
+      <div class="chat-composer" role="form" aria-label="Отправить сообщение">
+        <button class="cbtn cbtn-att" onclick="toast('📁 Выберите файл','info')" aria-label="Файл" title="Файл">📁</button>
+        <button class="cbtn cbtn-em"  onclick="toast('😊 Эмодзи','info')"        aria-label="Эмодзи" title="Эмодзи">😊</button>
+        <textarea class="composer-input" id="composer" placeholder="Напишите сообщение… (Enter — отправить, Shift+Enter — перенос)" rows="1" onkeydown="handleKey(event)" aria-label="Сообщение"></textarea>
+        <button class="cbtn cbtn-send" onclick="sendMsg()" aria-label="Отправить" title="Отправить">➤</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ─── УТИЛИТЫ ─── */
+function nt(){const n=new Date();return n.getHours()+':'+String(n.getMinutes()).padStart(2,'0');}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ─── ДАННЫЕ ─── */
+const chats={
+  'Общий чат':   {sub:'все участники',av:'ОЧ',avc:'av-brand',msgs:[]},
+  'ML-сервис':   {sub:'автоматизация · ИИ',av:'ML',avc:'av-violet',msgs:[]},
+  'ИИ-ассистент':{sub:'всегда онлайн',av:'ИИ',avc:'av-teal',msgs:[
+    {type:'ai',text:'Привет! Я ИИ-ассистент НашСлон. Помогу с поиском, сводками и классификацией.',time:nt(),tag:'a',sources:['База знаний']}
+  ]},
+  'Финансы':     {sub:'финансовый отдел',av:'Фн',avc:'av-coral',msgs:[]},
+  'HR-адаптация':{sub:'служба персонала',av:'HR',avc:'av-navy',msgs:[
+    {type:'in',name:'HR-бот',text:'Добро пожаловать в команду! Пишите если есть вопросы.',time:nt(),tag:'n'}
+  ]},
+};
+let curChat='Общий чат';
+
+/* ─── ТЕГИ ─── */
+const TL={q:'❓ Вопрос',t:'✅ Задача',a:'💡 Ответ',n:'💬 Обычное',x:'🚫 Модерация',l:'⚠️ Низкая уверенность'};
+const TC={q:'mt-q',t:'mt-t',a:'mt-a',n:'mt-n',x:'mt-x',l:'mt-l'};
+function mkTag(tag){if(!tag||!TL[tag])return'';return`<span class="mtag ${TC[tag]}">${TL[tag]}</span>`;}
+
+/* ─── РЕНДЕР ─── */
+function render(name){
+  const c=document.getElementById('chat-msgs');if(!c)return;
+  const d=chats[name];
+  if(!d||!d.msgs.length){
+    c.innerHTML='<div class="chat-empty"><div class="empty-icon">💬</div><div style="font-size:18px;color:var(--text-2)">Нет сообщений</div><div style="font-size:13px">Начните переписку первым</div></div>';
+    return;
+  }
+  c.innerHTML=d.msgs.map(m=>{
+    if(m.type==='out')return`<div class="msg out${m.sending?' msg-sending':''}"><div class="msg-bbl">${esc(m.text)}</div>${mkTag(m.tag)}<div class="msg-meta">${m.time}${m.sending?' <span aria-hidden="true">⟳</span>':' ✓'}</div></div>`;
+    if(m.type==='ai'){
+      const src=m.sources&&m.sources.length?`<div class="ai-sources"><span>Источники:</span>${m.sources.map(s=>`<span class="src-chip">${esc(s)}</span>`).join('')}</div>`:'';
+      return`<div class="msg ai"><div class="ai-sender">🤖 ИИ-ассистент</div><div class="msg-bbl">${esc(m.text)}${src}</div>${mkTag(m.tag)}<div class="msg-meta">${m.time}</div></div>`;
+    }
+    return`<div class="msg in">${m.name?`<div class="msg-sender">${esc(m.name)}</div>`:''}<div class="msg-bbl">${esc(m.text)}</div>${mkTag(m.tag)}<div class="msg-meta">${m.time}</div></div>`;
+  }).join('');
+  c.scrollTop=c.scrollHeight;
+}
+
+/* ─── ВЫБОР ЧАТА ─── */
+function selChat(el,name){
+  document.querySelectorAll('.chat-item').forEach(i=>{i.classList.remove('active');i.setAttribute('aria-pressed','false');});
+  el.classList.add('active');el.setAttribute('aria-pressed','true');
+  curChat=name;
+  const d=chats[name];
+  document.getElementById('chat-title').textContent=name;
+  document.getElementById('chat-sub').textContent=d?d.sub:'';
+  const av=document.getElementById('chat-av');
+  if(av&&d){av.textContent=d.av;av.className=`avatar av-sm ${d.avc}`;}
+  const b=document.getElementById('badge-'+name);if(b)b.remove();
+  render(name);
+}
+
+/* ─── ОТПРАВКА ─── */
+function sendMsg(){
+  const inp=document.getElementById('composer');
+  const text=inp.value.trim();if(!text)return;
+  const time=nt();
+  if(!chats[curChat])chats[curChat]={sub:'',msgs:[]};
+  const tag=text.endsWith('?')?'q':text.toLowerCase().match(/сделай|нужно|надо|задача/)?'t':'n';
+  const mo={type:'out',text,time,tag,sending:true};
+  chats[curChat].msgs.push(mo);
+  render(curChat);updPrev(curChat,text,time);
+  inp.value='';inp.style.height='auto';
+  setTimeout(()=>{mo.sending=false;render(curChat);},700);
+  if(curChat==='ИИ-ассистент'){
+    const c=document.getElementById('chat-msgs');
+    setTimeout(()=>{const t=document.createElement('div');t.className='typing-ind';t.id='typ';t.innerHTML='<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';c.appendChild(t);c.scrollTop=c.scrollHeight;},800);
+    setTimeout(()=>{
+      const tp=document.getElementById('typ');if(tp)tp.remove();
+      const rs=[
+        {text:'Понял запрос. По вашей истории переписки задача относится к «Разработке», приоритет — высокий.',tag:'a',src:['История чатов','База знаний']},
+        {text:'Найдено 5 документов. Наиболее релевантный — «Технические требования Q2». Открыть?',tag:'a',src:['Документы компании']},
+        {text:'Сводка за 24ч: обсуждались интеграция и тестирование. Дедлайн — завтра.',tag:'a',src:['Общий чат','ML-сервис']},
+        {text:'Задача зафиксирована. Создать напоминание?',tag:'t',src:[]},
+      ];
+      const r=rs[Math.floor(Math.random()*rs.length)];
+      chats['ИИ-ассистент'].msgs.push({type:'ai',text:r.text,time:nt(),tag:r.tag,sources:r.src});
+      render('ИИ-ассистент');
+    },2000+Math.random()*500);
+  }
+}
+
+function updPrev(name,text,time){
+  document.querySelectorAll('.chat-item').forEach(i=>{
+    if(i.getAttribute('data-chat')===name){
+      const p=i.querySelector('.chat-preview');if(p)p.textContent=text.length>34?text.slice(0,34)+'…':text;
+      const t=document.getElementById('ct-'+name);if(t)t.textContent=time;
+    }
+  });
+}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function filterChats(q){document.querySelectorAll('.chat-item').forEach(i=>i.style.display=(i.getAttribute('data-chat')||'').toLowerCase().includes(q.toLowerCase())?'':'none');}
+
+/* ─── ПЕРЕКЛЮЧЕНИЕ РАЗДЕЛОВ ─── */
+const SECS=['chats','contacts','communities','ai','admin'];
+function switchSec(name,btn){
+  SECS.forEach(s=>{
+    const p=document.getElementById('sec-'+s);
+    if(!p)return;
+    if(s==='admin'){
+      p.style.display=s===name?'flex':'none';
+      p.style.gridColumn='2/4';
+    } else {
+      p.style.display=s===name?'flex':'none';
+    }
+  });
+  document.querySelectorAll('.nav-ic').forEach(b=>{b.classList.toggle('active',b===btn);b.setAttribute('aria-current',b===btn?'page':'false');});
+  const cm=document.getElementById('chat-main');
+  if(cm)cm.style.display=name==='chats'?'flex':'none';
+  if(name==='chats')render(curChat);
+}
+
+/* ─── КОНТАКТЫ ─── */
+function filterContacts(q){document.querySelectorAll('.contact-card').forEach(c=>c.style.display=(c.querySelector('.contact-name')?.textContent||'').toLowerCase().includes(q.toLowerCase())?'':'none');}
+function startChatWith(name){
+  if(!chats[name])chats[name]={sub:name,av:name.split(' ').map(w=>w[0]).join('').slice(0,2),avc:'av-brand',msgs:[]};
+  switchSec('chats',document.querySelector('[data-sec="chats"]'));
+  let found=false;
+  document.querySelectorAll('.chat-item').forEach(i=>{if(i.getAttribute('data-chat')===name)found=true;});
+  if(!found){
+    const li=document.createElement('div');
+    li.className='chat-item';li.setAttribute('data-chat',name);li.setAttribute('tabindex','0');li.setAttribute('role','button');li.setAttribute('aria-pressed','false');
+    li.innerHTML=`<div class="avatar av-md av-brand">${chats[name].av}</div><div class="chat-info"><div class="chat-name">${esc(name)}</div><div class="chat-preview">Новый чат</div></div><div class="chat-meta"><span class="chat-time" id="ct-${name}">сейчас</span></div>`;
+    li.onclick=()=>selChat(li,name);
+    document.getElementById('chat-list-body').appendChild(li);
+  }
+  const el=document.querySelector(`[data-chat="${name}"]`);if(el)selChat(el,name);
+}
+function copyId(id){navigator.clipboard?.writeText(id).then(()=>toast('📋 ID скопирован: '+id,'success')).catch(()=>toast('📋 ID: '+id,'info'));}
+
+/* ─── СООБЩЕСТВА ─── */
+function joinCom(btn,name){btn.textContent='✓ Участник';btn.disabled=true;btn.className='btn btn-sm';btn.style.cssText='background:var(--success);color:#fff;padding:6px 13px;border-radius:var(--r-md);font-family:var(--font);font-size:13px;';toast('✓ Вы вступили в «'+name+'»','success');}
+function leaveCom(name){openModal('Выйти из сообщества','Вы уверены, что хотите выйти из «'+name+'»?',()=>toast('👋 Вы вышли из «'+name+'»','info'));}
+
+/* ─── ИИ-АССИСТЕНТ (раздел) ─── */
+function sendAi(){
+  const inp=document.getElementById('ai-input');
+  const text=inp.value.trim();if(!text)return;
+  const box=document.getElementById('ai-msgs');
+  inp.value='';inp.style.height='auto';
+  const um=document.createElement('div');um.className='ai-user-msg';um.textContent=text;box.appendChild(um);
+  const ti=document.createElement('div');ti.className='typing-ind';ti.innerHTML='<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';box.appendChild(ti);box.scrollTop=box.scrollHeight;
+  setTimeout(()=>{
+    ti.remove();
+    const ans=[
+      {text:'По вашему запросу нашёл 3 документа. Наиболее релевантный — «Технические требования Q2».',conf:91,src:['Документы','История']},
+      {text:'Сводка: за 24 часа обсуждались интеграция и тестирование. Дедлайн завтра.',conf:96,src:['Общий чат','ML-сервис']},
+      {text:'Задача классифицирована как высокоприоритетная. Назначить ответственного?',conf:88,src:['ML-модель CLS-01']},
+    ];
+    const a=ans[Math.floor(Math.random()*ans.length)];
+    const card=document.createElement('div');card.className='ai-answer-card';
+    card.innerHTML=`<div class="ai-card-head"><div class="ai-card-label">🤖 НашСлон ИИ</div><span class="ai-conf">${a.conf}% уверенность</span></div><div class="ai-card-text">${esc(a.text)}</div><div class="ai-sources"><span>Источники:</span>${a.src.map(s=>`<span class="src-chip">${s}</span>`).join('')}</div>`;
+    box.appendChild(card);box.scrollTop=box.scrollHeight;
+  },1400+Math.random()*600);
+}
+function aiQuick(q){document.getElementById('ai-input').value=q;sendAi();}
+function handleAiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAi();}}
+function clearAi(){document.getElementById('ai-msgs').innerHTML='';toast('🗑️ Чат очищен','info');}
+function showChatInfo(){const d=chats[curChat];toast('ℹ️ '+curChat+' · '+(d?d.sub:''),'info');}
+
+/* ─── АДМИНИСТРИРОВАНИЕ: вкладки ─── */
+function switchAdminTab(tab){
+  ['users','mod','stats','settings'].forEach(t=>{
+    const v=document.getElementById('aview-'+t);
+    if(v)v.style.display=t===tab?'block':'none';
+    const b=document.getElementById('atab-'+t);
+    if(b){
+      if(t===tab){b.style.background='var(--surface)';b.style.color='var(--text-1)';b.style.boxShadow='var(--sh-sm)';}
+      else{b.style.background='transparent';b.style.color='var(--text-3)';b.style.boxShadow='none';}
+    }
+  });
+}
+function filterAdminUsers(q){
+  document.querySelectorAll('#admin-tbody tr').forEach(r=>{
+    const n=r.getAttribute('data-name')||'';
+    r.style.display=n.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
+
+/* ─── АДМИНИСТРИРОВАНИЕ ─── */
+function blockU(name){openModal('Заблокировать','Заблокировать пользователя «'+name+'»? Пользователь потеряет доступ.',()=>{toast('🚫 «'+name+'» заблокирован','success');const el=document.getElementById('m-u');if(el)el.textContent=parseInt(el.textContent)-1;});}
+function chRole(name){openModal('Изменить роль','Назначить новую роль для «'+name+'»?',()=>toast('✓ Роль «'+name+'» обновлена','success'));}
+
+/* ─── МОДАЛЬНОЕ ─── */
+let modalCb=null;
+function openModal(title,text,cb){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-text').textContent=text;
+  modalCb=cb;document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-ok').focus();
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');modalCb=null;}
+document.getElementById('modal-ok').onclick=()=>{if(modalCb)modalCb();closeModal();};
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+/* ─── ТЕМЫ ─── */
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem('ns-theme',t);
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('data-theme')===t));
+  toast(t==='light'?'☀️ Светлая тема':'🌙 Тёмная тема','info');
+}
+(function(){
+  const t=localStorage.getItem('ns-theme')||'light';
+  document.documentElement.setAttribute('data-theme',t);
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('data-theme')===t));
+})();
+
+/* ─── НАВИГАЦИЯ ─── */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if(id==='page-app')setTimeout(()=>{switchSec('chats',document.querySelector('[data-sec="chats"]'));render(curChat);},50);
+}
+
+/* ─── АВТОРИЗАЦИЯ ─── */
+function doLogin(){
+  const email=document.getElementById('ae').value.trim();
+  const pass=document.getElementById('ap').value;
+  let ok=true;
+  document.getElementById('ae-err').classList.remove('on');document.getElementById('ae').classList.remove('err');
+  document.getElementById('ap-err').classList.remove('on');document.getElementById('ap').classList.remove('err');
+  if(!email||!email.includes('@')){document.getElementById('ae-err').classList.add('on');document.getElementById('ae').classList.add('err');ok=false;}
+  if(!pass){document.getElementById('ap-err').classList.add('on');document.getElementById('ap').classList.add('err');ok=false;}
+  if(!ok)return;
+  const btn=document.getElementById('btn-login');
+  btn.textContent='⏳ Входим…';btn.disabled=true;
+  const n=email.split('@')[0].split('.').map(s=>s[0].toUpperCase()+s.slice(1)).join(' ');
+  setTimeout(()=>{btn.textContent='Войти';btn.disabled=false;setUser(n||'Пользователь');showPage('page-app');},900);
+}
+function doLogout(){openModal('Выйти','Вы уверены, что хотите выйти из НашСлон?',()=>showPage('page-auth'));}
+function doRegister(){
+  const name=document.getElementById('rn').value.trim();
+  const email=document.getElementById('re').value.trim();
+  const pass=document.getElementById('rp').value;
+  const pass2=document.getElementById('rp2').value;
+  if(!name){toast('⚠️ Введите имя','danger');return;}
+  if(!email||!email.includes('@')){toast('⚠️ Некорректный email','danger');return;}
+  if(pass.length<8){toast('⚠️ Пароль минимум 8 символов','danger');return;}
+  if(pass!==pass2){toast('⚠️ Пароли не совпадают','danger');return;}
+  const btn=document.getElementById('btn-reg');btn.textContent='⏳ Создаём…';btn.disabled=true;
+  const sur=document.getElementById('rs').value.trim();
+  const full=sur?name+' '+sur:name;
+  chats['ИИ-ассистент'].msgs.push({type:'ai',text:'Добро пожаловать, '+name+'! Готов помогать с задачами.',time:nt(),tag:'a',sources:[]});
+  setTimeout(()=>{btn.textContent='🐘 Зарегистрироваться';btn.disabled=false;setUser(full);showPage('page-app');toast('✅ Добро пожаловать, '+name+'!','success');},1200);
+}
+function setUser(name){
+  const el=document.getElementById('hdr-name');if(el)el.textContent=name;
+  const av=document.getElementById('hdr-av');if(av)av.textContent=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function checkStr(v){
+  ['s1','s2','s3'].forEach(id=>{const b=document.getElementById(id);if(b)b.className='str-bar';});
+  if(!v)return;
+  const str=v.length>=10&&/[A-Z]/.test(v)&&/[0-9]/.test(v)&&/[^A-Za-z0-9]/.test(v);
+  const med=v.length>=8&&(/[A-Z]/.test(v)||/[0-9]/.test(v));
+  if(str)['s1','s2','s3'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.add('str-s');});
+  else if(med){const b1=document.getElementById('s1'),b2=document.getElementById('s2');if(b1)b1.classList.add('str-m');if(b2)b2.classList.add('str-m');}
+  else{const b=document.getElementById('s1');if(b)b.classList.add('str-w');}
+}
+
+/* ─── TOAST ─── */
+let toastTm;
+function toast(msg,type='info'){
+  const t=document.getElementById('toast');
+  const ic={success:'✅',danger:'⚠️',info:'ℹ️'};
+  document.getElementById('toast-icon').textContent=ic[type]||'✓';
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');clearTimeout(toastTm);
+  toastTm=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+/* ─── INIT ─── */
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('textarea').forEach(ta=>ta.addEventListener('input',function(){
+    this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';
+  }));
+  const fi=document.querySelector('.chat-item');if(fi)fi.classList.add('active');
+  if(document.getElementById('page-app')?.classList.contains('active'))render(curChat);
+});
+</script>
+</body>
+</html>

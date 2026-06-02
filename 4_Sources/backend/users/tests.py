@@ -2,11 +2,15 @@ import os
 from io import StringIO
 from unittest.mock import patch
 
+from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from django.conf import settings
 from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -14,8 +18,15 @@ from rest_framework.test import APITestCase
 from chats.models import Chat, ChatMember
 from messages.models import Message
 from .models import Contact, User
+from .tokens import email_confirmation_token
 
 
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='notify@nash-slon.local',
+    FRONTEND_BASE_URL='http://frontend.test',
+    BACKEND_PUBLIC_BASE_URL='https://api.frontend.test',
+)
 class AuthApiTests(APITestCase):
     def test_api_root_is_available_for_authenticated_user(self):
         user = User.objects.create_user(username='demo', password='pass')
@@ -51,11 +62,182 @@ class AuthApiTests(APITestCase):
         self.assertEqual(data['phone_number'], '+79990000001')
         self.assertTrue(data['accepted_user_agreement'])
         self.assertTrue(data['accepted_privacy_policy'])
+        self.assertEqual(data['detail'], 'Письмо для подтверждения регистрации отправлено на email.')
         self.assertNotIn('password', data)
         user = User.objects.get(username='demo')
         self.assertTrue(user.check_password('StrongPassword123'))
+        self.assertFalse(user.is_active)
         self.assertIsNotNone(user.user_agreement_accepted_at)
         self.assertIsNotNone(user.privacy_policy_accepted_at)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['demo@example.com'])
+        self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
+        self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
+        self.assertIn('зарегистрироваться', mail.outbox[0].alternatives[0][0])
+
+    def test_user_can_confirm_registration_by_email_link(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='StrongPassword123',
+            email='demo@example.com',
+            is_active=False,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_confirmation_token.make_token(user)
+
+        response = self.client.get(
+            reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': token})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response['Location'], 'http://frontend.test/login?registration=confirmed')
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertFalse(email_confirmation_token.check_token(user, token))
+
+    def test_invalid_registration_confirmation_redirects_to_register_page(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='StrongPassword123',
+            email='demo@example.com',
+            is_active=False,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        response = self.client.get(
+            reverse('api-register-confirm', kwargs={'uidb64': uidb64, 'token': 'bad-token'})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response['Location'], 'http://frontend.test/login?registration=invalid')
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
+
+    def test_password_reset_request_sends_email_for_active_user(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+
+        response = self.client.post(
+            reverse('api-password-reset'),
+            {'email': 'demo@example.com'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
+        self.assertIn('Восстановление доступа', mail.outbox[0].subject)
+        self.assertIn('/reset-password/', mail.outbox[0].body)
+        self.assertIn('восстановить доступ', mail.outbox[0].alternatives[0][0])
+
+    def test_password_reset_request_resends_confirmation_for_inactive_user(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=False,
+        )
+
+        response = self.client.post(
+            reverse('api-password-reset'),
+            {'email': 'demo@example.com'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
+        self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
+        self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
+
+    def test_password_reset_request_does_not_disclose_unknown_email(self):
+        response = self.client.post(
+            reverse('api-password-reset'),
+            {'email': 'missing@example.com'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_user_can_reset_password_with_valid_token(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        response = self.client.post(
+            reverse('api-password-reset-confirm'),
+            {
+                'uidb64': uidb64,
+                'token': token,
+                'password': 'NewPassword123',
+                'confirm_password': 'NewPassword123',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['detail'], 'Ваш пароль успешно изменен.')
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('NewPassword123'))
+        self.assertFalse(default_token_generator.check_token(user, token))
+
+    def test_password_reset_rejects_invalid_token(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        response = self.client.post(
+            reverse('api-password-reset-confirm'),
+            {
+                'uidb64': uidb64,
+                'token': 'bad-token',
+                'password': 'NewPassword123',
+                'confirm_password': 'NewPassword123',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('OldPassword123'))
+
+    def test_password_reset_requires_matching_passwords(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        response = self.client.post(
+            reverse('api-password-reset-confirm'),
+            {
+                'uidb64': uidb64,
+                'token': token,
+                'password': 'NewPassword123',
+                'confirm_password': 'AnotherPassword123',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('confirm_password', response.json()['field_errors'])
 
     def test_user_can_login_with_token_endpoint(self):
         user = User.objects.create_user(username='demo', password='StrongPassword123')
@@ -63,6 +245,22 @@ class AuthApiTests(APITestCase):
         response = self.client.post(
             reverse('api-token-auth'),
             {'username': 'demo', 'password': 'StrongPassword123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['token'], Token.objects.get(user=user).key)
+
+    def test_user_can_login_with_email_token_endpoint(self):
+        user = User.objects.create_user(
+            username='demo',
+            email='demo@example.com',
+            password='StrongPassword123',
+        )
+
+        response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'demo@example.com', 'password': 'StrongPassword123'},
             format='json',
         )
 
@@ -97,10 +295,10 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('birth_date', response.json())
-        self.assertIn('phone_number', response.json())
-        self.assertIn('accepted_user_agreement', response.json())
-        self.assertIn('accepted_privacy_policy', response.json())
+        self.assertIn('birth_date', response.json()['field_errors'])
+        self.assertIn('phone_number', response.json()['field_errors'])
+        self.assertIn('accepted_user_agreement', response.json()['field_errors'])
+        self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
 
     def test_user_must_accept_legal_documents_to_register(self):
         response = self.client.post(
@@ -120,8 +318,8 @@ class AuthApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('accepted_user_agreement', response.json())
-        self.assertIn('accepted_privacy_policy', response.json())
+        self.assertIn('accepted_user_agreement', response.json()['field_errors'])
+        self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
 
     def test_current_user_endpoint_returns_frontend_profile(self):
         user = User.objects.create_user(
@@ -150,11 +348,42 @@ class AuthApiTests(APITestCase):
                 'last_name': 'User',
                 'birth_date': '1995-05-04',
                 'phone_number': '+79990000001',
+                'avatar': None,
+                'avatar_url': None,
                 'accepted_user_agreement': True,
                 'accepted_privacy_policy': True,
-                'role': User.Role.USER,
+                'role': User.Role.USER.value,
             },
         )
+
+    def test_current_user_avatar_rejects_non_image_file(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+        uploaded = SimpleUploadedFile('avatar.txt', b'not image', content_type='text/plain')
+
+        response = self.client.patch(
+            reverse('api-me'),
+            {'avatar': uploaded},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('avatar', response.json()['field_errors'])
+
+    @override_settings(MAX_AVATAR_SIZE_BYTES=4)
+    def test_current_user_avatar_size_limit_is_validated(self):
+        user = User.objects.create_user(username='demo', password='pass')
+        self.client.force_authenticate(user)
+        uploaded = SimpleUploadedFile('avatar.png', b'large image bytes', content_type='image/png')
+
+        response = self.client.patch(
+            reverse('api-me'),
+            {'avatar': uploaded},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('avatar', response.json()['field_errors'])
 
     def test_regular_user_cannot_access_admin_users_endpoint(self):
         user = User.objects.create_user(username='demo', password='pass')
@@ -354,7 +583,11 @@ class SeedAdminUserCommandTests(TestCase):
 
         with patch.dict(
             os.environ,
-            {"ADMIN_USER": "admin", "ADMIN_PASSWORD": "NewPassword123"},
+            {
+                "ADMIN_USER": "admin",
+                "ADMIN_PASSWORD": "NewPassword123",
+                "ADMIN_UPDATE_EXISTING": "False",
+            },
             clear=False,
         ):
             call_command("seed_admin_user", stdout=StringIO())
@@ -364,6 +597,27 @@ class SeedAdminUserCommandTests(TestCase):
         self.assertFalse(existing_user.is_superuser)
         self.assertFalse(existing_user.is_staff)
         self.assertTrue(existing_user.check_password("OldPassword123"))
+
+    def test_updates_existing_user_when_enabled(self):
+        existing_user = User.objects.create_user(username="admin", password="OldPassword123")
+
+        with patch.dict(
+            os.environ,
+            {
+                "ADMIN_USER": "admin",
+                "ADMIN_PASSWORD": "NewPassword123",
+                "ADMIN_UPDATE_EXISTING": "True",
+            },
+            clear=False,
+        ):
+            call_command("seed_admin_user", stdout=StringIO())
+
+        self.assertEqual(User.objects.count(), 1)
+        existing_user.refresh_from_db()
+        self.assertTrue(existing_user.is_superuser)
+        self.assertTrue(existing_user.is_staff)
+        self.assertEqual(existing_user.role, User.Role.ADMIN)
+        self.assertTrue(existing_user.check_password("NewPassword123"))
 
     def test_skips_when_admin_env_is_missing(self):
         with patch.dict(os.environ, {}, clear=True):

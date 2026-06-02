@@ -10,8 +10,11 @@ http:
         browserXssFilter: true
         contentTypeNosniff: true
 
-  routers:
+    basic-auth:
+      basicAuth:
+        usersFile: /etc/traefik/usersfile
 
+  routers:
     frontend:
       rule: "Host(`elephantaimessenger.ru`)"
       entryPoints:
@@ -34,14 +37,15 @@ http:
         - rate-limiter
         - common-headers
 
-    webhook:
-      rule: "Host(`4dd83a12-17cf-4fe7-8a9d-d63078438705.elephantaimessenger.ru`)"
+    dozzle:
+      rule: "Host(`dozzle.elephantaimessenger.ru`)"
       entryPoints:
         - websecure
-      service: webhook
+      service: dozzle
       tls:
         certResolver: traefik
       middlewares:
+        - basic-auth
         - rate-limiter
         - common-headers
 
@@ -55,6 +59,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://backend:8000"
+
+    dozzle:
+      loadBalancer:
+        servers:
+          - url: "http://dozzle:8080"
 
     webhook:
       loadBalancer:

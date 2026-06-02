@@ -1,5 +1,5 @@
 export const mainWorkspace = {
-  title: 'Проект ТелеграфЪ',
+  title: 'Проект "Наш слон"',
   description: 'Рабочее пространство команды разработки интеллектуального мессенджера',
   participants: [
     { id: 1, name: 'Елена Ковалева', initials: 'ЕК' },
@@ -39,7 +39,7 @@ export const mainMessages = [
     type: 'system',
     author: 'Система',
     time: '09:00',
-    text: 'Чат «Проект ТелеграфЪ» создан и готов к работе.'
+    text: 'Чат «Проект "Наш Слон"» создан и готов к работе.'
   },
   {
     id: 2,

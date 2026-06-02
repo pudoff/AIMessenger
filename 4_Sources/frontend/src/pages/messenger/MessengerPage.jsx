@@ -1,145 +1,266 @@
-import { useState } from 'react';
-import ChatComposer from '../../components/ChatComposer';
-import MessageBubble from '../../components/MessageBubble';
-import { assistantQuickActions } from '../../data/assistant';
-import { mainChats, mainMessages, mainWorkspace } from '../../data/appChats';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import ChatPageShell from '../../components/chat/ChatPageShell';
+import ChatList from '../../components/chat/ChatList';
+import SectionHeader from '../../components/SectionHeader';
+import { request as apiRequest } from '../../api/client';
+import { useUnread } from '../../context/UnreadContext';
+
+// Получение текущего пользователя
+const getCurrentUser = async () => {
+  try {
+    const user = await apiRequest('/me/');
+    return user?.id;
+  } catch (e) {
+    console.error('Не удалось получить текущего пользователя:', e);
+    return null;
+  }
+};
+
+// Форматирование личного чата
+const formatDirectChat = (c, myId) => {
+  const members = c.members || [];
+  const other = members.find(m => String(m.user) !== String(myId));
+  const detail = other?.user_detail || {};
+  const name = [detail.first_name, detail.last_name].filter(Boolean).join(' ').trim() || detail.username || 'Чат';
+
+  return {
+    id: String(c.id),
+    name,
+    position: detail.role === 'admin' ? 'Администратор' : 'Участник',
+    status: 'Онлайн',
+    preview: c.last_message?.text || 'Нет сообщений',
+    initials: (detail.first_name?.[0] || detail.last_name?.[0] || detail.username?.[0] || '?').toUpperCase(),
+    avatar_url: detail.avatar_url || null,
+    chat_type: 'direct',
+    last_message: c.last_message,
+    unread_count: c.unread_count,
+    last_read_message: c.last_read_message,
+    last_read_at: c.last_read_at,
+  };
+};
+
+// Форматирование группы
+const formatGroup = (g) => ({
+  id: String(g.id),
+  name: g.title,
+  description: g.description || 'Групповой чат',
+  members: g.members_count || 0,
+  preview: g.last_message?.text || 'Нет сообщений',
+  position: `Участников: ${g.members_count || 0}`,
+  chat_type: 'group',
+  last_message: g.last_message,
+  unread_count: g.unread_count,
+  last_read_message: g.last_read_message,
+  last_read_at: g.last_read_at,
+});
+
+// Форматирование сообщества
+const formatCommunity = (c) => ({
+  id: String(c.id),
+  name: c.title,
+  description: c.description || 'Корпоративное сообщество',
+  members: c.members_count || 0,
+  category: 'Корпоративное',
+  preview: 'Сообщество',
+  position: `${c.members_count || 0} участников`,
+  chat_type: 'corporate',
+  last_message: c.last_message,
+  unread_count: c.unread_count,
+  last_read_message: c.last_read_message,
+  last_read_at: c.last_read_at,
+});
 
 function MessengerPage() {
-  const [messages, setMessages] = useState(mainMessages);
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
-  const [selectedChatId, setSelectedChatId] = useState(null);
-  const [lastSelectedChatId, setLastSelectedChatId] = useState(mainChats[0]?.id ?? null);
+  const navigate = useNavigate();
+  const { decorateChatsWithUnread } = useUnread();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allChats, setAllChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [myId, setMyId] = useState(null);
 
-  const selectedChat = mainChats.find((chat) => chat.id === selectedChatId) || mainChats[0];
-
-  const handleSend = (text) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        type: 'message',
-        tag: 'Обычное',
-        author: 'Вы',
-        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-        text
+  // Инициализация: получение ID текущего пользователя
+  useEffect(() => {
+    const initUser = async () => {
+      try {
+        const userId = await getCurrentUser();
+        if (!userId) {
+          setError('Не удалось определить текущего пользователя. Проверьте авторизацию.');
+          setLoading(false);
+          return;
+        }
+        setMyId(userId);
+      } catch (e) {
+        setError('Ошибка при получении профиля: ' + e.message);
+        setLoading(false);
       }
-    ]);
+    };
+    initUser();
+  }, []);
+
+  // Загрузка всех чатов
+  useEffect(() => {
+    if (!myId) return;
+
+    const fetchAllChats = async () => {
+      try {
+        const [directRes, groupRes, corporateRes] = await Promise.all([
+          apiRequest('/chats/?type=direct'),
+          apiRequest('/chats/?type=group'),
+          apiRequest('/chats/?type=corporate'),
+        ]);
+
+        const directList = decorateChatsWithUnread(
+          'direct',
+          (directRes?.results || directRes || []).map(c => formatDirectChat(c, myId)),
+          { currentUserId: myId },
+        );
+        const groupList = decorateChatsWithUnread(
+          'group',
+          (groupRes?.results || groupRes || []).map(formatGroup),
+          { currentUserId: myId },
+        );
+        const corporateList = decorateChatsWithUnread(
+          'corporate',
+          (corporateRes?.results || corporateRes || []).map(formatCommunity),
+          { currentUserId: myId },
+        );
+
+        const all = [...directList, ...groupList, ...corporateList].sort((a, b) => {
+          const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
+          const bTime = b.last_message?.created_at ? new Date(b.last_message.created_at).getTime() : 0;
+          return bTime - aTime;
+        });
+
+        setAllChats(all);
+        setError(null);
+      } catch (e) {
+        console.error('Ошибка загрузки чатов:', e);
+        setError('Не удалось загрузить чаты: ' + e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllChats();
+
+    // Опрос для обновления каждые 5 секунд
+    const pollInterval = setInterval(fetchAllChats, 5000);
+    return () => clearInterval(pollInterval);
+  }, [myId, decorateChatsWithUnread]);
+
+  // Фильтрация по поиску
+  const filteredChats = allChats.filter(chat => {
+    // Фильтр по поиску
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        chat.name.toLowerCase().includes(query) ||
+        (chat.description && chat.description.toLowerCase().includes(query)) ||
+        (chat.preview && chat.preview.toLowerCase().includes(query))
+      );
+    }
+    return true;
+  });
+
+  const handleSelectChat = (chatId) => {
+    // chatId приходит просто ID, ищем тип чата
+    const foundChat = allChats.find(c => String(c.id) === String(chatId));
+    
+    if (!foundChat) {
+      console.error('[MessengerPage.handleSelectChat] Чат не найден:', chatId);
+      return;
+    }
+
+    const chatType = foundChat.chat_type;
+
+    let url = '';
+    // Навигация в зависимости от типа чата с replace
+    if (chatType === 'direct') {
+      url = `/app/direct/${chatId}`;
+      navigate(url, { replace: true });
+    } else if (chatType === 'group') {
+      url = `/app/groups/${chatId}`;
+      navigate(url, { replace: true });
+    } else if (chatType === 'corporate') {
+      url = `/app/community/${chatId}`;
+      navigate(url, { replace: true });
+    } else {
+      console.error('[MessengerPage.handleSelectChat] Неизвестный тип чата:', chatType);
+      url = `/app/direct/${chatId}`;
+      navigate(url, { replace: true });
+    }
   };
 
   return (
-    <div className="workspace workspace--messenger">
-      {!selectedChatId ? (
-        <section className="panel panel--list panel--list-only">
-        <div className="search-box">
-          <input
-            type="search"
-            className="search-box__input"
-            placeholder="Поиск по чатам"
-            aria-label="Поиск по чатам"
-          />
-        </div>
-        
-          <div className="list-stack">
-            {mainChats.map((chat) => (
-              <button
-                className={`chat-card chat-card--button ${chat.id === lastSelectedChatId ? 'chat-card--active' : ''}`}
-                key={chat.id}
-                type="button"
-                onClick={() => {
-                  setSelectedChatId(chat.id);
-                  setLastSelectedChatId(chat.id);
-                }}
-              >
-                <div className="chat-card__top">
-                  <h3>{chat.name}</h3>
-                  {chat.unread > 0 && <span className="badge">{chat.unread}</span>}
-                </div>
-                <p>{chat.description}</p>
-                <small>{chat.meta}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="panel panel--chat panel--chat-only">
-          <div className="chat-toolbar">
-            <div className="chat-toolbar__head">
-              <button className="secondary-button secondary-button--back" type="button" onClick={() => setSelectedChatId(null)}>
-                Назад к чатам
-              </button>
-              <div>
-                <strong>{selectedChat.name}</strong>
-                <p>{selectedChat.description}</p>
+    <ChatPageShell
+      left={(
+        <ChatList
+          topNode={(
+            <>
+              <SectionHeader
+                title="Мессенджер"
+                subtitle="Все ваши чаты в одном месте"
+              />
+
+              {/* Поиск */}
+              <div className="chat-search-wrapper">
+                <input
+                  type="text"
+                  placeholder="Поиск чатов..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="chat-search-input"
+                />
               </div>
+            </>
+          )}
+          items={filteredChats}
+          selectedId={null}
+          onSelect={handleSelectChat}
+          loading={loading}
+          error={error}
+          emptyNode={(
+            <div className="contacts-empty contacts-empty--large">
+              {searchQuery ? (
+                <>
+                  <h3>Ничего не найдено</h3>
+                  <p className="contacts-empty__text">
+                    По запросу «{searchQuery}» чатов не найдено
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>У вас пока нет чатов</h3>
+                  <p className="contacts-empty__text">
+                    Начните диалог через страницу контактов или создайте группу
+                  </p>
+                  <div className="chat-search-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => navigate('/app/contacts')}
+                    >
+                      Контакты
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => navigate('/app/groups')}
+                    >
+                      Группы
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-
-            <div className="avatars">
-              {mainWorkspace.participants.map((item) => (
-                <div key={item.id} className="avatar" title={item.name}>
-                  {item.initials}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="messages-feed">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-          </div>
-
-          <ChatComposer placeholder={`Напишите сообщение в чат «${selectedChat.name}»`} onSend={handleSend} />
-        </section>
+          )}
+        />
       )}
-
-      <aside className={`floating-insights ${isInsightsOpen ? 'floating-insights--open' : ''}`}>
-        {isInsightsOpen ? (
-          <div className="panel panel--insights panel--insights-floating">
-            <div className="panel__title panel__title--between">
-              <span>AI-ассистент и аналитика</span>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setIsInsightsOpen(false)}
-                aria-label="Свернуть AI-панель"
-              >
-                ×
-              </button>
-            </div>
-            <div className="insight-card">
-              <strong>Текущий контекст</strong>
-              <p>В обсуждении выделены маршруты, авторизация и админ-панель.</p>
-            </div>
-            <div className="insight-card">
-              <strong>Теги в беседе</strong>
-              <div className="tag-row">
-                <span className="tag tag--question">Вопрос</span>
-                <span className="tag tag--task">Задача</span>
-                <span className="tag tag--default">Обычное</span>
-              </div>
-            </div>
-            <div className="panel__title panel__title--small">Быстрые действия</div>
-            <div className="actions-grid">
-              {assistantQuickActions.map((action) => (
-                <button className="secondary-button secondary-button--soft" key={action} type="button">
-                  {action}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <button
-            className="ai-fab"
-            type="button"
-            onClick={() => setIsInsightsOpen(true)}
-            aria-label="Открыть AI-ассистента"
-          >
-            <span className="ai-fab__icon">AI</span>
-            <span className="ai-fab__label">Ассистент</span>
-          </button>
-        )}
-      </aside>
-    </div>
+      right={null}
+      split={true}
+    />
   );
 }
 
