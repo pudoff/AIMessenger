@@ -125,6 +125,13 @@ npm run dev
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
+Media files:
+
+- message images and profile avatars are returned by the backend as `/media/...` URLs;
+- in production set `BACKEND_PUBLIC_BASE_URL=https://api.elephantaimessenger.ru` in `4_Sources/.env` so API responses contain a public media host;
+- the frontend normalizes media links before rendering, including relative `/media/...` paths and accidental internal Docker hosts;
+- chat messages render Telegram-style date separators (`Сегодня`, `Вчера`, or full date) above message groups from different days.
+
 Проверка сборки:
 
 ```powershell
