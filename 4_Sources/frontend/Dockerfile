@@ -20,7 +20,7 @@ COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /app/entrypoint.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 
-RUN chmod +x /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 EXPOSE 80
 

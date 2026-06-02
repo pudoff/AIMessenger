@@ -103,8 +103,13 @@ docker compose -f docker-compose.local.yml --env-file .env exec backend python m
 Если Docker Hub не скачивает образы из-за DNS/IPv6, можно заранее скачать нужные образы и проставить стандартные теги:
 
 ```powershell
-docker pull pgvector/pgvector:0.8.2-pg17-trixie
+docker pull docker.1ms.run/pgvector/pgvector:0.8.2-pg17-trixie
+docker pull docker.1ms.run/library/node:24-alpine
+docker pull docker.1ms.run/library/nginx:1.27-alpine
 docker pull mirror.gcr.io/library/redis:alpine
+docker tag docker.1ms.run/pgvector/pgvector:0.8.2-pg17-trixie pgvector/pgvector:0.8.2-pg17-trixie
+docker tag docker.1ms.run/library/node:24-alpine node:24-alpine
+docker tag docker.1ms.run/library/nginx:1.27-alpine nginx:1.27-alpine
 docker tag mirror.gcr.io/library/redis:alpine redis:alpine
 ```
 
