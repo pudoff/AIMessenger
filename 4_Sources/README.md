@@ -113,6 +113,19 @@ docker tag docker.1ms.run/library/nginx:1.27-alpine nginx:1.27-alpine
 docker tag mirror.gcr.io/library/redis:alpine redis:alpine
 ```
 
+Если `python:3.12-slim` не скачивается, но локальный `aimessenger-backend:latest` уже есть, можно пересобрать backend image поверх существующего образа с уже установленными зависимостями:
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=aimessenger-backend:latest backend
+docker compose -f docker-compose.local.yml --env-file .env up -d --no-build --force-recreate backend
+```
+
+После пересборки проверьте, что backend отвечает актуальным кодом:
+
+```powershell
+curl.exe -I http://127.0.0.1:3000/api/
+```
+
 ## Frontend
 
 В отдельном терминале:
