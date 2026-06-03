@@ -32,6 +32,35 @@ function LoginPage() {
     setPageError('');
   };
 
+  const [errorShownTime, setErrorShownTime] = useState(null);
+
+  // Отслеживать ошибку - гарантировать что она видна минимум 5 секунд
+  // Это особенно важно на production где пользователи могут не успеть прочитать
+  useEffect(() => {
+    if (error) {
+      setErrorShownTime(Date.now());
+      console.log('[Error shown]', error);
+    }
+  }, [error]);
+
+  // Очищать ошибку с задержкой - минимум 5 секунд видимости
+  const clearErrorWithDelay = () => {
+    if (!error) return;
+    
+    const timeShown = Date.now() - errorShownTime;
+    const minShowTime = 5000; // 5 секунд
+    
+    if (timeShown < minShowTime) {
+      // Ошибка показана менее 5 секунд, отложить очистку
+      setTimeout(() => {
+        clearError();
+      }, minShowTime - timeShown);
+    } else {
+      // Прошло достаточно времени, можем очищать
+      clearError();
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     clearError();
@@ -63,7 +92,7 @@ function LoginPage() {
               value={form.login}
               onChange={(e) => {
                 setForm(prev => ({ ...prev, login: e.target.value }));
-                clearError();
+                clearErrorWithDelay();
                 clearPageMessages();
               }}
               placeholder="Введите логин или e-mail"
@@ -80,7 +109,7 @@ function LoginPage() {
                 value={form.password}
                 onChange={(e) => {
                   setForm(prev => ({ ...prev, password: e.target.value }));
-                  clearError();
+                  clearErrorWithDelay();
                   clearPageMessages();
                 }}
                 placeholder="Введите пароль"

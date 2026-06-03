@@ -30,14 +30,31 @@ function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorShownTime, setErrorShownTime] = useState(null);
 
   const passwordError = getPasswordError(form.password, form.confirmPassword);
   const isFormValid = !passwordError;
 
+  // Очищать ошибку с задержкой - минимум 5 секунд видимости
+  const clearErrorWithDelay = () => {
+    if (!error) return;
+    
+    const timeShown = Date.now() - errorShownTime;
+    const minShowTime = 5000; // 5 секунд
+    
+    if (timeShown < minShowTime) {
+      setTimeout(() => {
+        setError('');
+      }, minShowTime - timeShown);
+    } else {
+      setError('');
+    }
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setError('');
+    clearErrorWithDelay();
   };
 
   const handleSubmit = async (event) => {
@@ -46,6 +63,7 @@ function ResetPasswordPage() {
 
     if (!isFormValid) {
       setError(passwordError);
+      setErrorShownTime(Date.now());
       return;
     }
 
@@ -64,7 +82,9 @@ function ResetPasswordPage() {
     } catch (err) {
       const backendErrors = err.data || {};
       const firstError = Object.values(backendErrors).flat?.()[0];
-      setError(firstError || err.message || 'Не удалось сменить пароль. Запросите новую ссылку.');
+      const errMsg = firstError || err.message || 'Не удалось сменить пароль. Запросите новую ссылку.';
+      setError(errMsg);
+      setErrorShownTime(Date.now());
     } finally {
       setIsLoading(false);
     }

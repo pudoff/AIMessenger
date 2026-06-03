@@ -66,6 +66,30 @@ function RegisterPage() {
   const [touched, setTouched] = useState({}); //  Отслеживаем, было ли поле сфокусировано
   const [activeModal, setActiveModal] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [errorShownTime, setErrorShownTime] = useState(null);
+  
+  // Отслеживать глобальную ошибку - гарантировать видимость
+  useEffect(() => {
+    if (globalError) {
+      setErrorShownTime(Date.now());
+    }
+  }, [globalError]);
+
+  // Очищать ошибку с задержкой - минимум 5 секунд видимости
+  const clearErrorWithDelay = () => {
+    if (!globalError) return;
+    
+    const timeShown = Date.now() - errorShownTime;
+    const minShowTime = 5000; // 5 секунд
+    
+    if (timeShown < minShowTime) {
+      setTimeout(() => {
+        clearError();
+      }, minShowTime - timeShown);
+    } else {
+      clearError();
+    }
+  };
   
   useEffect(() => {
     const { password, confirmPassword, ...draft } = form;
@@ -107,7 +131,7 @@ function RegisterPage() {
     }
     
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    clearError(); // Сбрасываем глобальную ошибку при любом вводе
+    clearErrorWithDelay(); // Очищаем глобальную ошибку с задержкой (минимум 5 сек видимости)
   };
 
   //  Помечаем поле как "тронутое" при потере фокуса

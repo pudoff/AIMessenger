@@ -1,21 +1,21 @@
 import { request } from './client';
 
 export const authAPI = {
-  // 🔐 Логин: получить токен
+  // Логин: получить токен
   login: (username, password) => 
     request('/auth/token/', {
       method: 'POST',
       body: JSON.stringify({ username, password })
     }),
   
-  // 📝 Регистрация нового пользователя
+  // Регистрация нового пользователя
   register: (userData) => 
     request('/register/', {
       method: 'POST',
       body: JSON.stringify(userData)
     }),
   
-  // 👤 Получить данные текущего пользователя
+  // Получить данные текущего пользователя
   requestPasswordReset: (email) =>
     request('/password-reset/', {
       method: 'POST',
@@ -52,7 +52,7 @@ export const authAPI = {
     });
   },
   
-  // 🚪 Выход (просто удаляем токен на клиенте)
+  // Выход 
   logout: () => {
     localStorage.removeItem('auth_token');
     return Promise.resolve({ success: true });
