@@ -16,9 +16,7 @@ const items = [
   { to: '/app', label: 'Чаты', icon: chatIcon, unreadKey: 'all' },
   { to: '/app/direct', label: 'Личные сообщения', icon: directIcon, unreadKey: 'direct' },
   { to: '/app/groups', label: 'Групповые чаты', icon: groupsIcon, unreadKey: 'groups' },
-  { to: '/app/communities', label: 'Сообщества', icon: communitiesIcon },
   { to: '/app/contacts', label: 'Контакты', icon: contactsIcon },
-  { to: '/app/assistant', label: 'AI-ассистент', icon: assistantIcon },
   { to: '/app/settings', label: 'Настройки', icon: settingsIcon },
 ];
 

@@ -101,7 +101,7 @@ function LoginPage() {
           </button>
           
           <div className="auth-form__footer">
-            <span>Нету аккаунта? </span>
+            <span>Нет аккаунта? </span>
             <Link to="/register" className="auth-form__footer-link">Зарегистрироваться</Link>
           </div>
           <div className="auth-form__footer">
