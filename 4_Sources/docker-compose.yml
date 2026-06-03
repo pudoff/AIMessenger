@@ -29,6 +29,9 @@ services:
       - ./.env:/app/.env:ro
       - aimessenger_static_data:/app/staticfiles
       - aimessenger_media_data:/app/media
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -51,6 +54,9 @@ services:
     restart: always
     volumes:
       - ./.env:/app/.env:ro
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -58,7 +64,14 @@ services:
       BACKEND_CELERY_QUEUE: backend
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-    command: celery -A config worker -Q backend --loglevel=info
+    command: >
+      sh -c 'export CELERY_TASK_TIME_LIMIT="$${BACKEND_CELERY_TASK_TIME_LIMIT:-300}";
+      export CELERY_TASK_SOFT_TIME_LIMIT="$${BACKEND_CELERY_TASK_SOFT_TIME_LIMIT:-240}";
+      export CELERY_WORKER_PREFETCH_MULTIPLIER="$${BACKEND_CELERY_WORKER_PREFETCH_MULTIPLIER:-1}";
+      celery -A config worker -Q backend --loglevel=info
+      --concurrency="$${BACKEND_CELERY_WORKER_CONCURRENCY:-2}"
+      --prefetch-multiplier="$${BACKEND_CELERY_WORKER_PREFETCH_MULTIPLIER:-1}"
+      --max-tasks-per-child="$${BACKEND_CELERY_WORKER_MAX_TASKS_PER_CHILD:-100}"'
     networks:
       - backend
     depends_on:
@@ -83,6 +96,9 @@ services:
     image: magnificent8/ai-messenger:ml-latest
     container_name: ml-worker
     restart: always
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1

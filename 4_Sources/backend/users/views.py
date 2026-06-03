@@ -267,6 +267,8 @@ class PasswordResetRequestView(views.APIView):
 
         email = serializer.validated_data['email']
         user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            raise serializers.ValidationError({'email': 'Не зарегистрировано'})
         if user:
             try:
                 if user.is_active:

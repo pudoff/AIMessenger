@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from chats.models import ChatMember
@@ -69,7 +70,7 @@ class MessageSerializer(serializers.ModelSerializer):
         attachments = []
         for attachment in obj.attachments.all():
             url = attachment.file.url if attachment.file else ''
-            url = build_public_media_url(request, url)
+            url = build_public_media_url(request, url, attachment.uploaded_at.timestamp())
             attachments.append({
                 'id': attachment.id,
                 'url': url,
@@ -85,7 +86,11 @@ class MessageSerializer(serializers.ModelSerializer):
         avatar = getattr(obj.sender, 'avatar', None)
         if not avatar:
             return None
-        return build_public_media_url(request, avatar.url)
+        try:
+            cache_key = avatar.storage.get_modified_time(avatar.name).timestamp()
+        except (OSError, ValueError, ObjectDoesNotExist):
+            cache_key = avatar.name
+        return build_public_media_url(request, avatar.url, cache_key)
 
     def get_is_read(self, obj):
         request = self.context.get('request')

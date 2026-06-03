@@ -1,6 +1,7 @@
 # Local environment files. Keep examples tracked.
 .env
 .env.*
+celery.env
 !.env.example
 !*.env.example
 
