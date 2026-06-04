@@ -196,6 +196,22 @@ class MessageAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_author_can_delete_own_message(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(reverse('message-detail', args=[self.message.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Message.objects.filter(id=self.message.id).exists())
+
+    def test_member_cannot_delete_other_user_message(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.delete(reverse('message-detail', args=[self.message.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Message.objects.filter(id=self.message.id).exists())
+
     def test_text_update_queues_ml_tasks(self):
         self.client.force_authenticate(self.owner)
 

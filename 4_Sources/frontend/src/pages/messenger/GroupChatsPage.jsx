@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SectionHeader from '../../components/SectionHeader';
-import { chatsAPI, messagesAPI } from '../../api/chats';
+import { chatMembersAPI, chatsAPI, messagesAPI } from '../../api/chats';
 import { contactsAPI } from '../../api/contacts';
 import { request as apiRequest } from '../../api/client';
 import ChatPageShell from '../../components/chat/ChatPageShell';
@@ -72,6 +72,9 @@ function GroupChatsPage() {
   const [hasSemanticSearched, setHasSemanticSearched] = useState(false);
   const [focusedMessageId, setFocusedMessageId] = useState(null);
   const [activeSemanticIndex, setActiveSemanticIndex] = useState(-1);
+  const [chatMembers, setChatMembers] = useState([]);
+  const [memberActionError, setMemberActionError] = useState('');
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [pendingMessages, setPendingMessages] = useState([]);
@@ -237,6 +240,34 @@ function GroupChatsPage() {
     };
   }, [chatId, markChatRead, myId]);
 
+  useEffect(() => {
+    if (!chatId) {
+      setChatMembers([]);
+      return undefined;
+    }
+
+    let isMounted = true;
+    const loadMembers = async () => {
+      try {
+        const data = await chatMembersAPI.getList(chatId);
+        const list = data.results || data || [];
+        if (isMounted) {
+          setChatMembers(list);
+          setMemberActionError('');
+        }
+      } catch (e) {
+        if (isMounted) {
+          setMemberActionError(`Не удалось загрузить участников: ${e.message}`);
+        }
+      }
+    };
+
+    loadMembers();
+    return () => {
+      isMounted = false;
+    };
+  }, [chatId]);
+
   const loadContactsForCreate = async () => {
     if (contacts.length > 0) return;
     setLoadingContacts(true);
@@ -333,6 +364,61 @@ function GroupChatsPage() {
     });
     markChatRead('group', id);
     navigate(`/app/groups/${id}`);
+  };
+
+  const handleEditMessage = async (messageId, text) => {
+    try {
+      const updated = await messagesAPI.update(messageId, { text });
+      setMessages((prev) => prev.map((message) => (
+        String(message.id) === String(messageId) ? formatMessage(updated, myId) : message
+      )));
+      setMessageError(null);
+    } catch (e) {
+      setMessageError(`Не удалось изменить сообщение: ${e.message}`);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm('Удалить сообщение?')) return;
+    try {
+      await messagesAPI.delete(messageId);
+      setMessages((prev) => prev.filter((message) => String(message.id) !== String(messageId)));
+      setMessageError(null);
+    } catch (e) {
+      setMessageError(`Не удалось удалить сообщение: ${e.message}`);
+    }
+  };
+
+  const handleRemoveMember = async (member) => {
+    const displayName = member.user_detail?.username || member.username || 'участника';
+    if (!window.confirm(`Удалить ${displayName} из чата?`)) return;
+    try {
+      await chatMembersAPI.delete(member.id);
+      setChatMembers((prev) => prev.filter((item) => item.id !== member.id));
+      setGroups((prev) => prev.map((group) => {
+        if (String(group.id) !== String(chatId)) return group;
+        const nextCount = Math.max(0, Number(group.members || 0) - 1);
+        return { ...group, members: nextCount, position: `Участников: ${nextCount}` };
+      }));
+      setMemberActionError('');
+    } catch (e) {
+      setMemberActionError(`Не удалось удалить участника: ${e.message}`);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!chatId || !window.confirm('Удалить групповой чат? Это действие нельзя отменить.')) return;
+    try {
+      setIsDeletingChat(true);
+      await chatsAPI.delete(chatId);
+      setGroups((prev) => prev.filter((group) => String(group.id) !== String(chatId)));
+      localStorage.removeItem('last_group_chat_id');
+      navigate('/app/groups', { replace: true });
+    } catch (e) {
+      setMessageError(`Не удалось удалить групповой чат: ${e.message}`);
+    } finally {
+      setIsDeletingChat(false);
+    }
   };
 
   const handleSemanticSearch = async (event) => {
@@ -508,6 +594,16 @@ function GroupChatsPage() {
 
   if (chatId) {
     const selectedGroup = groups.find((group) => String(group.id) === chatId);
+    const currentMember = chatMembers.find((member) => String(member.user) === String(myId));
+    const canManageGroup = ['owner', 'admin'].includes(currentMember?.role);
+    const visibleMembers = chatMembers.filter((member) => String(member.user) !== String(myId));
+    const groupActions = (
+      <div className="group-chat-actions">
+        <button className="danger-button" type="button" onClick={handleDeleteGroup} disabled={isDeletingChat}>
+          {isDeletingChat ? 'Удаление...' : 'Удалить чат'}
+        </button>
+      </div>
+    );
 
     return (
       <ChatPageShell
@@ -518,8 +614,33 @@ function GroupChatsPage() {
               title={selectedGroup?.name || 'Групповой чат'}
               subtitle={selectedGroup?.description || ''}
               onBack={() => navigate('/app/groups')}
+              actions={canManageGroup ? groupActions : null}
               compact
             />
+            <div className="group-members-panel">
+              <strong>Участники</strong>
+              {memberActionError && <span className="group-members-panel__error">{memberActionError}</span>}
+              <div className="group-members-panel__list">
+                {visibleMembers.map((member) => {
+                  const detail = member.user_detail || {};
+                  const name = [detail.first_name, detail.last_name].filter(Boolean).join(' ').trim()
+                    || detail.username
+                    || member.username
+                    || `ID ${member.user}`;
+                  return (
+                    <span className="group-member-chip" key={member.id}>
+                      {name}
+                      {canManageGroup && member.role !== 'owner' && (
+                        <button type="button" onClick={() => handleRemoveMember(member)} title="Удалить участника">
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+                {visibleMembers.length === 0 && <span className="group-members-panel__empty">Нет других участников</span>}
+              </div>
+            </div>
             <ChatRoom
               messages={messages}
               loadingMessages={loadingMessages}
@@ -530,6 +651,8 @@ function GroupChatsPage() {
               composerDisabled={isSending}
               searchNode={semanticSearchNode}
               focusedMessageId={focusedMessageId}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
             />
           </section>
         )}

@@ -33,6 +33,9 @@ export const authAPI = {
       })
     }),
 
+  validatePasswordResetLink: ({ uidb64, token }) =>
+    request(`/password-reset/confirm/?uidb64=${encodeURIComponent(uidb64)}&token=${encodeURIComponent(token)}`),
+
   getMe: () => request('/me/'),
 
   updateMe: (data) => {

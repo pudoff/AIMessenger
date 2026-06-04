@@ -221,3 +221,8 @@ docker compose -f docker-compose.local.yml --env-file .env down -v
 - SQLite test DB;
 - `staticfiles/`;
 - coverage/cache/log файлы.
+## Recent UI/API capabilities
+
+- Password recovery validates reset links before showing the new-password form and supports show/hide password buttons.
+- Direct and group chat messages can be edited or deleted from the message bubble actions.
+- Group chat owners/admins can remove members and delete a group chat.

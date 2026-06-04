@@ -440,6 +440,29 @@ export default function DirectChatsPage() {
     navigate(`/app/direct/${id}`, { replace: true });
   };
 
+  const handleEditMessage = async (messageId, text) => {
+    try {
+      const updated = await messagesAPI.update(messageId, { text });
+      setMessages((prev) => prev.map((message) => (
+        String(message.id) === String(messageId) ? formatMessage(updated, myId) : message
+      )));
+      setMessageError(null);
+    } catch (e) {
+      setMessageError(`Не удалось изменить сообщение: ${e.message}`);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm('Удалить сообщение?')) return;
+    try {
+      await messagesAPI.delete(messageId);
+      setMessages((prev) => prev.filter((message) => String(message.id) !== String(messageId)));
+      setMessageError(null);
+    } catch (e) {
+      setMessageError(`Не удалось удалить сообщение: ${e.message}`);
+    }
+  };
+
   const handleSemanticSearch = async (event) => {
     event.preventDefault();
     const query = semanticQuery.trim();
@@ -551,6 +574,8 @@ export default function DirectChatsPage() {
               composerDisabled={false}
               searchNode={semanticSearchNode}
               focusedMessageId={focusedMessageId}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
             />
           </section>
         )}
