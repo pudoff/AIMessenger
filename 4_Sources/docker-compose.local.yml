@@ -24,6 +24,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        PYTHON_IMAGE: ${BACKEND_PYTHON_IMAGE:-python:3.12-slim}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        INSTALL_REQUIREMENTS: ${BACKEND_INSTALL_REQUIREMENTS:-true}
     container_name: backend
     ports:
       - "8000:8000"
@@ -54,6 +58,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        PYTHON_IMAGE: ${BACKEND_PYTHON_IMAGE:-python:3.12-slim}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        INSTALL_REQUIREMENTS: ${BACKEND_INSTALL_REQUIREMENTS:-true}
     container_name: backend-worker
     volumes:
       - ./.env:/app/.env:ro

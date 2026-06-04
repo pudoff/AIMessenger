@@ -87,6 +87,10 @@ jobs:
           context: 4_Sources/backend
           file: 4_Sources/backend/Dockerfile
           push: true
+          build-args: |
+            PYTHON_IMAGE=python:3.12-slim
+            PIP_INDEX_URL=https://pypi.org/simple
+            INSTALL_REQUIREMENTS=true
           tags: |
             ${{ env.IMAGE_NAME }}:backend-latest
             ${{ env.IMAGE_NAME }}:backend-${{ github.sha }}
