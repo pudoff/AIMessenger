@@ -5,7 +5,6 @@
 - `backend/` - Django + DRF API;
 - `frontend/` - React/Vite frontend;
 - `ml-service/` - ML-классификатор и артефакты модели;
-- `webhook/` - Node.js webhook service;
 - `infra/` - инфраструктурные настройки;
 - `docker-compose.local.yml` - локальная инфраструктура и backend container.
 
@@ -116,7 +115,9 @@ docker tag mirror.gcr.io/library/redis:alpine redis:alpine
 Если `python:3.12-slim` не скачивается, но локальный `aimessenger-backend:latest` уже есть, можно пересобрать backend image поверх существующего образа с уже установленными зависимостями:
 
 ```powershell
-docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=aimessenger-backend:latest backend
+$env:BACKEND_PYTHON_IMAGE = "aimessenger-backend:latest"
+$env:BACKEND_INSTALL_REQUIREMENTS = "false"
+docker compose -f docker-compose.local.yml --env-file .env build backend
 docker compose -f docker-compose.local.yml --env-file .env up -d --no-build --force-recreate backend
 ```
 
