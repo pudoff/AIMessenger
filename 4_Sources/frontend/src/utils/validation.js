@@ -80,10 +80,32 @@ export const parseBackendErrors = (errors) => {
     // DRF возвращает массив строк: ["Ошибка 1", "Ошибка 2"]
     const frontendField = fieldMap[field] || field;
     mapped[frontendField] = Array.isArray(messages)
-      ? messages.map(normalizeBackendMessage).join('. ')
-      : normalizeBackendMessage(messages);
+      ? messages.map((message) => normalizeBackendFieldMessage(frontendField, message)).join('. ')
+      : normalizeBackendFieldMessage(frontendField, messages);
   }
   return mapped;
+};
+
+const normalizeBackendFieldMessage = (field, message) => {
+  if (!message) return '';
+
+  const text = String(message).trim();
+  const lower = text.toLowerCase();
+  const exists = lower.includes('существ') || lower.includes('already exists') || lower.includes('занят');
+
+  if (exists && field === 'username') {
+    return 'Этот логин уже занят. Выберите другой логин или войдите в существующий аккаунт.';
+  }
+
+  if (exists && field === 'email') {
+    return 'Пользователь с таким e-mail уже зарегистрирован. Войдите в аккаунт или восстановите доступ.';
+  }
+
+  if (exists && field === 'phone') {
+    return 'Пользователь с таким номером телефона уже зарегистрирован.';
+  }
+
+  return normalizeBackendMessage(text);
 };
 
 /**

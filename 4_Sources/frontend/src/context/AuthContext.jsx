@@ -12,7 +12,8 @@ function loadStoredToken() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(loadStoredToken);
-  const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // При наличии токена — загружаем профиль пользователя
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
     
     const fetchProfile = async () => {
       if (!token) {
-        setLoading(false);
+        setInitializing(false);
         return;
       }
       
@@ -33,7 +34,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('auth_token');
         setToken(null);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setInitializing(false);
       }
     };
     
@@ -95,6 +96,7 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     currentUser,
     isAuthenticated: !!currentUser,
+    initializing,
     loading,
     error,
     login,
@@ -102,7 +104,7 @@ export function AuthProvider({ children }) {
     logout,
     refreshProfile,
     clearError: () => setError(null)
-  }), [currentUser, loading, error]);
+  }), [currentUser, initializing, loading, error]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -110,6 +110,28 @@
   text-align: left;
 }
 
+.form-error--summary {
+  border: 1px solid rgba(185, 109, 109, 0.32);
+  box-shadow: 0 12px 28px rgba(139, 44, 44, 0.08);
+}
+
+.form-error__message {
+  margin: 8px 0 0;
+}
+
+.form-error__list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.form-error__list li + li {
+  margin-top: 4px;
+}
+
+.form-error__list span {
+  font-weight: 700;
+}
+
 .form-success {
   padding: 12px 14px;
   color: #23614d;
