@@ -135,6 +135,7 @@ docker-compose up frontend
 - Приложение использует оптимизированный конвейер сборки Vite для быстрой упаковки.
 - Запросы к API проксируются через настроенный базовый URL.
 - Интеграция с бэкендом и другими сервисами описана в корневом `docker-compose.yml`.
+- На странице регистрации дубли логина, email или телефона показывают единое предупреждение: `Пользователь существует. Если вы забыли пароль, перейдите по ссылке "Восстановить пароль"`.
 ## Media and chat dates
 
 - Set `VITE_API_BASE_URL=/api` for same-origin proxying or an absolute API URL such as `https://api.elephantaimessenger.ru/api`.

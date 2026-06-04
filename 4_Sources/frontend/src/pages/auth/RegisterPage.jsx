@@ -11,6 +11,12 @@ import LegalModal from '../../components/auth/LegalModal';
 const REGISTER_DRAFT_KEY = 'register_form_draft';
 const EXISTING_ACCOUNT_ERROR = 'Пользователь существует. Если вы забыли пароль, перейдите по ссылке';
 
+const isExistingAccountError = (message) => {
+  if (typeof message !== 'string') return false;
+  const lower = message.toLowerCase();
+  return lower.includes('существ') || lower.includes('занят');
+};
+
 const emptyForm = {
   firstName: '',
   lastName: '',
@@ -196,7 +202,7 @@ function RegisterPage() {
 
       const backendErrors = parseBackendErrors(result.errors || {});
       const existingAccountError = [backendErrors.username, backendErrors.email, backendErrors.phone]
-        .find((message) => typeof message === 'string' && message.toLowerCase().includes('существ'));
+        .find(isExistingAccountError);
 
       setServerErrors(backendErrors);
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));

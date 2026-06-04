@@ -70,6 +70,8 @@ Authorization: Token <token>
 
 `/api/auth/login/` из DRF browsable API существует для session login в браузере, но основной контракт frontend -> backend: `/api/auth/token/`.
 
+Регистрация валидирует уникальность `username`, `email` и `phone_number`. При дубле API возвращает `400` с ошибкой в `field_errors`, а frontend показывает пользователю предупреждение с ссылкой `Восстановить пароль`.
+
 ## Сверка с системной моделью
 
 | Документ/ожидание | Текущий backend | Решение на sprint |

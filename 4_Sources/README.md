@@ -225,6 +225,7 @@ docker compose -f docker-compose.local.yml --env-file .env down -v
 ## Recent UI/API capabilities
 
 - Password recovery validates reset links before showing the new-password form and supports show/hide password buttons.
+- Registration warns about duplicate login, email, or phone and shows a "Восстановить пароль" link instead of leaving the user on a silent failed submit.
 - Direct and group chat messages can be edited or deleted from the message bubble actions.
 - Group chat owners/admins can remove members and delete a group chat.
 
