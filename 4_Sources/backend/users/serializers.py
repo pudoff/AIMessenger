@@ -171,6 +171,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Пользователь с таким email уже существует.')
         return value
 
+    def validate_phone_number(self, value):
+        if User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError('Пользователь с таким номером телефона уже существует.')
+        return value
+
     def create(self, validated_data):
         return User.objects.create_user(is_active=False, **validated_data)
 

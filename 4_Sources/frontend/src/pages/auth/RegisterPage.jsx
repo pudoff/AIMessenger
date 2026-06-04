@@ -214,6 +214,7 @@ function RegisterPage() {
         backendErrors._global ||
         backendErrors.username ||
         backendErrors.email ||
+        backendErrors.phone ||
         result.message ||
         'Не удалось зарегистрироваться. Проверьте данные и попробуйте еще раз.'
       );
