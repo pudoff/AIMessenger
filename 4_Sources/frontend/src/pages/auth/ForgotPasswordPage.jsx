@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../../api/auth';
 import Logo from '../../components/Logo';
-import logoAuth from '../../assets/logo_new.png';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -11,13 +10,32 @@ function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [isSent, setIsSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorShownTime, setErrorShownTime] = useState(null);
+
+  // Очищать ошибку с задержкой - минимум 5 секунд видимости
+  const clearErrorWithDelay = () => {
+    if (!error) return;
+    
+    const timeShown = Date.now() - errorShownTime;
+    const minShowTime = 5000; // 5 секунд
+    
+    if (timeShown < minShowTime) {
+      setTimeout(() => {
+        setError('');
+      }, minShowTime - timeShown);
+    } else {
+      setError('');
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
 
     if (!EMAIL_PATTERN.test(cleanEmail)) {
-      setError('Введите корректный email: адрес должен содержать @ и домен.');
+      const err = 'Введите корректный email: адрес должен содержать @ и домен.';
+      setError(err);
+      setErrorShownTime(Date.now());
       return;
     }
 
@@ -28,7 +46,9 @@ function ForgotPasswordPage() {
       await authAPI.requestPasswordReset(cleanEmail);
       setIsSent(true);
     } catch (err) {
-      setError(err.message || 'Не удалось отправить письмо. Попробуйте позже.');
+      const errMsg = err.message || 'Не удалось отправить письмо. Попробуйте позже.';
+      setError(errMsg);
+      setErrorShownTime(Date.now());
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +79,7 @@ function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Logo src={logoAuth} hideText />
+        <Logo hideText />
         <div className="auth-card__heading">
           <h1>Восстановление доступа</h1>
           <p>Введите email, указанный при регистрации. Мы отправим ссылку для смены пароля.</p>
@@ -73,7 +93,7 @@ function ForgotPasswordPage() {
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setError('');
+                clearErrorWithDelay();
               }}
               placeholder="example@mail.ru"
               required

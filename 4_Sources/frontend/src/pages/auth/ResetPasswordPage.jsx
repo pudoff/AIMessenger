@@ -39,45 +39,31 @@ function ResetPasswordPage() {
   const [isCheckingLink, setIsCheckingLink] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorShownTime, setErrorShownTime] = useState(null);
 
   const passwordError = getPasswordError(form.password, form.confirmPassword);
   const isFormValid = !passwordError;
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const validateLink = async () => {
-      if (!uidb64 || !token) {
-        setLinkError('Ссылка восстановления недействительна. Запросите новую ссылку.');
-        setIsCheckingLink(false);
-        return;
-      }
-
-      try {
-        await authAPI.validatePasswordResetLink({ uidb64, token });
-        if (isMounted) setLinkError('');
-      } catch (err) {
-        if (isMounted) {
-          setLinkError(getFirstError(err) || 'Ссылка восстановления недействительна или истекла. Запросите новую ссылку.');
-        }
-      } finally {
-        if (isMounted) setIsCheckingLink(false);
-      }
-    };
-
-    validateLink();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [uidb64, token]);
+  // Очищать ошибку с задержкой - минимум 5 секунд видимости
+  const clearErrorWithDelay = () => {
+    if (!error) return;
+    
+    const timeShown = Date.now() - errorShownTime;
+    const minShowTime = 5000; // 5 секунд
+    
+    if (timeShown < minShowTime) {
+      setTimeout(() => {
+        setError('');
+      }, minShowTime - timeShown);
+    } else {
+      setError('');
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setError('');
+    clearErrorWithDelay();
   };
 
   const handleSubmit = async (event) => {
@@ -86,6 +72,7 @@ function ResetPasswordPage() {
 
     if (!isFormValid) {
       setError(passwordError);
+      setErrorShownTime(Date.now());
       return;
     }
 
@@ -102,7 +89,11 @@ function ResetPasswordPage() {
       setIsSuccess(true);
       window.setTimeout(() => navigate('/login', { replace: true }), 1800);
     } catch (err) {
-      setError(getFirstError(err) || 'Не удалось сменить пароль. Запросите новую ссылку.');
+      const backendErrors = err.data || {};
+      const firstError = Object.values(backendErrors).flat?.()[0];
+      const errMsg = firstError || err.message || 'Не удалось сменить пароль. Запросите новую ссылку.';
+      setError(errMsg);
+      setErrorShownTime(Date.now());
     } finally {
       setIsLoading(false);
     }

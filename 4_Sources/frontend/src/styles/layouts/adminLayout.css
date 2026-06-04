@@ -214,6 +214,7 @@
 
 /* Стили для селекта ролей */
 .role-select {
+  font-family: var(--font-primary);
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);

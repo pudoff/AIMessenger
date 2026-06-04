@@ -11,7 +11,14 @@ function SettingsPage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
+
+  // Преобразовать relative path в полный URL для аватарки
+  const getAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl) return null;
+    if (avatarUrl.startsWith('http')) return avatarUrl;
+    return `${window.location.origin}${avatarUrl}`;
+  };
 
   useEffect(() => {
     setForm((prev) => ({
@@ -78,12 +85,17 @@ function SettingsPage() {
       <SectionHeader title="Настройки" subtitle="Профиль, контакты и безопасность аккаунта" />
       <form className="settings-form" onSubmit={handleSubmit}>
         <section className="settings-form__avatar">
-          <Avatar
-            src={avatarPreviewUrl || currentUser?.avatar_url}
-            initials={currentUser?.username?.slice(0, 2) || '??'}
-            title="Фото профиля"
-            className="avatar--circle settings-form__avatar-preview"
-          />
+          <div className="avatar avatar--primary settings-form__avatar-preview">
+            {currentUser?.avatar_url && !avatarLoadError ? (
+              <img 
+                src={getAvatarUrl(currentUser.avatar_url)} 
+                alt="" 
+                onError={() => setAvatarLoadError(true)}
+              />
+            ) : (
+              (currentUser?.username?.slice(0, 2) || '??').toUpperCase()
+            )}
+          </div>
           <label className="secondary-button">
             Изменить фото
             <input type="file" accept="image/*" onChange={(event) => setAvatar(event.target.files?.[0] || null)} />
