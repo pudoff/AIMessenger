@@ -154,15 +154,27 @@ class AuthApiTests(APITestCase):
         self.assertIn('Подтверждение регистрации', mail.outbox[0].subject)
         self.assertIn('https://api.frontend.test/api/register/confirm/', mail.outbox[0].body)
 
-    def test_password_reset_request_does_not_disclose_unknown_email(self):
+    def test_password_reset_request_warns_for_unknown_email(self):
         response = self.client.post(
             reverse('api-password-reset'),
             {'email': 'missing@example.com'},
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.json()['field_errors'])
+        self.assertEqual(response.json()['field_errors']['email'], 'Не зарегистрировано')
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_login_warns_when_user_is_not_registered(self):
+        response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'missing', 'password': 'StrongPassword123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['field_errors']['non_field_errors'][0], 'Не зарегистрировано')
 
     def test_user_can_reset_password_with_valid_token(self):
         user = User.objects.create_user(
@@ -214,6 +226,28 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         user.refresh_from_db()
         self.assertTrue(user.check_password('OldPassword123'))
+
+    def test_password_reset_link_can_be_validated_before_submit(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        valid_response = self.client.get(
+            reverse('api-password-reset-confirm'),
+            {'uidb64': uidb64, 'token': token},
+        )
+        invalid_response = self.client.get(
+            reverse('api-password-reset-confirm'),
+            {'uidb64': uidb64, 'token': 'bad-token'},
+        )
+
+        self.assertEqual(valid_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_password_reset_requires_matching_passwords(self):
         user = User.objects.create_user(

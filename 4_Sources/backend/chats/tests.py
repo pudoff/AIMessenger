@@ -137,6 +137,14 @@ class ChatAccessTests(APITestCase):
         self.chat.refresh_from_db()
         self.assertEqual(self.chat.title, 'Changed by owner')
 
+    def test_owner_can_delete_group_chat(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(reverse('chat-detail', args=[self.chat.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Chat.objects.filter(id=self.chat.id).exists())
+
     def test_role_admin_can_see_and_update_any_chat(self):
         admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
         self.client.force_authenticate(admin)
@@ -341,3 +349,27 @@ class ChatMemberAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(ChatMember.objects.filter(chat=self.chat, user=self.new_user).exists())
+
+    def test_owner_can_remove_member(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(reverse('chat-member-detail', args=[self.member_record.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(ChatMember.objects.filter(id=self.member_record.id).exists())
+
+    def test_member_cannot_remove_another_member(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.delete(reverse('chat-member-detail', args=[self.owner_record.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(ChatMember.objects.filter(id=self.owner_record.id).exists())
+
+    def test_last_owner_cannot_be_removed(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(reverse('chat-member-detail', args=[self.owner_record.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(ChatMember.objects.filter(id=self.owner_record.id).exists())

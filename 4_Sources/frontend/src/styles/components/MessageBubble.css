@@ -4,6 +4,39 @@
   gap: 10px;
 }
 
+.message-focus-anchor {
+  border-radius: 22px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-focus-anchor--active {
+  background: rgba(255, 214, 102, 0.22);
+  box-shadow: 0 0 0 3px rgba(255, 214, 102, 0.55);
+  animation: message-focus-pulse 1.6s ease-out 1;
+}
+
+@keyframes message-focus-pulse {
+  0% {
+    box-shadow: 0 0 0 8px rgba(255, 214, 102, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px rgba(255, 214, 102, 0.55);
+  }
+}
+
+.message-date-divider {
+  align-self: center;
+  margin: 10px 0 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .message--mine {
   justify-content: flex-end;
 }
@@ -15,6 +48,7 @@
 }
 
 .message__bubble {
+  position: relative;
   width: min(100%, 720px);
   padding: 16px;
   border-radius: 20px 20px 20px 8px;
@@ -162,4 +196,64 @@
   font-size: 0.82rem;
   color: inherit;
   opacity: 0.78;
+}
+
+.message__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.message__bubble:hover .message__actions,
+.message__bubble:focus-within .message__actions {
+  opacity: 1;
+}
+
+.message__actions button,
+.message__edit-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.message__actions button:hover,
+.message__edit-actions button:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.message__edit-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.message__edit-form textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid rgba(126, 137, 217, 0.28);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  color: var(--text);
+}
+
+.message__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.message__edit-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

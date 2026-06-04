@@ -11,6 +11,7 @@ services:
     volumes:
       - ./infra/traefik/static.yml:/etc/traefik/traefik.yml:ro
       - ./infra/traefik/dynamic.yml:/etc/traefik/conf.d/dynamic.yml:ro
+      - ./infra/traefik/usersfile:/etc/traefik/usersfile:ro
       - aimessenger_traefik_acme:/etc/traefik/acme
     networks:
       - backend
@@ -18,8 +19,6 @@ services:
       backend:
         condition: service_started
       frontend:
-        condition: service_started
-      webhook:
         condition: service_started
 
   backend:
@@ -29,6 +28,10 @@ services:
     volumes:
       - ./.env:/app/.env:ro
       - aimessenger_static_data:/app/staticfiles
+      - aimessenger_media_data:/app/media
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -51,6 +54,9 @@ services:
     restart: always
     volumes:
       - ./.env:/app/.env:ro
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -58,7 +64,14 @@ services:
       BACKEND_CELERY_QUEUE: backend
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-    command: celery -A config worker -Q backend --loglevel=info
+    command: >
+      sh -c 'export CELERY_TASK_TIME_LIMIT="$${BACKEND_CELERY_TASK_TIME_LIMIT:-300}";
+      export CELERY_TASK_SOFT_TIME_LIMIT="$${BACKEND_CELERY_TASK_SOFT_TIME_LIMIT:-240}";
+      export CELERY_WORKER_PREFETCH_MULTIPLIER="$${BACKEND_CELERY_WORKER_PREFETCH_MULTIPLIER:-1}";
+      celery -A config worker -Q backend --loglevel=info
+      --concurrency="$${BACKEND_CELERY_WORKER_CONCURRENCY:-2}"
+      --prefetch-multiplier="$${BACKEND_CELERY_WORKER_PREFETCH_MULTIPLIER:-1}"
+      --max-tasks-per-child="$${BACKEND_CELERY_WORKER_MAX_TASKS_PER_CHILD:-100}"'
     networks:
       - backend
     depends_on:
@@ -83,6 +96,9 @@ services:
     image: magnificent8/ai-messenger:ml-latest
     container_name: ml-worker
     restart: always
+    env_file:
+      - path: ./celery.env
+        required: false
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -93,24 +109,8 @@ services:
       redis:
         condition: service_healthy
 
-  webhook:
-    image: magnificent8/ai-messenger:webhook-latest
-    container_name: webhook
-    restart: always
-    volumes:
-      - ./.env:/app/.env:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    networks:
-      - backend
-    depends_on:
-      redis:
-        condition: service_healthy
-
   postgres:
-    image: pgvector/pgvector:pg18-trixie
+    image: pgvector/pgvector:0.8.2-pg17-trixie
     restart: always
     container_name: postgres
     environment:
@@ -118,7 +118,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - aimessenger_postgres_data:/var/lib/postgresql/data
+      - aimessenger_pgvector_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
@@ -145,9 +145,21 @@ services:
       timeout: 3s
       retries: 5
 
+  dozzle:
+    image: amir20/dozzle:v10.0.6
+    container_name: dozzle
+    environment:
+      DOZZLE_BASE: /
+      DOZZLE_FILTER: ""
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+
 volumes:
-  aimessenger_postgres_data:
+  aimessenger_pgvector_data:
   aimessenger_static_data:
+  aimessenger_media_data:
   aimessenger_traefik_acme:
 
 networks:

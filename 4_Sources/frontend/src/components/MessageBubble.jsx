@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import Avatar from './Avatar';
 import Tag from './Tag';
+import { resolveMediaUrl } from '../utils/media';
 
 const IMAGE_EXTENSION_RE = /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
 
 function getAttachmentUrl(attachment) {
-  return attachment.url || attachment.file_url || attachment.file || '';
+  return resolveMediaUrl(attachment.preview_url || attachment.url || attachment.file_url || attachment.file || '');
 }
 
 function getAttachmentName(attachment) {
@@ -54,18 +56,40 @@ function AttachmentPreview({ attachment }) {
   );
 }
 
-function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
+function MessageBubble({ message, currentUserName = 'Вы', className = '', onEdit, onDelete }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(message.text || '');
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraft(message.text || '');
+    }
+  }, [message.text, isEditing]);
+
   if (message.type === 'system') {
     return <div className="system-message">{message.text}</div>;
   }
 
-  const mine = message.isOwn || message.author === currentUserName || message.author === 'Вы';
+  const mine = message.isOwn || message.author === currentUserName || message.author === 'Вы' || message.author === 'Р’С‹';
   const tag = message.tag || message.classification?.label || message.message_type;
   const stateClass = `${message.isOptimistic ? 'message--optimistic' : ''} ${message.error ? 'message--error' : ''}`.trim();
   const readStatus = message.error ? 'error' : message.readStatus;
   const statusText = readStatus === 'read' ? '✓✓' : readStatus === 'sent' ? '✓' : '';
   const statusTitle = readStatus === 'read' ? 'Просмотрено' : readStatus === 'sent' ? 'Отправлено' : 'Ошибка отправки';
   const initials = (message.author || currentUserName || '??').slice(0, 2).toUpperCase();
+  const canManage = mine && !message.isOptimistic && !message.error && !String(message.id).startsWith('temp-');
+
+  const submitEdit = (event) => {
+    event.preventDefault();
+    const nextText = draft.trim();
+    if (!nextText || nextText === (message.text || '').trim()) {
+      setIsEditing(false);
+      setDraft(message.text || '');
+      return;
+    }
+    onEdit?.(message.id, nextText);
+    setIsEditing(false);
+  };
 
   return (
     <article className={`message ${mine ? 'message--mine' : ''} ${stateClass} ${className}`.trim()}>
@@ -83,7 +107,22 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
           <span>{message.time}</span>
         </div>
         <Tag value={tag} />
-        <p>{message.text}</p>
+        {isEditing ? (
+          <form className="message__edit-form" onSubmit={submitEdit}>
+            <textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={3}
+              autoFocus
+            />
+            <span className="message__edit-actions">
+              <button type="button" onClick={() => { setIsEditing(false); setDraft(message.text || ''); }}>Отмена</button>
+              <button type="submit" disabled={!draft.trim()}>Сохранить</button>
+            </span>
+          </form>
+        ) : (
+          <p>{message.text}</p>
+        )}
         {message.attachments?.length > 0 && (
           <div className="message__attachments">
             {message.attachments.map((attachment) => (
@@ -102,6 +141,12 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '' }) {
           >
             {readStatus === 'error' ? '!' : statusText}
           </span>
+        )}
+        {canManage && !isEditing && (
+          <div className="message__actions">
+            <button type="button" onClick={() => setIsEditing(true)}>Редактировать</button>
+            <button type="button" onClick={() => onDelete?.(message.id)}>Удалить</button>
+          </div>
         )}
       </div>
       {mine && (

@@ -9,6 +9,10 @@ export const chatsAPI = {
   
   // Создать чат (групповой или личный)
   create: (data) => request('/chats/', { method: 'POST', body: JSON.stringify(data) }),
+
+  update: (id, data) => request(`/chats/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (id) => request(`/chats/${id}/`, { method: 'DELETE' }),
   
   // Открыть/создать личный чат с контактом
   openDirect: (contactId) => request(`/contacts/${contactId}/direct-chat/`, { method: 'POST' }),
@@ -38,9 +42,19 @@ export const messagesAPI = {
     return request('/messages/', { method: 'POST', body: JSON.stringify(data) });
   },
 
+  update: (id, data) => request(`/messages/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (id) => request(`/messages/${id}/`, { method: 'DELETE' }),
+
   semanticSearch: ({ q, chat, limit = 10 }) => {
     const params = new URLSearchParams({ q, limit: String(limit) });
     if (chat) params.set('chat', chat);
     return request(`/search/semantic/?${params.toString()}`);
   },
+};
+
+export const chatMembersAPI = {
+  getList: (chatId) => request(`/chat-members/?chat=${chatId}`),
+
+  delete: (id) => request(`/chat-members/${id}/`, { method: 'DELETE' }),
 };

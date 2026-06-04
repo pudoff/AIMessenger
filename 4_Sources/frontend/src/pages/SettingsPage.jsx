@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import SectionHeader from '../components/SectionHeader';
+import Avatar from '../components/Avatar';
 import { authAPI } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,6 +27,17 @@ function SettingsPage() {
       phone_number: currentUser?.phone_number || '',
     }));
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!avatar) {
+      setAvatarPreviewUrl('');
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(avatar);
+    setAvatarPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [avatar]);
 
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 

@@ -196,6 +196,22 @@ class MessageAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_author_can_delete_own_message(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(reverse('message-detail', args=[self.message.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Message.objects.filter(id=self.message.id).exists())
+
+    def test_member_cannot_delete_other_user_message(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.delete(reverse('message-detail', args=[self.message.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Message.objects.filter(id=self.message.id).exists())
+
     def test_text_update_queues_ml_tasks(self):
         self.client.force_authenticate(self.owner)
 
@@ -344,6 +360,24 @@ class MessageAccessTests(APITestCase):
         attachment = MessageAttachment.objects.get(message=message)
         self.assertEqual(attachment.original_name, 'note.txt')
         self.assertEqual(response.json()['attachments'][0]['original_name'], 'note.txt')
+
+    def test_message_attachment_uses_public_media_base_url(self):
+        self.client.force_authenticate(self.member)
+        uploaded = SimpleUploadedFile('image.png', b'png bytes', content_type='image/png')
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root, BACKEND_PUBLIC_BASE_URL='https://api.example.test'):
+                with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        response = self.client.post(
+                            reverse('message-list'),
+                            {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                            format='multipart',
+                        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attachment_url = response.json()['attachments'][0]['url']
+        self.assertTrue(attachment_url.startswith('https://api.example.test/media/message_attachments/'))
 
     def test_message_attachment_size_limit_is_validated(self):
         self.client.force_authenticate(self.member)

@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -6,6 +7,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 
+from config.media import build_public_media_url
 from .models import Contact, User
 
 
@@ -21,7 +23,15 @@ class PublicUserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not obj.avatar:
             return None
-        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return build_public_media_url(request, obj.avatar.url, self._avatar_cache_key(obj))
+
+    @staticmethod
+    def _avatar_cache_key(obj):
+        try:
+            modified = obj.avatar.storage.get_modified_time(obj.avatar.name)
+            return int(modified.timestamp())
+        except (OSError, ValueError, ObjectDoesNotExist):
+            return obj.avatar.name
 
 
 class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
@@ -46,8 +56,14 @@ class EmailOrUsernameAuthTokenSerializer(serializers.Serializer):
         username = identifier
         if '@' in identifier:
             user_by_email = User.objects.filter(email__iexact=identifier).first()
-            if user_by_email:
-                username = user_by_email.get_username()
+            if not user_by_email:
+                raise serializers.ValidationError('Не зарегистрировано', code='not_registered')
+            username = user_by_email.get_username()
+        else:
+            user_by_username = User.objects.filter(username__iexact=identifier).first()
+            if not user_by_username:
+                raise serializers.ValidationError('Не зарегистрировано', code='not_registered')
+            username = user_by_username.get_username()
 
         user = authenticate(
             request=self.context.get('request'),
@@ -257,7 +273,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not obj.avatar:
             return None
-        return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return build_public_media_url(request, obj.avatar.url, PublicUserSerializer._avatar_cache_key(obj))
 
     def validate(self, attrs):
         new_password = attrs.get('new_password')

@@ -267,6 +267,8 @@ class PasswordResetRequestView(views.APIView):
 
         email = serializer.validated_data['email']
         user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            raise serializers.ValidationError({'email': 'Не зарегистрировано'})
         if user:
             try:
                 if user.is_active:
@@ -314,6 +316,16 @@ class PasswordResetRequestView(views.APIView):
 class PasswordResetConfirmView(views.APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
+
+    def get(self, request):
+        serializer = PasswordResetConfirmSerializer(data={
+            'uidb64': request.query_params.get('uidb64', ''),
+            'token': request.query_params.get('token', ''),
+            'password': 'TemporaryCheck123!',
+            'confirm_password': 'TemporaryCheck123!',
+        })
+        serializer.is_valid(raise_exception=True)
+        return Response({'detail': 'Password reset link is valid.'})
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
