@@ -9,6 +9,13 @@ import Logo from '../../components/Logo';
 import LegalModal from '../../components/auth/LegalModal';
 
 const REGISTER_DRAFT_KEY = 'register_form_draft';
+const EXISTING_ACCOUNT_ERROR = 'Пользователь существует. Если вы забыли пароль, перейдите по ссылке';
+
+const isExistingAccountError = (message) => {
+  if (typeof message !== 'string') return false;
+  const lower = message.toLowerCase();
+  return lower.includes('существ') || lower.includes('занят');
+};
 
 const emptyForm = {
   firstName: '',
@@ -66,6 +73,7 @@ function RegisterPage() {
   const [touched, setTouched] = useState({}); //  Отслеживаем, было ли поле сфокусировано
   const [activeModal, setActiveModal] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [showPasswordResetLink, setShowPasswordResetLink] = useState(false);
   const [errorShownTime, setErrorShownTime] = useState(null);
   
   // Отслеживать глобальную ошибку - гарантировать видимость
@@ -111,6 +119,7 @@ function RegisterPage() {
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
     setSubmitError('');
+    setShowPasswordResetLink(false);
     setServerErrors(prev => {
       const next = { ...prev };
       delete next[name];
@@ -144,6 +153,7 @@ function RegisterPage() {
     event.preventDefault();
     clearError();
     setSubmitError('');
+    setShowPasswordResetLink(false);
     setServerErrors({});
     
     //  Валидируем ВСЕ поля перед отправкой
@@ -191,18 +201,8 @@ function RegisterPage() {
       setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
 
       const backendErrors = parseBackendErrors(result.errors || {});
-      const existingAccountError = [backendErrors.username, backendErrors.email]
-        .find((message) => typeof message === 'string' && message.toLowerCase().includes('существ'));
-
-      if (existingAccountError) {
-        navigate('/login', {
-          replace: true,
-          state: {
-            error: `${existingAccountError} Попробуйте войти или восстановить доступ.`,
-          },
-        });
-        return;
-      }
+      const existingAccountError = [backendErrors.username, backendErrors.email, backendErrors.phone]
+        .find(isExistingAccountError);
 
       setServerErrors(backendErrors);
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));
@@ -210,10 +210,13 @@ function RegisterPage() {
         ...prev,
         ...Object.keys(backendErrors).reduce((acc, field) => ({ ...acc, [field]: true }), {}),
       }));
+      setShowPasswordResetLink(!!existingAccountError);
       setSubmitError(
+        existingAccountError ? EXISTING_ACCOUNT_ERROR :
         backendErrors._global ||
         backendErrors.username ||
         backendErrors.email ||
+        backendErrors.phone ||
         result.message ||
         'Не удалось зарегистрироваться. Проверьте данные и попробуйте еще раз.'
       );
@@ -515,7 +518,15 @@ function RegisterPage() {
           {submitError && (
             <div className="form-error">
               {submitError}{' '}
-              <Link to="/login" className="auth-form__footer-link">Перейти ко входу</Link>
+              {showPasswordResetLink ? (
+                <>
+                  "
+                  <Link to="/forgot-password" className="auth-form__footer-link">Восстановить пароль</Link>
+                  "
+                </>
+              ) : (
+                <Link to="/login" className="auth-form__footer-link">Перейти ко входу</Link>
+              )}
             </div>
           )}
           {globalError && <div className="form-error">{globalError}</div>}

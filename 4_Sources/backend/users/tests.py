@@ -355,6 +355,95 @@ class AuthApiTests(APITestCase):
         self.assertIn('accepted_user_agreement', response.json()['field_errors'])
         self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
 
+    def test_user_cannot_register_with_existing_username(self):
+        User.objects.create_user(
+            username='existing',
+            password='StrongPassword123',
+            email='existing@example.com',
+            phone_number='+79990000001',
+        )
+
+        response = self.client.post(
+            reverse('api-register'),
+            {
+                'username': 'existing',
+                'password': 'StrongPassword123',
+                'email': 'demo@example.com',
+                'first_name': 'Demo',
+                'last_name': 'User',
+                'birth_date': '1995-05-04',
+                'phone_number': '+79990000002',
+                'accepted_user_agreement': True,
+                'accepted_privacy_policy': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('username', response.json()['field_errors'])
+
+    def test_user_cannot_register_with_existing_email(self):
+        User.objects.create_user(
+            username='existing',
+            password='StrongPassword123',
+            email='existing@example.com',
+            phone_number='+79990000001',
+        )
+
+        response = self.client.post(
+            reverse('api-register'),
+            {
+                'username': 'demo',
+                'password': 'StrongPassword123',
+                'email': 'existing@example.com',
+                'first_name': 'Demo',
+                'last_name': 'User',
+                'birth_date': '1995-05-04',
+                'phone_number': '+79990000002',
+                'accepted_user_agreement': True,
+                'accepted_privacy_policy': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.json()['field_errors'])
+        self.assertEqual(
+            response.json()['field_errors']['email'][0],
+            'Пользователь с таким email уже существует.',
+        )
+
+    def test_user_cannot_register_with_existing_phone_number(self):
+        User.objects.create_user(
+            username='existing',
+            password='StrongPassword123',
+            email='existing@example.com',
+            phone_number='+79990000001',
+        )
+
+        response = self.client.post(
+            reverse('api-register'),
+            {
+                'username': 'demo',
+                'password': 'StrongPassword123',
+                'email': 'demo@example.com',
+                'first_name': 'Demo',
+                'last_name': 'User',
+                'birth_date': '1995-05-04',
+                'phone_number': '+79990000001',
+                'accepted_user_agreement': True,
+                'accepted_privacy_policy': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('phone_number', response.json()['field_errors'])
+        self.assertEqual(
+            response.json()['field_errors']['phone_number'][0],
+            'Пользователь с таким номером телефона уже существует.',
+        )
+
     def test_current_user_endpoint_returns_frontend_profile(self):
         user = User.objects.create_user(
             username='demo',
