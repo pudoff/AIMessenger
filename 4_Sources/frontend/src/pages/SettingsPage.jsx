@@ -11,14 +11,7 @@ function SettingsPage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [avatarLoadError, setAvatarLoadError] = useState(false);
-
-  // Преобразовать relative path в полный URL для аватарки
-  const getAvatarUrl = (avatarUrl) => {
-    if (!avatarUrl) return null;
-    if (avatarUrl.startsWith('http')) return avatarUrl;
-    return `${window.location.origin}${avatarUrl}`;
-  };
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
 
   useEffect(() => {
     setForm((prev) => ({
@@ -38,6 +31,9 @@ function SettingsPage() {
     setAvatarPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [avatar]);
+
+  const avatarSource = avatarPreviewUrl || currentUser?.avatar_url || '';
+  const avatarInitials = (currentUser?.username?.slice(0, 2) || '??').toUpperCase();
 
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -72,6 +68,7 @@ function SettingsPage() {
     try {
       await authAPI.updateMe({ avatar: null });
       await refreshProfile();
+      setAvatar(null);
       setStatus('Аватар удален');
     } catch (err) {
       setError(err.message || 'Не удалось удалить аватар');
@@ -85,17 +82,12 @@ function SettingsPage() {
       <SectionHeader title="Настройки" subtitle="Профиль, контакты и безопасность аккаунта" />
       <form className="settings-form" onSubmit={handleSubmit}>
         <section className="settings-form__avatar">
-          <div className="avatar avatar--primary settings-form__avatar-preview">
-            {currentUser?.avatar_url && !avatarLoadError ? (
-              <img 
-                src={getAvatarUrl(currentUser.avatar_url)} 
-                alt="" 
-                onError={() => setAvatarLoadError(true)}
-              />
-            ) : (
-              (currentUser?.username?.slice(0, 2) || '??').toUpperCase()
-            )}
-          </div>
+          <Avatar
+            src={avatarSource}
+            initials={avatarInitials}
+            title="Фото профиля"
+            className="settings-form__avatar-preview"
+          />
           <label className="secondary-button">
             Изменить фото
             <input type="file" accept="image/*" onChange={(event) => setAvatar(event.target.files?.[0] || null)} />

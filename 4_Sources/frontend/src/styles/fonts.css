@@ -4,23 +4,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Oranienbaum&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
-/* Или локальные шрифты через @font-face */
-@font-face {
-  font-family: 'Oranienbaum';
-  src: url('../fonts/Oranienbaum-Regular.woff2') format('woff2'),
-       url('../fonts/Oranienbaum-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('../fonts/Inter-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-
 /* CSS переменные для шрифтов */
 :root {
   --font-primary: 'Oranienbaum', Georgia, 'Times New Roman', serif;
