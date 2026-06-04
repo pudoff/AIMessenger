@@ -5,7 +5,6 @@
 - `backend/` - Django + DRF API;
 - `frontend/` - React/Vite frontend;
 - `ml-service/` - ML-классификатор и артефакты модели;
-- `webhook/` - Node.js webhook service;
 - `infra/` - инфраструктурные настройки;
 - `docker-compose.local.yml` - локальная инфраструктура и backend container.
 
@@ -116,7 +115,9 @@ docker tag mirror.gcr.io/library/redis:alpine redis:alpine
 Если `python:3.12-slim` не скачивается, но локальный `aimessenger-backend:latest` уже есть, можно пересобрать backend image поверх существующего образа с уже установленными зависимостями:
 
 ```powershell
-docker compose -f docker-compose.local.yml --env-file .env build --build-arg PYTHON_IMAGE=aimessenger-backend:latest backend
+$env:BACKEND_PYTHON_IMAGE = "aimessenger-backend:latest"
+$env:BACKEND_INSTALL_REQUIREMENTS = "false"
+docker compose -f docker-compose.local.yml --env-file .env build backend
 docker compose -f docker-compose.local.yml --env-file .env up -d --no-build --force-recreate backend
 ```
 
@@ -221,3 +222,22 @@ docker compose -f docker-compose.local.yml --env-file .env down -v
 - SQLite test DB;
 - `staticfiles/`;
 - coverage/cache/log файлы.
+## Recent UI/API capabilities
+
+- Password recovery validates reset links before showing the new-password form and supports show/hide password buttons.
+- Direct and group chat messages can be edited or deleted from the message bubble actions.
+- Group chat owners/admins can remove members and delete a group chat.
+
+## Local Docker fallback without PyPI/Docker Hub
+
+If Docker Desktop cannot resolve Docker Hub or PyPI during backend rebuild, reuse the already built backend image and skip dependency installation:
+
+```powershell
+cd 4_Sources
+$env:BACKEND_PYTHON_IMAGE = "aimessenger-backend:latest"
+$env:BACKEND_INSTALL_REQUIREMENTS = "false"
+docker compose -f docker-compose.local.yml --env-file .env build backend
+docker compose -f docker-compose.local.yml --env-file .env up -d backend frontend
+```
+
+The default build still installs `requirements.txt`; this fallback is only for local rebuilds when dependencies are already present in the base image.

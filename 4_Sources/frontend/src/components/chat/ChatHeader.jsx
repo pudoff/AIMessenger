@@ -1,6 +1,14 @@
 import React from 'react';
 
-export default function ChatHeader({ title, subtitle, onBack, backLabel = 'Назад к списку', avatars, compact = false }) {
+export default function ChatHeader({
+  title,
+  subtitle,
+  onBack,
+  backLabel = 'Назад к списку',
+  avatars,
+  actions = null,
+  compact = false,
+}) {
   return (
     <div className={`chat-toolbar${compact ? ' chat-toolbar--compact' : ''}`}>
       <div className="chat-toolbar__head">
@@ -15,7 +23,12 @@ export default function ChatHeader({ title, subtitle, onBack, backLabel = 'На�
         </div>
       </div>
 
-      {avatars && <div className="avatars">{avatars}</div>}
+      {(avatars || actions) && (
+        <div className="chat-toolbar__actions">
+          {avatars && <div className="avatars">{avatars}</div>}
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

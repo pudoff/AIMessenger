@@ -152,3 +152,11 @@ class ChatMemberViewSet(viewsets.ModelViewSet):
             filtered_queryset = filtered_queryset.filter(chat_id=chat_id)
 
         return filtered_queryset.distinct()
+
+    def perform_destroy(self, instance):
+        if (
+            instance.role == ChatMember.Role.OWNER
+            and not instance.chat.chat_members.exclude(id=instance.id).filter(role=ChatMember.Role.OWNER).exists()
+        ):
+            raise serializers.ValidationError({'member': 'Cannot remove the last owner from a chat.'})
+        instance.delete()

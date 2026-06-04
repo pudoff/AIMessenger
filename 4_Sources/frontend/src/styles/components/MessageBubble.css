@@ -48,6 +48,7 @@
 }
 
 .message__bubble {
+  position: relative;
   width: min(100%, 720px);
   padding: 16px;
   border-radius: 20px 20px 20px 8px;
@@ -195,4 +196,64 @@
   font-size: 0.82rem;
   color: inherit;
   opacity: 0.78;
+}
+
+.message__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.message__bubble:hover .message__actions,
+.message__bubble:focus-within .message__actions {
+  opacity: 1;
+}
+
+.message__actions button,
+.message__edit-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.message__actions button:hover,
+.message__edit-actions button:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.message__edit-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.message__edit-form textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid rgba(126, 137, 217, 0.28);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  color: var(--text);
+}
+
+.message__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.message__edit-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

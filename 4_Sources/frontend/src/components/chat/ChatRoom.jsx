@@ -51,6 +51,8 @@ export default function ChatRoom({
   composerDisabled = false,
   searchNode = null,
   focusedMessageId = null,
+  onEditMessage,
+  onDeleteMessage,
 }) {
   const messageRefs = useRef({});
 
@@ -94,6 +96,8 @@ export default function ChatRoom({
                 <MessageBubble
                   message={msg}
                   className={msg.isOptimistic ? 'message--optimistic' : msg.error ? 'message--error' : ''}
+                  onEdit={onEditMessage}
+                  onDelete={onDeleteMessage}
                 />
               </div>
             </React.Fragment>

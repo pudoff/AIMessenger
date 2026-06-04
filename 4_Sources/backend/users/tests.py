@@ -227,6 +227,28 @@ class AuthApiTests(APITestCase):
         user.refresh_from_db()
         self.assertTrue(user.check_password('OldPassword123'))
 
+    def test_password_reset_link_can_be_validated_before_submit(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        valid_response = self.client.get(
+            reverse('api-password-reset-confirm'),
+            {'uidb64': uidb64, 'token': token},
+        )
+        invalid_response = self.client.get(
+            reverse('api-password-reset-confirm'),
+            {'uidb64': uidb64, 'token': 'bad-token'},
+        )
+
+        self.assertEqual(valid_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(invalid_response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_password_reset_requires_matching_passwords(self):
         user = User.objects.create_user(
             username='demo',
