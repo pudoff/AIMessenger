@@ -1,26 +1,36 @@
 # AI Chat — Проектирование модели системы (MVP)
-## Обзор системы
-Проект представляет собой интеллектуальный мессенджер с ML-функциями: классификацией сообщений, семантическим поиском и AI-ассистентом на основе RAG. Архитектура разделена на четыре слоя: Frontend (React), Backend (Django + DRF), ML Service (FastAPI), Database (PostgreSQL + pgvector), объединённых асинхронной очередью Celery + Redis и упакованных в Docker.
 
-***
+## Обзор системы
+
+Проект представляет собой интеллектуальный мессенджер с ML-функциями: классификацией сообщений, семантическим поиском и AI-ассистентом. Архитектура состоит из четырёх основных частей: **Frontend (React)**, **Backend (Django + DRF)**, **асинхронная обработка ML-задач через Celery + Redis**, **Database (PostgreSQL)**. Все тяжёлые ML-операции выполняются в фоне, чтобы не блокировать пользовательский интерфейс и не замедлять API.
+
+---
+
 ## 1. Технологический стек
+
 | Компонент | Технология | Ответственность |
 |---|---|---|
-| **Frontend** | React | UI чата, кнопки AI-функций, страницы авторизации/ассистента/админки |
-| **Backend** | Django + DRF | REST API, авторизация, управление чатами и сообщениями, ORM |
-| **ML Service** | FastAPI | Отдельный сервис: `/classify`, `/embed`, LLM-генерация |
-| **Celery** | Celery | Асинхронное выполнение ML-задач (классификация, эмбеддинг, RAG) |
+| **Frontend** | React | UI чата, формы авторизации, список чатов, сообщения, AI-функции |
+| **Backend** | Django + DRF | REST API, авторизация, управление чатами и сообщениями, бизнес-логика |
+| **Celery** | Celery | Асинхронное выполнение ML-задач: классификация, поиск, AI-ответы |
 | **Redis** | Redis 7+ | Брокер задач для Celery |
-| **Database** | PostgreSQL 15 + pgvector | Хранение данных + векторный поиск по смыслу |
+| **Database** | PostgreSQL 15 | Хранение пользователей, чатов, сообщений, участников и результатов ML |
+| **Docker** | Docker / Docker Compose | Локальный запуск всех сервисов |
 
-**Ключевое архитектурное решение**: Backend (Django) не блокируется тяжёлыми ML-вычислениями — он публикует задачу в Redis, возвращает ответ клиенту, а Celery Worker обрабатывает задачу асинхронно.
+Ключевое архитектурное решение: Backend не выполняет ML-обработку синхронно. Он сохраняет сообщение в БД и отправляет задачу в Celery через Redis, после чего Celery выполняет классификацию и сохраняет результат обратно в PostgreSQL.
 
-***
-## 2. Архитектурная схема
-![](architecture_white.png)
 ---
+
+## 2. Архитектурная схема
+
+![architecture_white.png](arch.png)
+
+---
+
 ## 3. Модель данных
+
 ### 3.1 Сущности и атрибуты
+
 #### `User` — Пользователь
 
 | Атрибут | Тип | Ограничения | Описание |
@@ -28,7 +38,7 @@
 | `id` | UUID | PK | Идентификатор |
 | `username` | VARCHAR(64) | UNIQUE, NOT NULL | Логин |
 | `email` | VARCHAR(255) | UNIQUE, NOT NULL | Email |
-| `password_hash` | VARCHAR(255) | NOT NULL | Хэш пароля (bcrypt) |
+| `password_hash` | VARCHAR(255) | NOT NULL | Хэш пароля |
 | `is_active` | BOOLEAN | DEFAULT TRUE | Статус аккаунта |
 | `created_at` | TIMESTAMP | DEFAULT NOW() | Дата регистрации |
 | `updated_at` | TIMESTAMP | DEFAULT NOW() | Дата обновления |
@@ -38,8 +48,8 @@
 | Атрибут | Тип | Ограничения | Описание |
 |---|---|---|---|
 | `id` | SERIAL | PK | Идентификатор |
-| `name` | VARCHAR(32) | UNIQUE, NOT NULL | `owner` / `admin` / `member` / `guest` |
-| `description` | TEXT | | Описание прав |
+| `name` | VARCHAR(32) | UNIQUE, NOT NULL | `owner`, `admin`, `member`, `guest` |
+| `description` | TEXT | NULL | Описание прав |
 
 #### `Chat` — Чат / комната
 
@@ -72,237 +82,119 @@
 | `chat_id` | UUID | FK → chats.id | Чат |
 | `sender_id` | UUID | FK → users.id, NULL | Отправитель (NULL для AI) |
 | `content` | TEXT | NOT NULL | Текст сообщения |
-| `message_type` | VARCHAR(16) | CHECK IN ('user','assistant','system') | Тип отправителя |
-| `label` | VARCHAR(32) | NULLABLE | ML-метка: `question`/`task`/`offtopic`/`statement` |
+| `message_type` | VARCHAR(16) | CHECK IN (`user`, `assistant`, `system`) | Тип сообщения |
+| `label` | VARCHAR(32) | NULLABLE | ML-метка: `question`, `task`, `statement`, `offtopic` |
 | `parent_message_id` | UUID | FK → messages.id, NULL | Ответ на сообщение |
 | `is_deleted` | BOOLEAN | DEFAULT FALSE | Мягкое удаление |
 | `created_at` | TIMESTAMP | DEFAULT NOW() | Дата создания |
 | `updated_at` | TIMESTAMP | DEFAULT NOW() | Дата обновления |
 
-> Поле `label` заполняется асинхронно через Celery после классификации сообщения ML-сервисом.
+Поле `label` заполняется асинхронно после классификации сообщения.
 
 #### `Embedding` — Векторное представление
 
 | Атрибут | Тип | Ограничения | Описание |
 |---|---|---|---|
 | `id` | UUID | PK | Идентификатор |
-| `message_id` | UUID | FK → messages.id, UNIQUE | Связь (1:1) |
+| `message_id` | UUID | FK → messages.id, UNIQUE | Связь 1:1 |
 | `vector` | VECTOR(1536) | NOT NULL | Вектор (pgvector) |
 | `model_name` | VARCHAR(64) | NOT NULL | Название модели |
 | `created_at` | TIMESTAMP | DEFAULT NOW() | Дата создания |
-### 3.2 Связи между сущностями
-```
-User       (1) ──< (N) ChatMember  >── (N:1)  Chat
-User       (1) ──< (N) Message
-User       (1) ──< (N) Chat         [created_by]
-Chat       (1) ──< (N) Message
-Role       (1) ──< (N) ChatMember
-Message    (1) ──< (N) Message      [parent_message_id — самосвязь]
-Message    (1) ──  (1) Embedding
-```
 
-***
-## 4. ER-диаграмма (PlantUML)
-![](er_ai_chat.png)
+---
 
-***
-## 5. Структура БД PostgreSQL
-```sql
--- Расширения
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+## 4. ER-диаграмма
 
--- Роли
-CREATE TABLE roles (
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(32) NOT NULL UNIQUE,
-    description TEXT
-);
-INSERT INTO roles (name, description) VALUES
-    ('owner',  'Создатель чата, все права'),
-    ('admin',  'Управление участниками'),
-    ('member', 'Отправка и чтение сообщений'),
-    ('guest',  'Только чтение');
+![er_ai_chat.png](er_ai_chat.png)
 
--- Пользователи
-CREATE TABLE users (
-    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    username      VARCHAR(64)  NOT NULL UNIQUE,
-    email         VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP    NOT NULL DEFAULT NOW()
-);
 
--- Чаты
-CREATE TABLE chats (
-    id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    title      VARCHAR(255) NOT NULL,
-    created_by UUID         REFERENCES users(id) ON DELETE SET NULL,
-    is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP    NOT NULL DEFAULT NOW()
-);
+## 5. Потоки данных
 
--- Участники чата
-CREATE TABLE chat_members (
-    id        SERIAL    PRIMARY KEY,
-    chat_id   UUID      NOT NULL REFERENCES chats(id)   ON DELETE CASCADE,
-    user_id   UUID      NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
-    role_id   INT       NOT NULL REFERENCES roles(id),
-    joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    UNIQUE (chat_id, user_id)
-);
+![dataflows_white.png](dataflows_white.png)
 
--- Сообщения
-CREATE TABLE messages (
-    id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    chat_id           UUID        NOT NULL REFERENCES chats(id)    ON DELETE CASCADE,
-    sender_id         UUID        REFERENCES users(id)             ON DELETE SET NULL,
-    content           TEXT        NOT NULL,
-    message_type      VARCHAR(16) NOT NULL DEFAULT 'user'
-                        CHECK (message_type IN ('user', 'assistant', 'system')),
-    label             VARCHAR(32) CHECK (label IN ('question', 'task', 'statement', 'offtopic')),
-    parent_message_id UUID        REFERENCES messages(id)          ON DELETE SET NULL,
-    is_deleted        BOOLEAN     NOT NULL DEFAULT FALSE,
-    created_at        TIMESTAMP   NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMP   NOT NULL DEFAULT NOW()
-);
+### 5.1 Отправка сообщения
 
--- Эмбеддинги (pgvector)
-CREATE TABLE embeddings (
-    id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    message_id UUID         NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
-    vector     VECTOR(1536) NOT NULL,
-    model_name VARCHAR(64)  NOT NULL DEFAULT 'text-embedding-3-small',
-    created_at TIMESTAMP    NOT NULL DEFAULT NOW()
-);
-```
-### Индексы
-```sql
--- Поиск сообщений в чате
-CREATE INDEX idx_messages_chat_id    ON messages(chat_id);
-CREATE INDEX idx_messages_sender_id  ON messages(sender_id);
-CREATE INDEX idx_messages_chat_time  ON messages(chat_id, created_at DESC);
-CREATE INDEX idx_messages_label      ON messages(label);       -- фильтрация по типу
-
--- Участники
-CREATE INDEX idx_chat_members_user   ON chat_members(user_id);
-CREATE INDEX idx_chat_members_chat   ON chat_members(chat_id);
-
--- Векторный поиск — 
-CREATE INDEX idx_embeddings_hnsw
-    ON embeddings
-    USING hnsw (vector vector_cosine_ops)
-    WITH (m = 16, ef_construction = 64);
-```
-
-***
-## 6. Потоки данных
-![](dataflows_white.png)
-
-### 6.1 Отправка сообщения (синхронный + асинхронный поток)
-```
+```text
 [Видимый поток — синхронный]
 1. Frontend  → POST /api/messages/ (content, chat_id)
-2. Backend   → Валидация JWT + проверка членства в чате (chat_members)
+2. Backend   → Проверка токена и членства в чате
 3. Backend   → INSERT INTO messages (chat_id, sender_id, content)
 4. Backend   ← 201 Created {message_id}
-5. Backend   → WebSocket broadcast: {event: "new_message"}
+5. Backend   → Событие в real-time слой или polling-обновление
 
-[Скрытая магия ML — асинхронный поток]
-6. Backend   → Redis: LPUSH task classify+embed(message_id)
-7. Celery    ← consume task
-8. Celery    → ML Service: POST /classify {text} → {label: "question"}
-9. Celery   → ML Service: POST /embed {text} → {vector: [...1536]}
-10. Celery   → UPDATE messages SET label=... WHERE id=message_id
+[Скрытый ML-поток — асинхронный]
+6. Backend   → Redis: задача classify+embed(message_id)
+7. Celery    ← получает задачу
+8. Celery    → выполняет классификацию
+9. Celery    → формирует embedding
+10. Celery   → UPDATE messages SET label=...
 11. Celery   → INSERT INTO embeddings (message_id, vector)
 ```
 
-**Ключевое преимущество**: UI не блокируется тяжёлыми ML-вычислениями.
-### 6.2 Семантический поиск
-```
-1. Frontend  → GET /api/search?q="текст"&chat_id={id}
-2. Backend   → Redis: publish task search(query, chat_id)
+### 5.2 Семантический поиск
+
+```text
+1. Frontend  → GET /api/search?q=...&chat_id=...
+2. Backend   → Redis: task search(query, chat_id)
 3. Celery    ← consume task
-4. Celery    → ML Service: POST /embed {text: query} → query_vector
-5. Celery    → PostgreSQL:
-               SELECT m.*, e.vector <=> query_vector AS dist
-               FROM messages m JOIN embeddings e ON e.message_id = m.id
-               WHERE m.chat_id = {id}
-               ORDER BY dist ASC LIMIT 10;
+4. Celery    → получает embedding запроса
+5. Celery    → PostgreSQL pgvector search
 6. Backend   ← 200 OK [{message, label, similarity_score}]
-7. Frontend  → Отобразить релевантные сообщения с подсветкой label
+7. Frontend  → отображает релевантные сообщения
 ```
 
-Поиск происходит **по смыслу**, а не по ключевым словам — находит релевантные ответы даже без точного совпадения слов.
-### 6.3 AI-ассистент (RAG)
-```
-1. Frontend  → POST /api/assistant/ {question: "Кто отвечает за дедлайн?"}
-2. Backend   → Redis: publish task generate_response(question, chat_id)
+### 5.3 AI-ассистент
+
+```text
+1. Frontend  → POST /api/assistant/ {question: "..."}
+2. Backend   → Redis: task generate_response(question, chat_id)
 3. Backend   ← 202 Accepted {task_id}
 
---- Celery Worker: RAG pipeline ---
-4. Celery    → ML Service: POST /embed {text: question} → query_vector
-5. Celery    → PostgreSQL pgvector: найти топ-5 релевантных сообщений
-6. Celery    → Сформировать prompt:
-               system: "Ты ассистент чата. Контекст: {relevant_messages}"
-               user: {question}
-7. Celery    → ML Service: LLM API → response
+4. Celery    → embedding вопроса
+5. Celery    → поиск топ-N сообщений по схожести
+6. Celery    → формирование prompt
+7. Celery    → генерация ответа
 8. Celery    → INSERT INTO messages (message_type='assistant', content=response)
-9. Celery    → INSERT INTO embeddings (embed AI-ответа)
-10. Backend  → WebSocket push: {event: "ai_response", content: response}
-11. Frontend ← Ответ: "Ответственный — Анна (на основе логов чата)"
+9. Celery    → INSERT INTO embeddings
+10. Backend  → уведомление фронта
 ```
 
-***
-## 7. API-спецификация
+---
+
+## 6. API-спецификация
+
 ### Backend (Django + DRF)
+
 | Метод | Эндпоинт | Описание |
 |---|---|---|
-| POST | `/api/auth/login/` | Авторизация, получение JWT |
+| POST | `/api/auth/token/` | Авторизация, получение токена |
 | POST | `/api/auth/register/` | Регистрация пользователя |
+| GET | `/api/me/` | Профиль текущего пользователя |
 | GET | `/api/chats/` | Список чатов пользователя |
 | POST | `/api/chats/` | Создать чат |
-| GET | `/api/chats/{id}/messages/` | История сообщений (пагинация) |
-| POST | `/api/chats/{id}/messages/` | Отправить сообщение |
+| GET | `/api/messages/?chat=` | История сообщений с пагинацией |
+| POST | `/api/messages/` | Отправить сообщение |
 | GET | `/api/chats/{id}/members/` | Участники чата |
-| POST | `/api/chats/{id}/members/` | Добавить участника |
-| GET | `/api/search/` | Семантический поиск `?q=&chat_id=` |
+| POST | `/api/search/` | Семантический поиск |
 | POST | `/api/assistant/` | Запрос к AI-ассистенту |
-| WS | `/ws/chats/{id}/` | WebSocket: real-time события |
-### ML Service (FastAPI)
-| Метод | Эндпоинт | Вход | Выход |
-|---|---|---|---|
-| POST | `/classify` | `{text: str}` | `{label: "question"\|"task"\|"statement"\|"offtopic"}` |
-| POST | `/embed` | `{text: str}` | `{vector: float, model: str}` |
+| WS | `/ws/chats/{id}/` | Real-time события |
 
-На этапе MVP эндпоинты возвращают **mock-данные** — реальные модели подключаются на следующем этапе.
+### ML-задачи через Celery
 
-***
-## 8. Метрики качества ML
-| ML-задача | Метрики | Описание |
-|---|---|---|
-| **Классификация сообщений** | Accuracy, F1-score | Точность определения типа (вопрос/задача/оффтоп) |
-| **Семантический поиск** | Precision, Recall | Релевантность найденных сообщений |
-| **AI-ассистент (RAG)** | Human Eval (эксперт) | Оценка 4.5/5, контроль галлюцинаций |
+Так как отдельный FastAPI ML Service убран, ML-логика выполняется в фоне через Celery-задачи:
+- `classify_message`
+- `generate_embedding`
+- `generate_ai_response`
+- `search_messages`
 
+---
 
-***
-## 9. Вектор развития (Масштабирование)
-| Этап | Архитектура | Описание |
-|---|---|---|
-| **MVP (текущий)** | Django — монолит с Celery | Быстрый запуск, командная разработка |
-| **Будущее** | Микросервисы на FastAPI | Выделение ML-ветки для независимого масштабирования |
-| **Expansion** | Нативные приложения | Android и iOS — за рамками учебного проекта |
+## 7. ML-поведение
 
-MVP Scope (что делаем сейчас):
-- Веб-приложение React + Backend Django
-- PostgreSQL с pgvector
-- Базовая классификация сообщений и семантический поиск
-- AI-ассистент (RAG)
+- Классификация сообщения запускается после сохранения сообщения.
+- Если `confidence` низкая, метка может не сохраняться.
+- Эмбеддинг создаётся отдельно и сохраняется в таблицу `embeddings`.
+- AI-ассистент использует RAG: сначала поиск контекста, затем генерация ответа.
+- Все ML-задачи выполняются асинхронно через Celery, чтобы UI не зависал.
 
-Вне рамок проекта: голосовой ввод/вывод, интеграция с CRM, загрузка и анализ файлов, нативные мобильные приложения.
-
-
+---
