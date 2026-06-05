@@ -45,6 +45,10 @@ services:
       BACKEND_CELERY_QUEUE: backend
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
+      MEDIA_ROOT: /app/media
+      SERVE_MEDIA_FILES: ${SERVE_MEDIA_FILES:-True}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
     entrypoint: /app/entrypoint.sh
     networks:
       - backend

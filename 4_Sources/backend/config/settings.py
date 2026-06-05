@@ -160,7 +160,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.getenv('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 SERVE_MEDIA_FILES = os.getenv('SERVE_MEDIA_FILES', 'True').lower() == 'true'
 MAX_UPLOAD_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_SIZE_BYTES', str(20 * 1024 * 1024)))
 MAX_AVATAR_SIZE_BYTES = int(os.getenv('MAX_AVATAR_SIZE_BYTES', str(5 * 1024 * 1024)))
