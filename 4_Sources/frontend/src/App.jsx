@@ -54,7 +54,7 @@ function App() {
       <Route
         path="/reset-password/:uidb64/:token"
         element={
-          <RequireGuest>
+          <RequireGuest allowAuthenticated>
             <ResetPasswordPage />
           </RequireGuest>} />
 

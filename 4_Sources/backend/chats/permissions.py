@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
 from users.permissions import is_project_admin
-from .models import ChatMember
+from .models import Chat, ChatMember
 
 
 class IsChatMember(permissions.BasePermission):
@@ -52,6 +52,9 @@ class IsChatOwnerOrAdminForUnsafe(permissions.BasePermission):
             return True
 
         chat = getattr(obj, 'chat', obj)
+        if request.method == 'DELETE' and getattr(chat, 'chat_type', None) == Chat.ChatType.DIRECT:
+            return chat.chat_members.filter(user=request.user).exists()
+
         return chat.chat_members.filter(
             user=request.user,
             role__in=(ChatMember.Role.OWNER, ChatMember.Role.ADMIN),

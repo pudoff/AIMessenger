@@ -101,6 +101,7 @@ export default function DirectChatsPage() {
   const [hasSemanticSearched, setHasSemanticSearched] = useState(false);
   const [focusedMessageId, setFocusedMessageId] = useState(null);
   const [activeSemanticIndex, setActiveSemanticIndex] = useState(-1);
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
 
   const pollRef = useRef(null);
   const chatPollRef = useRef(null);
@@ -440,6 +441,34 @@ export default function DirectChatsPage() {
     navigate(`/app/direct/${id}`, { replace: true });
   };
 
+  const handleDeleteDirectChat = async () => {
+    if (!chatId || isDeletingChat) return;
+    if (!window.confirm('Удалить личный чат? Это действие нельзя отменить.')) return;
+
+    try {
+      setIsDeletingChat(true);
+      await chatsAPI.delete(chatId);
+      setChats((prev) => prev.filter((chat) => String(chat.id) !== String(chatId)));
+      setChatMeta((prev) => {
+        const next = { ...prev };
+        delete next[chatId];
+        return next;
+      });
+      setMessages([]);
+      setPendingMessages([]);
+      if (String(localStorage.getItem('last_direct_chat_id')) === String(chatId)) {
+        localStorage.removeItem('last_direct_chat_id');
+      }
+      setLastSelectedChatId(null);
+      setMessageError(null);
+      navigate('/app/direct', { replace: true });
+    } catch (e) {
+      setMessageError(`Не удалось удалить личный чат: ${e.message}`);
+    } finally {
+      setIsDeletingChat(false);
+    }
+  };
+
   const handleEditMessage = async (messageId, text) => {
     try {
       const updated = await messagesAPI.update(messageId, { text });
@@ -531,6 +560,19 @@ export default function DirectChatsPage() {
     </form>
   );
 
+  const directChatActions = (
+    <div className="group-chat-actions">
+      <button
+        className="danger-button"
+        type="button"
+        onClick={handleDeleteDirectChat}
+        disabled={isDeletingChat}
+      >
+        {isDeletingChat ? 'Удаление...' : 'Удалить чат'}
+      </button>
+    </div>
+  );
+
   // Получить данные выбранного чата
   const selectedChat = chats.find(c => String(c.id) === chatId) ||
     (chatId && location.state ? {
@@ -562,6 +604,7 @@ export default function DirectChatsPage() {
                   className="avatar--circle"
                 />
               ) : null}
+              actions={directChatActions}
               compact
             />
             <ChatRoom

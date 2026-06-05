@@ -21,14 +21,14 @@ export function RequireAuth({ children }) {
   return children;
 }
 
-export function RequireGuest({ children }) {
+export function RequireGuest({ children, allowAuthenticated = false }) {
   const { currentUser, isAuthenticated, initializing } = useAuth();
 
   // 🔒 Ждём окончания проверки
   if (initializing) return <AuthLoader />;
   
   // 🔒 Уже авторизован → редирект в приложение
-  if (isAuthenticated) {
+  if (isAuthenticated && !allowAuthenticated) {
     return <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/app'} replace />;
   }
 
