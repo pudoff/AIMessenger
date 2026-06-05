@@ -1,6 +1,7 @@
 /* Базовая обёртка */
 .auth-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -249,13 +250,36 @@
 
 @media (max-width: 768px) {
   .auth-page {
-    padding: 16px;
+    padding: 12px;
   }
 
   .auth-card {
     width: 100%;
-    padding: 26px;
+    padding: 20px;
     border-radius: 24px;
+  }
+
+  .auth-card .brand__image {
+    width: min(100%, 220px);
+  }
+
+  .auth-card__heading h1 {
+    font-size: 1.55rem;
+  }
+
+  .auth-card__heading p {
+    font-size: 0.92rem;
+    margin-top: 4px;
+  }
+
+  .auth-form {
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .auth-form input {
+    padding: 12px 14px;
+    border-radius: 14px;
   }
 
   .auth-form__row {
@@ -274,6 +298,39 @@
 }
 
 @media (max-width: 520px) {
+  .auth-page {
+    align-items: start;
+  }
+
+  .auth-card {
+    padding: 16px;
+  }
+
+  .auth-card .brand {
+    margin-bottom: 4px;
+  }
+
+  .auth-card .brand__image {
+    width: min(100%, 170px);
+  }
+
+  .auth-card__heading p {
+    display: none;
+  }
+
+  .auth-form label span {
+    margin-bottom: 5px;
+  }
+
+  .auth-form__footer {
+    margin-top: 6px;
+    gap: 6px;
+  }
+
+  .auth-form__footer span {
+    display: none;
+  }
+
   .auth-form__row {
     grid-template-columns: 1fr;
   }

@@ -3,7 +3,7 @@ import SidebarNav from '../components/SidebarNav';
 import { request as apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const getActiveChat = (pathname) => {
   const directMatch = pathname.match(/^\/app\/direct\/([^/]+)/);
@@ -28,6 +28,7 @@ function AppLayout() {
   const location = useLocation();
   const { currentUser } = useAuth();
   const { decorateChatsWithUnread } = useUnread();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.id) return undefined;
@@ -65,9 +66,28 @@ function AppLayout() {
     return () => clearInterval(timerId);
   }, [currentUser?.id, decorateChatsWithUnread, location.pathname]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="app-shell">
-      <SidebarNav />
+    <div className={`app-shell ${isMobileNavOpen ? 'app-shell--nav-open' : ''}`}>
+      <button
+        className="mobile-nav-toggle"
+        type="button"
+        onClick={() => setIsMobileNavOpen((value) => !value)}
+        aria-label={isMobileNavOpen ? 'Закрыть меню' : 'Открыть меню'}
+        aria-expanded={isMobileNavOpen}
+      >
+        {isMobileNavOpen ? '×' : '☰'}
+      </button>
+      <button
+        className="mobile-nav-backdrop"
+        type="button"
+        aria-label="Закрыть меню"
+        onClick={() => setIsMobileNavOpen(false)}
+      />
+      <SidebarNav onNavigate={() => setIsMobileNavOpen(false)} />
       <div className="app-shell__content">
         {/* StoriesBar отключен до следующей итерации MVP. */}
         <Outlet />

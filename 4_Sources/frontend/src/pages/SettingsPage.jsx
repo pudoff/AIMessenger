@@ -3,9 +3,11 @@ import SectionHeader from '../components/SectionHeader';
 import Avatar from '../components/Avatar';
 import { authAPI } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 function SettingsPage() {
   const { currentUser, refreshProfile } = useAuth();
+  const { theme, themes, setTheme } = useTheme();
   const [form, setForm] = useState({ email: '', phone_number: '', current_password: '', new_password: '' });
   const [avatar, setAvatar] = useState(null);
   const [status, setStatus] = useState('');
@@ -81,6 +83,29 @@ function SettingsPage() {
     <div className="settings-page">
       <SectionHeader title="Настройки" subtitle="Профиль, контакты и безопасность аккаунта" />
       <form className="settings-form" onSubmit={handleSubmit}>
+        <section className="settings-form__theme">
+          <div>
+            <h3>Тема оформления</h3>
+            <p>Выберите внешний вид мессенджера. Настройка сохранится в этом браузере.</p>
+          </div>
+          <div className="theme-options" role="radiogroup" aria-label="Тема оформления">
+            {themes.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`theme-option ${theme === item.id ? 'theme-option--active' : ''}`}
+                onClick={() => setTheme(item.id)}
+                role="radio"
+                aria-checked={theme === item.id}
+              >
+                <span className="theme-option__icon" aria-hidden="true">{item.icon}</span>
+                <strong>{item.title}</strong>
+                <small>{item.description}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section className="settings-form__avatar">
           <Avatar
             src={avatarSource}
