@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import Avatar from './Avatar';
 import Tag from './Tag';
+import { downloadAttachment, fetchAttachmentBlob } from '../api/chats';
+import { MESSAGE_MAX_LENGTH, trimMessageToLimit } from '../constants/messages';
 import { resolveMediaUrl } from '../utils/media';
 
 const IMAGE_EXTENSION_RE = /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?.*)?$/i;
@@ -24,33 +26,74 @@ function isImageAttachment(attachment) {
 function AttachmentPreview({ attachment }) {
   const url = getAttachmentUrl(attachment);
   const name = getAttachmentName(attachment);
+  const isImage = isImageAttachment(attachment);
+  const [blobUrl, setBlobUrl] = useState('');
+
+  useEffect(() => {
+    if (!isImage || attachment.preview_url || !attachment.download_url) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    let objectUrl = '';
+
+    fetchAttachmentBlob(attachment)
+      .then((blob) => {
+        if (!isMounted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((error) => {
+        console.warn('Не удалось загрузить превью вложения:', error);
+      });
+
+    return () => {
+      isMounted = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [attachment.id, attachment.download_url, attachment.preview_url, isImage]);
+
+  const handleDownload = async (event) => {
+    event.preventDefault();
+    try {
+      await downloadAttachment(attachment);
+    } catch (error) {
+      console.error('Не удалось скачать вложение:', error);
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
 
   if (!url) {
     return <span className="message__attachment">{name}</span>;
   }
 
-  if (!isImageAttachment(attachment)) {
+  if (!isImage) {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="message__attachment">
+      <a href={url} onClick={handleDownload} className="message__attachment">
         {name}
       </a>
     );
   }
 
+  const previewUrl = blobUrl || url;
+
   return (
     <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
+      href={previewUrl}
+      onClick={handleDownload}
       className="message__image-attachment"
       aria-label={`Открыть изображение ${name}`}
     >
       <span className="message__image-thumb">
-        <img src={url} alt={name} loading="lazy" />
+        <img src={previewUrl} alt={name} loading="lazy" />
       </span>
       <span className="message__image-caption">{name}</span>
       <span className="message__image-popover" aria-hidden="true">
-        <img src={url} alt="" loading="lazy" />
+        <img src={previewUrl} alt="" loading="lazy" />
       </span>
     </a>
   );
@@ -74,8 +117,16 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '', onEd
   const tag = message.tag || message.classification?.label || message.message_type;
   const stateClass = `${message.isOptimistic ? 'message--optimistic' : ''} ${message.error ? 'message--error' : ''}`.trim();
   const readStatus = message.error ? 'error' : message.readStatus;
-  const statusText = readStatus === 'read' ? '✓✓' : readStatus === 'sent' ? '✓' : '';
-  const statusTitle = readStatus === 'read' ? 'Просмотрено' : readStatus === 'sent' ? 'Отправлено' : 'Ошибка отправки';
+  const statusText = readStatus === 'read' ? '✓✓' : readStatus === 'sent' ? '✓' : readStatus === 'sending' ? 'отправляется' : readStatus === 'queued' ? 'не отправлено' : '';
+  const statusTitle = readStatus === 'read'
+    ? 'Просмотрено'
+    : readStatus === 'sent'
+      ? 'Отправлено'
+      : readStatus === 'sending'
+        ? 'Отправляется'
+        : readStatus === 'queued'
+          ? 'Не отправлено. Будет отправлено при восстановлении сети'
+          : 'Ошибка отправки';
   const initials = (message.author || currentUserName || '??').slice(0, 2).toUpperCase();
   const canManage = mine && !message.isOptimistic && !message.error && !String(message.id).startsWith('temp-');
 
@@ -111,8 +162,9 @@ function MessageBubble({ message, currentUserName = 'Вы', className = '', onEd
           <form className="message__edit-form" onSubmit={submitEdit}>
             <textarea
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => setDraft(trimMessageToLimit(event.target.value))}
               rows={3}
+              maxLength={MESSAGE_MAX_LENGTH}
               autoFocus
             />
             <span className="message__edit-actions">

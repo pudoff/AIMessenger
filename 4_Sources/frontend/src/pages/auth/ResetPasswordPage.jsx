@@ -27,7 +27,7 @@ function getPasswordError(password, confirmPassword) {
 function getFirstError(err) {
   const backendErrors = err?.data?.field_errors || err?.data || {};
   const firstError = Object.values(backendErrors).flat?.()[0];
-  return firstError || err?.message || '';
+  return String(firstError || err?.message || '');
 }
 
 function ResetPasswordPage() {
@@ -115,9 +115,7 @@ function ResetPasswordPage() {
       setIsSuccess(true);
       window.setTimeout(() => navigate('/login', { replace: true }), 1800);
     } catch (err) {
-      const backendErrors = err.data || {};
-      const firstError = Object.values(backendErrors).flat?.()[0];
-      const errMsg = firstError || err.message || 'Не удалось сменить пароль. Запросите новую ссылку.';
+      const errMsg = getFirstError(err) || 'Не удалось сменить пароль. Запросите новую ссылку.';
       setError(errMsg);
       setErrorShownTime(Date.now());
     } finally {

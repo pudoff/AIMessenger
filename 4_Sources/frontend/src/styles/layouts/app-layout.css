@@ -236,3 +236,100 @@
   flex: 1 1 0;
   min-height: 0;
 }
+/* Mobile chat viewport fix */
+@media (max-width: 860px) {
+  .app-shell {
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell__content {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .workspace--messenger {
+    height: calc(100dvh - 76px);
+    max-height: calc(100dvh - 76px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace--messenger > .panel--chat-only {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace--messenger > .panel--chat-only > .chat-toolbar,
+  .workspace--messenger > .panel--chat-only > .group-members-panel {
+    flex: 0 0 auto;
+  }
+
+  .workspace--messenger > .panel--chat-only > .panel--chat.panel--chat-only {
+    height: auto;
+    max-height: none;
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .workspace--messenger .messages-feed {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .workspace--messenger .composer {
+    margin-top: 8px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .workspace--messenger {
+    height: calc(100dvh - 70px);
+    max-height: calc(100dvh - 70px);
+  }
+
+  .workspace--messenger > .panel--chat-only {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .workspace--messenger > .panel--chat-only > .panel--chat.panel--chat-only {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .workspace--messenger .composer__row {
+    gap: 6px;
+  }
+
+  .workspace--messenger .composer__input {
+    min-width: 0;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 860px) {
+    .app-shell__content {
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+
+    .workspace--messenger {
+      height: calc(100svh - 76px);
+      max-height: calc(100svh - 76px);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .workspace--messenger {
+      height: calc(100svh - 70px);
+      max-height: calc(100svh - 70px);
+    }
+  }
+}

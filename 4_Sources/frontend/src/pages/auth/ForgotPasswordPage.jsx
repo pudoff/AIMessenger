@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../../api/auth';
 import Logo from '../../components/Logo';
+import logoAuth from '../../assets/logo_new.png';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSent, setIsSent] = useState(false);
@@ -44,9 +46,14 @@ function ForgotPasswordPage() {
 
     try {
       await authAPI.requestPasswordReset(cleanEmail);
-      setIsSent(true);
+      navigate('/login', {
+        replace: true,
+        state: {
+          notice: 'Если пользователь с таким email существует, письмо с дальнейшими инструкциями отправлено.',
+        },
+      });
     } catch (err) {
-      const errMsg = err.message || 'Не удалось отправить письмо. Попробуйте позже.';
+      const errMsg = normalizeForgotPasswordError(err.message || 'Не удалось отправить письмо. Попробуйте позже.');
       setError(errMsg);
       setErrorShownTime(Date.now());
     } finally {
@@ -119,6 +126,20 @@ function ForgotPasswordPage() {
       </div>
     </div>
   );
+}
+
+function normalizeForgotPasswordError(message) {
+  const text = String(message || '');
+  const lower = text.toLowerCase();
+  if (
+    lower.includes('не зарегистрировано') ||
+    lower.includes('аккаунт не найден') ||
+    lower.includes('not found') ||
+    lower.includes("doesn't exist")
+  ) {
+    return 'Аккаунт не найден. Проверьте email.';
+  }
+  return text;
 }
 
 export default ForgotPasswordPage;

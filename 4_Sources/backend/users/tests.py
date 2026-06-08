@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
@@ -273,6 +274,30 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('confirm_password', response.json()['field_errors'])
 
+    def test_password_reset_rejects_same_password(self):
+        user = User.objects.create_user(
+            username='demo',
+            password='OldPassword123',
+            email='demo@example.com',
+            is_active=True,
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        response = self.client.post(
+            reverse('api-password-reset-confirm'),
+            {
+                'uidb64': uidb64,
+                'token': token,
+                'password': 'OldPassword123',
+                'confirm_password': 'OldPassword123',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.json()['field_errors'])
+
     def test_user_can_login_with_token_endpoint(self):
         user = User.objects.create_user(username='demo', password='StrongPassword123')
 
@@ -284,6 +309,31 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()['token'], Token.objects.get(user=user).key)
+
+    @override_settings(LOGIN_MAX_FAILED_ATTEMPTS=5, LOGIN_LOCKOUT_SECONDS=900)
+    def test_login_is_blocked_after_five_invalid_password_attempts(self):
+        cache.clear()
+        User.objects.create_user(username='demo', password='StrongPassword123')
+
+        for attempt in range(5):
+            response = self.client.post(
+                reverse('api-token-auth'),
+                {'username': 'demo', 'password': 'WrongPassword123'},
+                format='json',
+                REMOTE_ADDR='127.0.0.10',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        blocked_response = self.client.post(
+            reverse('api-token-auth'),
+            {'username': 'demo', 'password': 'StrongPassword123'},
+            format='json',
+            REMOTE_ADDR='127.0.0.10',
+        )
+
+        self.assertEqual(blocked_response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        cache.clear()
 
     def test_user_can_login_with_email_token_endpoint(self):
         user = User.objects.create_user(
@@ -354,6 +404,26 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('accepted_user_agreement', response.json()['field_errors'])
         self.assertIn('accepted_privacy_policy', response.json()['field_errors'])
+
+    def test_user_cannot_register_with_unrealistic_phone_number(self):
+        response = self.client.post(
+            reverse('api-register'),
+            {
+                'username': 'demo',
+                'password': 'StrongPassword123',
+                'email': 'demo@example.com',
+                'first_name': 'Demo',
+                'last_name': 'User',
+                'birth_date': '1995-05-04',
+                'phone_number': '+70000000000',
+                'accepted_user_agreement': True,
+                'accepted_privacy_policy': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['field_errors']['phone_number'][0], 'Несуществующий номер телефона')
 
     def test_user_cannot_register_with_existing_username(self):
         User.objects.create_user(

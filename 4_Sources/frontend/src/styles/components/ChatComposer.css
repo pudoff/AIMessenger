@@ -52,6 +52,21 @@
   background: rgba(30, 42, 72, 0.12);
 }
 
+.composer__limit-hint {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.composer__error {
+  align-self: flex-start;
+  color: #b42318;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 /* В режиме только чата уменьшаем отступ composer'а и делаем его фиксированным */
 .panel--chat-only .composer {
   margin-top: 8px;

@@ -52,6 +52,36 @@ class ChatPredictorTests(unittest.TestCase):
         self.assertEqual(result["class_name"], "offtopic")
         self.assertFalse(result["needs_review"])
 
+    def test_greeting_is_statement(self):
+        for message in ("Добрый день!", "Здравствуйте", "Привет всем!"):
+            with self.subTest(message=message):
+                result = self.predictor.predict_one(message)
+
+                self.assertEqual(result["class_name"], "statement")
+                self.assertFalse(result["needs_review"])
+
+    def test_lorem_ipsum_needs_review(self):
+        result = self.predictor.predict_one("Lorem ipsum dolor sit amet")
+
+        self.assertEqual(result["class_name"], "needs_review")
+        self.assertTrue(result["needs_review"])
+        self.assertEqual(result["review_reason"], "lorem_ipsum")
+
+    def test_gibberish_needs_review(self):
+        for message in ("лоивамдо", "яывлмвлмыот"):
+            with self.subTest(message=message):
+                result = self.predictor.predict_one(message)
+
+                self.assertEqual(result["class_name"], "needs_review")
+                self.assertTrue(result["needs_review"])
+                self.assertEqual(result["review_reason"], "gibberish")
+
+    def test_pangram_without_question_mark_is_not_question(self):
+        result = self.predictor.predict_one("съешь ещё этих мягких французских булок")
+
+        self.assertEqual(result["class_name"], "statement")
+        self.assertFalse(result["needs_review"])
+
 
 if __name__ == "__main__":
     unittest.main()

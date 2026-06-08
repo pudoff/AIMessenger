@@ -1,4 +1,53 @@
 import { request } from './client';
+import { API_BASE } from './config';
+
+function buildApiFileUrl(rawUrl) {
+  if (!rawUrl) return '';
+  if (typeof window === 'undefined') return rawUrl;
+
+  const apiBase = new URL(API_BASE, window.location.origin);
+  const parsed = new URL(rawUrl, apiBase.origin);
+
+  if (parsed.pathname.startsWith('/api/')) {
+    return `${apiBase.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  }
+
+  return parsed.href;
+}
+
+function getAttachmentName(attachment) {
+  return attachment.original_name || attachment.name || 'attachment';
+}
+
+export async function downloadAttachment(attachment) {
+  const blob = await fetchAttachmentBlob(attachment);
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = getAttachmentName(attachment);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export async function fetchAttachmentBlob(attachment) {
+  const url = buildApiFileUrl(attachment.download_url || attachment.url || attachment.file_url || attachment.file);
+  if (!url) {
+    throw new Error('Файл недоступен для скачивания');
+  }
+
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Token ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error('Не удалось скачать файл');
+  }
+
+  return response.blob();
+}
 
 export const chatsAPI = {
   // Список чатов пользователя

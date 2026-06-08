@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  ATTACHMENT_TOO_LARGE_MESSAGE,
+  MESSAGE_MAX_LENGTH,
+  isAttachmentTooLarge,
+  trimMessageToLimit,
+} from '../constants/messages';
 
 const EMOJIS = ['😀', '😊', '😂', '😍', '🤔', '👍', '🙏', '👏', '🔥', '✅', '🎯', '📌', '💡', '🚀', '❤️', '☕'];
 
 function ChatComposer({ placeholder = 'Введите сообщение', onSend, disabled = false }) {
   const [value, setValue] = useState('');
   const [files, setFiles] = useState([]);
+  const [fileError, setFileError] = useState('');
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -32,10 +39,15 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
 
     const trimmed = value.trim();
     if ((!trimmed && files.length === 0) || disabled) return;
+    if (files.some(isAttachmentTooLarge)) {
+      setFileError(ATTACHMENT_TOO_LARGE_MESSAGE);
+      return;
+    }
 
     onSend(trimmed, files);
     setValue('');
     setFiles([]);
+    setFileError('');
     setIsEmojiOpen(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -48,10 +60,48 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
     }
   };
 
+  const handleChange = (event) => {
+    setValue(trimMessageToLimit(event.target.value));
+  };
+
+  const handlePaste = (event) => {
+    const pastedText = event.clipboardData?.getData('text');
+    if (!pastedText) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? value.length;
+    const end = textarea?.selectionEnd ?? value.length;
+    const selectedLength = end - start;
+    const availableLength = MESSAGE_MAX_LENGTH - (value.length - selectedLength);
+
+    if (availableLength >= pastedText.length) return;
+
+    event.preventDefault();
+    if (availableLength <= 0) return;
+
+    const insertedText = pastedText.slice(0, availableLength);
+    const nextValue = `${value.slice(0, start)}${insertedText}${value.slice(end)}`;
+    const cursorPosition = start + insertedText.length;
+
+    setValue(nextValue);
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      if (textarea) {
+        textarea.selectionStart = cursorPosition;
+        textarea.selectionEnd = cursorPosition;
+      }
+    });
+  };
+
   const insertEmoji = (emoji) => {
     const textarea = textareaRef.current;
     const start = textarea?.selectionStart ?? value.length;
     const end = textarea?.selectionEnd ?? value.length;
+    const selectedLength = end - start;
+    const availableLength = MESSAGE_MAX_LENGTH - (value.length - selectedLength);
+
+    if (availableLength < emoji.length) return;
+
     const nextValue = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
 
     setValue(nextValue);
@@ -65,7 +115,21 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
     });
   };
 
+  const handleFilesChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    const acceptedFiles = selectedFiles.filter((file) => !isAttachmentTooLarge(file));
+    const hasRejectedFiles = acceptedFiles.length !== selectedFiles.length;
+
+    setFiles((prev) => [...prev, ...acceptedFiles]);
+    setFileError(hasRejectedFiles ? ATTACHMENT_TOO_LARGE_MESSAGE : '');
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const isSubmitDisabled = disabled || (!value.trim() && files.length === 0);
+  const isAtLimit = value.length >= MESSAGE_MAX_LENGTH;
 
   return (
     <form className="composer composer--stack" onSubmit={handleSubmit} ref={composerRef}>
@@ -74,7 +138,7 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
         className="composer__file-input"
         type="file"
         multiple
-        onChange={(event) => setFiles(Array.from(event.target.files || []))}
+        onChange={handleFilesChange}
       />
 
       {files.length > 0 && (
@@ -87,6 +151,18 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
               </button>
             </span>
           ))}
+        </div>
+      )}
+
+      {fileError && (
+        <div className="composer__error" role="alert">
+          {fileError}
+        </div>
+      )}
+
+      {isAtLimit && (
+        <div className="composer__limit-hint" role="status">
+          Достигнут лимит 4000 символов. Отправьте это сообщение и продолжите следующим.
         </div>
       )}
 
@@ -128,10 +204,12 @@ function ChatComposer({ placeholder = 'Введите сообщение', onSen
           ref={textareaRef}
           className="composer__input"
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={handleChange}
+          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={1}
+          maxLength={MESSAGE_MAX_LENGTH}
           disabled={disabled}
         />
 

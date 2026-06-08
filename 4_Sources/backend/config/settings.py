@@ -141,6 +141,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+PASSWORD_RESET_TIMEOUT = int(os.getenv('PASSWORD_RESET_TIMEOUT', str(60 * 60)))
+LOGIN_MAX_FAILED_ATTEMPTS = int(os.getenv('LOGIN_MAX_FAILED_ATTEMPTS', '5'))
+LOGIN_LOCKOUT_SECONDS = int(os.getenv('LOGIN_LOCKOUT_SECONDS', str(15 * 60)))
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -162,9 +166,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.getenv('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 SERVE_MEDIA_FILES = os.getenv('SERVE_MEDIA_FILES', 'True').lower() == 'true'
-MAX_UPLOAD_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_SIZE_BYTES', str(20 * 1024 * 1024)))
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv('MAX_UPLOAD_SIZE_BYTES', str(1536 * 1024 * 1024)))
 MAX_AVATAR_SIZE_BYTES = int(os.getenv('MAX_AVATAR_SIZE_BYTES', str(5 * 1024 * 1024)))
 MAX_ATTACHMENTS_PER_MESSAGE = int(os.getenv('MAX_ATTACHMENTS_PER_MESSAGE', '5'))
+MESSAGE_MAX_LENGTH = int(os.getenv('MESSAGE_MAX_LENGTH', '4000'))
 ALLOWED_ATTACHMENT_CONTENT_TYPES = env_list(
     'ALLOWED_ATTACHMENT_CONTENT_TYPES',
     (
@@ -278,4 +283,35 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Auth, users, contacts, chats, messages, async ML classification and semantic search.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+}
+
+DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "[{asctime}] [{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "config.media_views": {
+            "handlers": ["console"],
+            "level": DJANGO_LOG_LEVEL,
+            "propagate": False,
+        },
+        "messages": {
+            "handlers": ["console"],
+            "level": DJANGO_LOG_LEVEL,
+            "propagate": False,
+        },
+    },
 }

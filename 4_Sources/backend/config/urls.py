@@ -16,12 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf import settings
-from django.conf.urls.static import static
-from django.urls import include, path
+from django.urls import include, path, re_path
 from rest_framework.routers import DefaultRouter
 
 from chats.views import ChatMemberViewSet, ChatViewSet
-from messages.views import MessageViewSet, SemanticSearchView
+from config.media_views import serve_media_file
+from messages.views import MessageAttachmentDownloadView, MessageViewSet, SemanticSearchView
 from users.views import AdminEmailBroadcastView, AdminEventsView, ConfirmRegistrationView, ContactViewSet, CurrentUserView, EmailOrUsernameAuthTokenView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView, UserSearchViewSet, UserViewSet
 
 router = DefaultRouter()
@@ -42,13 +42,16 @@ urlpatterns = [
     path('api/password-reset/', PasswordResetRequestView.as_view(), name='api-password-reset'),
     path('api/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='api-password-reset-confirm'),
     path('api/me/', CurrentUserView.as_view(), name='api-me'),
+    path('api/messages/attachments/<int:pk>/download/', MessageAttachmentDownloadView.as_view(), name='api-message-attachment-download'),
     path('api/search/semantic/', SemanticSearchView.as_view(), name='api-search-semantic'),
     path('api/admin/events/', AdminEventsView.as_view(), name='api-admin-events'),
     path('api/admin/email/broadcast/', AdminEmailBroadcastView.as_view(), name='api-admin-email-broadcast'),
 ]
 
 if settings.DEBUG or settings.SERVE_MEDIA_FILES:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve_media_file, name='media-file'),
+    ]
 
 try:
     from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView

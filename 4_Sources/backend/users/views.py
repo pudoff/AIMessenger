@@ -1,7 +1,9 @@
 import logging
+import hashlib
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
@@ -39,17 +41,69 @@ class EmailDeliveryError(APIException):
     default_code = 'email_delivery_failed'
 
 
+class LoginAttemptsExceeded(APIException):
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    default_detail = 'Превышен лимит попыток входа. Попробуйте снова через 15 минут.'
+    default_code = 'login_attempts_exceeded'
+
+
 class EmailOrUsernameAuthTokenView(ObtainAuthToken):
     serializer_class = EmailOrUsernameAuthTokenSerializer
 
     def post(self, request, *args, **kwargs):
+        identifier = str(request.data.get('username', '')).strip().lower()
+        if identifier and self._is_login_blocked(request, identifier):
+            raise LoginAttemptsExceeded()
+
         serializer = self.serializer_class(
             data=request.data,
             context={'request': request},
         )
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError:
+            if identifier and self._identifier_exists(identifier):
+                self._record_failed_login(request, identifier)
+            raise
+
+        if identifier:
+            self._clear_login_attempts(request, identifier)
         token, _ = Token.objects.get_or_create(user=serializer.validated_data['user'])
         return Response({'token': token.key})
+
+    @staticmethod
+    def _identifier_exists(identifier):
+        if '@' in identifier:
+            return User.objects.filter(email__iexact=identifier).exists()
+        return User.objects.filter(username__iexact=identifier).exists()
+
+    @staticmethod
+    def _client_ip(request):
+        forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        if forwarded_for:
+            return forwarded_for.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR', '')
+
+    def _login_cache_key(self, request, identifier, suffix):
+        raw_key = f'{identifier}:{self._client_ip(request)}'
+        digest = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+        return f'auth:{suffix}:{digest}'
+
+    def _is_login_blocked(self, request, identifier):
+        return bool(cache.get(self._login_cache_key(request, identifier, 'blocked')))
+
+    def _record_failed_login(self, request, identifier):
+        attempts_key = self._login_cache_key(request, identifier, 'attempts')
+        blocked_key = self._login_cache_key(request, identifier, 'blocked')
+        attempts = int(cache.get(attempts_key, 0)) + 1
+        cache.set(attempts_key, attempts, settings.LOGIN_LOCKOUT_SECONDS)
+        if attempts >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
+            cache.set(blocked_key, True, settings.LOGIN_LOCKOUT_SECONDS)
+            raise LoginAttemptsExceeded()
+
+    def _clear_login_attempts(self, request, identifier):
+        cache.delete(self._login_cache_key(request, identifier, 'attempts'))
+        cache.delete(self._login_cache_key(request, identifier, 'blocked'))
 
 
 def frontend_url(path):
@@ -323,7 +377,7 @@ class PasswordResetConfirmView(views.APIView):
             'token': request.query_params.get('token', ''),
             'password': 'TemporaryCheck123!',
             'confirm_password': 'TemporaryCheck123!',
-        })
+        }, context={'validate_link_only': True})
         serializer.is_valid(raise_exception=True)
         return Response({'detail': 'Password reset link is valid.'})
 

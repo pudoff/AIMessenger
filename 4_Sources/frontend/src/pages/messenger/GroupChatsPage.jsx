@@ -8,8 +8,10 @@ import ChatPageShell from '../../components/chat/ChatPageShell';
 import ChatHeader from '../../components/chat/ChatHeader';
 import ChatList from '../../components/chat/ChatList';
 import ChatRoom from '../../components/chat/ChatRoom';
+import SearchHighlight from '../../components/SearchHighlight';
 import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
+import { getLastApiMessageId, isNetworkSendError } from '../../utils/messageDelivery';
 
 const SEMANTIC_SCORE_THRESHOLD = 0.6;
 
@@ -70,6 +72,7 @@ function GroupChatsPage() {
   const [semanticResults, setSemanticResults] = useState([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
   const [hasSemanticSearched, setHasSemanticSearched] = useState(false);
+  const [isSemanticResultsOpen, setIsSemanticResultsOpen] = useState(true);
   const [focusedMessageId, setFocusedMessageId] = useState(null);
   const [activeSemanticIndex, setActiveSemanticIndex] = useState(-1);
   const [chatMembers, setChatMembers] = useState([]);
@@ -88,6 +91,8 @@ function GroupChatsPage() {
   const endRef = useRef(null);
   const pendingMessagesRef = useRef([]);
   const messagesRef = useRef([]);
+  const outboxRef = useRef([]);
+  const isFlushingOutboxRef = useRef(false);
   const lastMarkedReadMessageRef = useRef(null);
   const hasLoadedMessagesRef = useRef(false);
   const isFetchingMessagesRef = useRef(false);
@@ -125,6 +130,7 @@ function GroupChatsPage() {
     setLoadingMessages(false);
     setSemanticResults([]);
     setHasSemanticSearched(false);
+    setIsSemanticResultsOpen(true);
     setFocusedMessageId(null);
     setActiveSemanticIndex(-1);
   }, [chatId]);
@@ -200,18 +206,18 @@ function GroupChatsPage() {
 
         setMessages(mergedMessages);
         hasLoadedMessagesRef.current = true;
-        const lastMessage = mergedMessages[mergedMessages.length - 1];
-        if (lastMessage?.id) {
-          if (String(lastMarkedReadMessageRef.current) === String(lastMessage.id)) {
+        const lastMessageId = getLastApiMessageId(mergedMessages);
+        if (lastMessageId) {
+          if (String(lastMarkedReadMessageRef.current) === String(lastMessageId)) {
             setMessageError(null);
             return;
           }
-          lastMarkedReadMessageRef.current = lastMessage.id;
-          chatsAPI.markRead(chatId, lastMessage.id).catch((e) => {
+          lastMarkedReadMessageRef.current = lastMessageId;
+          chatsAPI.markRead(chatId, lastMessageId).catch((e) => {
             lastMarkedReadMessageRef.current = null;
             console.error('Не удалось отметить групповой чат прочитанным:', e);
           });
-          markChatRead('group', chatId, lastMessage.id);
+          markChatRead('group', chatId, lastMessageId);
           setGroups((prev) => prev.map((group) => (
             String(group.id) === String(chatId)
               ? { ...group, hasUnread: false, unreadCount: 0 }
@@ -317,14 +323,27 @@ function GroupChatsPage() {
       optimisticCreatedAt,
       created_at: optimisticCreatedAt,
       tag: 'default',
-      readStatus: 'sent',
+      readStatus: navigator.onLine ? 'sending' : 'queued',
       sender_avatar_url: currentUser?.avatar_url || null,
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
     setPendingMessages((prev) => [...prev, optimisticMessage]);
-    registerOutgoingMessage('group', chatId, tempId);
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    const queuedItem = {
+      tempId,
+      chatId,
+      text,
+      files,
+      optimisticAttachments,
+    };
+
+    if (!navigator.onLine) {
+      outboxRef.current = [...outboxRef.current, queuedItem];
+      setMessageError('Нет интернет-соединения. Сообщение не отправлено и будет отправлено автоматически после восстановления сети.');
+      return;
+    }
 
     try {
       setIsSending(true);
@@ -345,6 +364,14 @@ function GroupChatsPage() {
         setMessageError(null);
       }
     } catch (e) {
+      if (isNetworkSendError(e)) {
+        outboxRef.current = [...outboxRef.current, queuedItem];
+        setMessageError('Нет интернет-соединения. Сообщение не отправлено и будет отправлено автоматически после восстановления сети.');
+        setMessages((prev) => prev.map((message) => (
+          message.id === tempId ? { ...message, error: false, isOwn: true, readStatus: 'queued' } : message
+        )));
+        return;
+      }
       console.error('Ошибка отправки сообщения:', e);
       setMessageError('Не удалось отправить сообщение: ' + e.message);
       setMessages((prev) => prev.map((message) => (
@@ -355,6 +382,65 @@ function GroupChatsPage() {
       setIsSending(false);
     }
   };
+
+  const flushOutbox = async () => {
+    if (!myId || isFlushingOutboxRef.current || outboxRef.current.length === 0 || !navigator.onLine) {
+      return;
+    }
+
+    isFlushingOutboxRef.current = true;
+    setIsSending(true);
+    while (outboxRef.current.length > 0 && navigator.onLine) {
+      const item = outboxRef.current[0];
+      setMessages((prev) => prev.map((message) => (
+        message.id === item.tempId ? { ...message, readStatus: 'sending', error: false } : message
+      )));
+
+      try {
+        const res = await messagesAPI.send({
+          chat: parseInt(item.chatId, 10),
+          text: item.text,
+          message_type: 'default',
+          attachments: item.files,
+        });
+
+        item.optimisticAttachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview_url));
+        outboxRef.current = outboxRef.current.slice(1);
+        setPendingMessages((prev) => prev.filter((pending) => pending.id !== item.tempId));
+        registerOutgoingMessage('group', item.chatId, res.id);
+        setMessages((prev) => prev.map((message) => (
+          message.id === item.tempId ? formatMessage(res, myId) : message
+        )));
+        setMessageError(null);
+      } catch (e) {
+        if (isNetworkSendError(e)) {
+          setMessages((prev) => prev.map((message) => (
+            message.id === item.tempId ? { ...message, readStatus: 'queued', error: false } : message
+          )));
+          setMessageError('Нет интернет-соединения. Сообщение не отправлено и будет отправлено автоматически после восстановления сети.');
+          break;
+        }
+
+        item.optimisticAttachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview_url));
+        outboxRef.current = outboxRef.current.slice(1);
+        setMessages((prev) => prev.map((message) => (
+          message.id === item.tempId ? { ...message, error: true, readStatus: 'error' } : message
+        )));
+        setMessageError('Не удалось отправить сообщение: ' + e.message);
+      }
+    }
+    setIsSending(false);
+    isFlushingOutboxRef.current = false;
+  };
+
+  useEffect(() => {
+    const handleOnline = () => {
+      flushOutbox();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  });
 
   const handleSelectGroup = (id) => {
     setLastSelectedGroupId(String(id));
@@ -429,10 +515,19 @@ function GroupChatsPage() {
     setHasSemanticSearched(true);
     try {
       const data = await messagesAPI.semanticSearch({ q: query, chat: chatId, limit: 8 });
-      const results = (data.results || []).filter((result) => Number(result.similarity_score || 0) >= SEMANTIC_SCORE_THRESHOLD);
+      const rawResults = data.results || [];
+      const hasFuzzyResults = rawResults.some((result) => result.search_mode === 'fuzzy');
+      const results = rawResults.filter((result) => (
+        Number(result.similarity_score || 0) >= SEMANTIC_SCORE_THRESHOLD
+        && (!hasFuzzyResults || result.search_mode === 'fuzzy')
+      ));
       setSemanticResults(results);
+      setIsSemanticResultsOpen(true);
       setActiveSemanticIndex(results.length ? 0 : -1);
-      setFocusedMessageId(results[0]?.message_id || null);
+      setFocusedMessageId(null);
+      if (results[0]?.message_id) {
+        setTimeout(() => setFocusedMessageId(results[0].message_id), 0);
+      }
     } catch (e) {
       setMessageError(`Не удалось выполнить семантический поиск: ${e.message}`);
     } finally {
@@ -444,7 +539,8 @@ function GroupChatsPage() {
     if (!semanticResults.length) return;
     const normalizedIndex = (index + semanticResults.length) % semanticResults.length;
     setActiveSemanticIndex(normalizedIndex);
-    setFocusedMessageId(semanticResults[normalizedIndex].message_id);
+    setFocusedMessageId(null);
+    setTimeout(() => setFocusedMessageId(semanticResults[normalizedIndex].message_id), 0);
   };
 
   const semanticSearchNode = (
@@ -457,7 +553,16 @@ function GroupChatsPage() {
       <button className="secondary-button" type="submit" disabled={semanticLoading || !semanticQuery.trim()}>
         {semanticLoading ? 'Поиск...' : 'Найти'}
       </button>
-      {semanticResults.length > 0 && (
+      {hasSemanticSearched && semanticResults.length > 0 && !isSemanticResultsOpen && (
+        <button
+          className="secondary-button chat-semantic-search__toggle"
+          type="button"
+          onClick={() => setIsSemanticResultsOpen(true)}
+        >
+          Показать результаты ({semanticResults.length})
+        </button>
+      )}
+      {semanticResults.length > 0 && isSemanticResultsOpen && (
         <div className="chat-semantic-search__nav">
           <button className="secondary-button" type="button" onClick={() => focusSemanticResult(activeSemanticIndex - 1)}>
             ↑
@@ -466,9 +571,12 @@ function GroupChatsPage() {
             ↓
           </button>
           <span>{activeSemanticIndex + 1} / {semanticResults.length}</span>
+          <button className="secondary-button" type="button" onClick={() => setIsSemanticResultsOpen(false)}>
+            Скрыть
+          </button>
         </div>
       )}
-      {semanticResults.length > 0 && (
+      {semanticResults.length > 0 && isSemanticResultsOpen && (
         <div className="chat-semantic-search__results">
           {semanticResults.map((result, index) => (
             <button
@@ -478,12 +586,14 @@ function GroupChatsPage() {
               onClick={() => focusSemanticResult(index)}
             >
               <strong>{Math.max(0, Math.min(100, Math.round((result.similarity_score || 0) * 100)))}%</strong>
-              <span>{result.text}</span>
+              <span>
+                <SearchHighlight text={result.text} terms={result.matched_terms || []} />
+              </span>
             </button>
           ))}
         </div>
       )}
-      {!semanticLoading && hasSemanticSearched && semanticQuery.trim() && semanticResults.length === 0 && (
+      {!semanticLoading && hasSemanticSearched && isSemanticResultsOpen && semanticQuery.trim() && semanticResults.length === 0 && (
         <div className="chat-semantic-search__empty">Нет совпадений от 60%</div>
       )}
     </form>

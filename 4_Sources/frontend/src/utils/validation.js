@@ -23,6 +23,7 @@ export const validateField = (name, value, form = {}) => {
     case 'phone':
       if (!value) return 'Это поле обязательно';
       if (value.length !== 10) return 'Введите 10 цифр номера';
+      if (isUnrealisticPhoneNumber(value)) return 'Несуществующий номер телефона';
       return null;
 
     case 'birthDate':
@@ -84,6 +85,13 @@ export const parseBackendErrors = (errors) => {
       : normalizeBackendFieldMessage(frontendField, messages);
   }
   return mapped;
+};
+
+const isUnrealisticPhoneNumber = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length !== 10) return true;
+  if (new Set(digits).size === 1) return true;
+  return ['0123456789', '1234567890', '9876543210'].includes(digits);
 };
 
 const normalizeBackendFieldMessage = (field, message) => {

@@ -25,6 +25,95 @@ LEGACY_LABELS = {
     2: "task",
     3: "offtopic",
 }
+LOREM_WORDS = {"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit"}
+COMMON_RU_WORDS = {
+    "а",
+    "в",
+    "вы",
+    "да",
+    "для",
+    "еще",
+    "и",
+    "как",
+    "мне",
+    "мы",
+    "на",
+    "не",
+    "но",
+    "он",
+    "она",
+    "они",
+    "по",
+    "с",
+    "ты",
+    "у",
+    "что",
+    "это",
+    "этих",
+    "я",
+}
+KNOWN_RU_FRAGMENTS = (
+    "аналит",
+    "булок",
+    "вопрос",
+    "дела",
+    "день",
+    "документ",
+    "задач",
+    "мессендж",
+    "мягк",
+    "отчет",
+    "парол",
+    "письм",
+    "пользоват",
+    "проект",
+    "регистрац",
+    "сообщ",
+    "тест",
+    "файл",
+    "француз",
+    "чат",
+)
+QUESTION_WORDS = (
+    "как",
+    "что",
+    "когда",
+    "почему",
+    "зачем",
+    "где",
+    "куда",
+    "кто",
+    "какой",
+    "какая",
+    "какие",
+    "сколько",
+    "можешь",
+    "сможешь",
+    "можно",
+    "which",
+    "what",
+    "when",
+    "why",
+    "how",
+    "where",
+    "who",
+)
+QUESTION_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(word) for word in QUESTION_WORDS) + r")(?!\w)",
+    re.IGNORECASE,
+)
+GREETING_RE = re.compile(
+    r"^\s*(?:"
+    r"добрый\s+(?:день|вечер)|"
+    r"доброе\s+утро|"
+    r"доброго\s+дня|"
+    r"здравствуйте|"
+    r"привет|"
+    r"приветствую|"
+    r"hello|hi|good\s+(?:morning|afternoon|evening)"
+    r")(?:[\s,!.]*(?:всем|коллеги|команда|друзья|ребята|товарищи))*[\s!.]*$",
+    re.IGNORECASE,
+)
 TOXIC_PATTERNS = (
     r"\bдурак\b",
     r"\bдура\b",
@@ -121,10 +210,19 @@ class ChatPredictor:
         if rule_label:
             return self._rule_result(text, rule_label)
 
+        review_reason = self._review_reason(text)
+        if review_reason:
+            return self._needs_review(text, confidence=0.35, reason=review_reason)
+
         raw_prediction = self.model.predict([text])[0]
         probabilities = self._predict_probabilities(text)
         predicted_class = self._to_class_name(raw_prediction)
         confidence = float(probabilities.get(predicted_class, 0.0))
+
+        if predicted_class == "question" and not self._has_question_signal(text):
+            predicted_class = "statement"
+            confidence = max(min(confidence, 0.72), 0.62)
+            probabilities["statement"] = max(probabilities.get("statement", 0.0), confidence)
 
         if confidence < self.confidence_threshold:
             result = self._needs_review(text, confidence=confidence, reason="low_confidence")
@@ -201,6 +299,8 @@ class ChatPredictor:
         lowered = text.lower().replace("ё", "е")
         if any(re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in TOXIC_PATTERNS):
             return "offtopic"
+        if GREETING_RE.search(lowered):
+            return "statement"
         if IMPERATIVE_RE.search(lowered):
             return "task"
         return None
@@ -213,6 +313,48 @@ class ChatPredictor:
     @staticmethod
     def _clean_message(message: str) -> str:
         return str(message or "").strip()
+
+    @classmethod
+    def _review_reason(cls, text: str) -> str | None:
+        if cls._is_lorem_text(text):
+            return "lorem_ipsum"
+        if cls._looks_like_gibberish(text):
+            return "gibberish"
+        return None
+
+    @staticmethod
+    def _tokens(text: str, pattern: str = r"[a-zа-яё]+") -> list[str]:
+        return re.findall(pattern, text or "", flags=re.IGNORECASE)
+
+    @classmethod
+    def _is_lorem_text(cls, text: str) -> bool:
+        latin_tokens = [token.lower() for token in cls._tokens(text, r"[a-z]+")]
+        return sum(1 for token in latin_tokens if token in LOREM_WORDS) >= 2
+
+    @classmethod
+    def _looks_like_gibberish(cls, text: str) -> bool:
+        cyrillic_tokens = [token.lower().replace("ё", "е") for token in cls._tokens(text, r"[а-яё]+")]
+        if not cyrillic_tokens:
+            return False
+        if any(cls._has_known_ru_signal(token) for token in cyrillic_tokens):
+            return False
+
+        long_tokens = [token for token in cyrillic_tokens if len(token) >= 6]
+        if not long_tokens:
+            return False
+        if len(cyrillic_tokens) == 1:
+            return True
+        return len(long_tokens) / len(cyrillic_tokens) >= 0.6
+
+    @staticmethod
+    def _has_known_ru_signal(token: str) -> bool:
+        normalized = token.lower().replace("ё", "е")
+        return normalized in COMMON_RU_WORDS or any(fragment in normalized for fragment in KNOWN_RU_FRAGMENTS)
+
+    @staticmethod
+    def _has_question_signal(text: str) -> bool:
+        lowered = (text or "").lower().replace("ё", "е")
+        return "?" in lowered or bool(QUESTION_RE.search(lowered))
 
 
 if __name__ == "__main__":
