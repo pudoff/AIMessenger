@@ -20,7 +20,7 @@ const items = [
   { to: '/app/settings', label: 'Настройки', icon: settingsIcon },
 ];
 
-function SidebarNav() {
+function SidebarNav({ onNavigate }) {
   const { currentUser, logout } = useAuth();
   const { getSectionUnreadCount } = useUnread();
   const navigate = useNavigate();
@@ -38,7 +38,10 @@ function SidebarNav() {
       <button
         className="primary-button shell-sidebar__new-chat"
         type="button"
-        onClick={() => navigate('/app/contacts')}
+        onClick={() => {
+          navigate('/app/contacts');
+          onNavigate?.();
+        }}
         title="Найти контакт и начать личный чат"
       >
         Новый чат
@@ -75,6 +78,7 @@ function SidebarNav() {
               className={({ isActive }) =>
                 `shell-nav__item ${isActive ? 'shell-nav__item--active' : ''}`
               }
+              onClick={onNavigate}
             >
               <span className="shell-nav__icon" aria-hidden="true">
                 <img src={item.icon} alt="" />
@@ -93,7 +97,14 @@ function SidebarNav() {
         </div>
       </div>
 
-      <button className="secondary-button" type="button" onClick={logout}>
+      <button
+        className="secondary-button"
+        type="button"
+        onClick={() => {
+          logout();
+          onNavigate?.();
+        }}
+      >
         Выйти
       </button>
     </aside>

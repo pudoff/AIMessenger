@@ -55,7 +55,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from config import ml_tasks
-from .classification import classify_text
+from .classification import classify_text, postprocess_classification_result
 from .models import Message, MessageClassification, MessageEmbedding
 
 
@@ -158,6 +158,7 @@ def classify_message_task(self, message_id):
     else:
         error_message = ""
 
+    result = postprocess_classification_result(message.text, result)
     probabilities = result.get("probabilities") or {}
     confidence = float(result.get("confidence") or result.get("max_probability") or 0)
     label = result.get("class_name") or result.get("label")

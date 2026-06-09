@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; //  добавили useEffect
+import { useState, useEffect, useRef } from 'react'; //  добавили useEffect
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { formatPhone, cleanPhone } from '../../utils/phoneMask';
@@ -9,6 +9,39 @@ import Logo from '../../components/Logo';
 import LegalModal from '../../components/auth/LegalModal';
 
 const REGISTER_DRAFT_KEY = 'register_form_draft';
+const EXISTING_ACCOUNT_ERROR = 'Пользователь существует. Если вы забыли пароль, перейдите по ссылке';
+
+const isExistingAccountError = (message) => {
+  if (typeof message !== 'string') return false;
+  const lower = message.toLowerCase();
+  return lower.includes('существ') || lower.includes('занят');
+};
+
+const isBackendExistingAccountError = (message) => {
+  if (typeof message !== 'string') return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('существ')
+    || lower.includes('занят')
+    || lower.includes('зарегистрирован')
+    || lower.includes('already exists')
+    || isExistingAccountError(message)
+  );
+};
+
+const serverErrorLabels = {
+  _global: 'Ошибка',
+  username: 'Логин',
+  email: 'E-mail',
+  phone: 'Телефон',
+  password: 'Пароль',
+  confirmPassword: 'Повторите пароль',
+  firstName: 'Имя',
+  lastName: 'Фамилия',
+  birthDate: 'Дата рождения',
+  accepted_user_agreement: 'Пользовательское соглашение',
+  accepted_privacy_policy: 'Политика конфиденциальности',
+};
 
 const emptyForm = {
   firstName: '',
@@ -53,6 +86,18 @@ const getCurrentFormErrors = (formValues, extraErrors = {}) => {
   return errors;
 };
 
+const getSummaryErrorEntries = (errors = {}, fallbackMessage = '') => {
+  const fieldEntries = Object.entries(errors)
+    .filter(([field, message]) => field !== '_global' && message);
+
+  if (fieldEntries.length > 0) {
+    return fieldEntries;
+  }
+
+  const globalMessage = errors._global || fallbackMessage;
+  return globalMessage ? [['_global', globalMessage]] : [];
+};
+
 function RegisterPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -66,7 +111,10 @@ function RegisterPage() {
   const [touched, setTouched] = useState({}); //  Отслеживаем, было ли поле сфокусировано
   const [activeModal, setActiveModal] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [backendErrorSummary, setBackendErrorSummary] = useState([]);
+  const [showPasswordResetLink, setShowPasswordResetLink] = useState(false);
   const [errorShownTime, setErrorShownTime] = useState(null);
+  const errorSummaryRef = useRef(null);
   
   // Отслеживать глобальную ошибку - гарантировать видимость
   useEffect(() => {
@@ -111,6 +159,12 @@ function RegisterPage() {
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
     setSubmitError('');
+    setBackendErrorSummary(prev => {
+      const relatedFields = new Set([name, '_global']);
+      if (name === 'password') relatedFields.add('confirmPassword');
+      if (name === 'confirmPassword') relatedFields.add('password');
+      return prev.filter(([field]) => !relatedFields.has(field));
+    });
     setServerErrors(prev => {
       const next = { ...prev };
       delete next[name];
@@ -144,6 +198,8 @@ function RegisterPage() {
     event.preventDefault();
     clearError();
     setSubmitError('');
+    setBackendErrorSummary([]);
+    setShowPasswordResetLink(false);
     setServerErrors({});
     
     //  Валидируем ВСЕ поля перед отправкой
@@ -191,43 +247,44 @@ function RegisterPage() {
       setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
 
       const backendErrors = parseBackendErrors(result.errors || {});
-      const existingAccountError = [backendErrors.username, backendErrors.email]
-        .find((message) => typeof message === 'string' && message.toLowerCase().includes('существ'));
-
-      if (existingAccountError) {
-        navigate('/login', {
-          replace: true,
-          state: {
-            error: `${existingAccountError} Попробуйте войти или восстановить доступ.`,
-          },
-        });
-        return;
-      }
+      const existingAccountError = [backendErrors.username, backendErrors.email, backendErrors.phone]
+        .find(isBackendExistingAccountError);
+      const fallbackError = (
+        existingAccountError ? EXISTING_ACCOUNT_ERROR :
+        backendErrors._global ||
+        backendErrors.username ||
+        backendErrors.email ||
+        backendErrors.phone ||
+        result.message ||
+        'Не удалось зарегистрироваться. Проверьте данные и попробуйте еще раз.'
+      );
 
       setServerErrors(backendErrors);
+      setBackendErrorSummary(getSummaryErrorEntries(backendErrors, fallbackError));
       setFieldErrors(prev => ({ ...prev, ...backendErrors }));
       setTouched(prev => ({
         ...prev,
         ...Object.keys(backendErrors).reduce((acc, field) => ({ ...acc, [field]: true }), {}),
       }));
-      setSubmitError(
-        backendErrors._global ||
-        backendErrors.username ||
-        backendErrors.email ||
-        result.message ||
-        'Не удалось зарегистрироваться. Проверьте данные и попробуйте еще раз.'
-      );
-      
-      const firstBackendError = Object.keys(backendErrors).find((field) => field !== '_global');
-      if (firstBackendError) {
-        const element = document.querySelector(`[name="${firstBackendError}"]`);
-        element?.focus();
-      }
+      setShowPasswordResetLink(!!existingAccountError);
+      setSubmitError(fallbackError);
     }
   };
 
-  const currentFormErrors = getCurrentFormErrors(form, serverErrors);
-  const isFormValid = Object.keys(currentFormErrors).length === 0;
+  const serverErrorEntries = backendErrorSummary.length > 0
+    ? backendErrorSummary
+    : getSummaryErrorEntries(serverErrors);
+  const hasRegistrationError = Boolean(submitError) || serverErrorEntries.length > 0;
+
+  useEffect(() => {
+    if (!hasRegistrationError) return;
+
+    const timeoutId = window.setTimeout(() => {
+      errorSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [hasRegistrationError]);
 
   // ─────────────────────────────────────────────────────────
   //  Экран успеха
@@ -284,6 +341,26 @@ function RegisterPage() {
         )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate> {/*  noValidate отключаем браузерную валидацию */}
+          {hasRegistrationError && (
+            <div ref={errorSummaryRef} className="form-error form-error--summary" role="alert">
+              <strong>Не удалось зарегистрироваться:</strong>
+              {submitError && <p className="form-error__message">{submitError}</p>}
+              {serverErrorEntries.length > 0 && (
+                <ul className="form-error__list">
+                  {serverErrorEntries.map(([field, message]) => (
+                    <li key={field}>
+                      <span>{serverErrorLabels[field] || field}:</span> {message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {showPasswordResetLink && (
+                <Link to="/forgot-password" className="auth-form__footer-link">
+                  Восстановить доступ
+                </Link>
+              )}
+            </div>
+          )}
           
           {/* Имя и Фамилия */}
           <div className="auth-form__row">
@@ -511,19 +588,12 @@ function RegisterPage() {
             </div>
           </div>
 
-          {/* Глобальная ошибка (не по полям) */}
-          {submitError && (
-            <div className="form-error">
-              {submitError}{' '}
-              <Link to="/login" className="auth-form__footer-link">Перейти ко входу</Link>
-            </div>
-          )}
           {globalError && <div className="form-error">{globalError}</div>}
 
           <button 
             className="primary-button auth-form__submit" 
             type="submit" 
-            disabled={!isFormValid || loading}
+            disabled={loading}
             aria-busy={loading}
           >
             {loading ? 'Регистрация...' : 'Зарегистрироваться'}

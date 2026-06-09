@@ -1,11 +1,21 @@
 # API Контракты — AI Messenger (MVP)
 
+## Общие правила
+
+API использует **DRF Token Authentication**. Во всех защищённых запросах frontend передаёт заголовок:
+
+```http
+Authorization: Token <token>
+```
+
+Если токен отсутствует или невалиден, backend возвращает `401 Unauthorized`. Если у пользователя нет прав, возвращается `403 Forbidden`. Если объект не найден или скрыт по правам доступа, возвращается `404 Not Found`.
+
+---
 
 ## Глобальный формат ошибок
 
-Все ошибки DRF возвращают JSON. Фронтенд должен различать три формата:
-
 ### Ошибка аутентификации — 401
+
 ```json
 {
   "detail": "Authentication credentials were not provided."
@@ -13,20 +23,23 @@
 ```
 
 ### Ошибка прав — 403
+
 ```json
 {
   "detail": "You do not have permission to perform this action."
 }
 ```
 
-### Объект не найден (или скрыт правами) — 404
+### Объект не найден — 404
+
 ```json
 {
   "detail": "No Chat matches the given query."
 }
 ```
 
-### Ошибки валидации полей — 400
+### Ошибки валидации — 400
+
 ```json
 {
   "username": ["A user with that username already exists."],
@@ -34,9 +47,11 @@
   "non_field_errors": ["Unable to log in with provided credentials."]
 }
 ```
-> `non_field_errors` — ошибки, не относящиеся к конкретному полю (например, неверная связка login/password).
+
+`non_field_errors` используются для ошибок, не связанных с конкретным полем, например неверная пара login/password.
 
 ### Серверная ошибка — 500
+
 ```json
 {
   "detail": "Internal Server Error."
@@ -45,15 +60,15 @@
 
 ---
 
-## Таблица прав доступа
+## Таблица ролей
 
 | Роль | Описание |
-|------|----------|
-| `anonymous` | Не авторизован. Только публичные эндпоинты. |
-| `user` | Аутентифицирован. Видит только свои данные. |
+|---|---|
+| `anonymous` | Не авторизован. Доступны только публичные эндпоинты. |
+| `user` | Аутентифицированный пользователь. Видит только свои данные и чаты. |
 | `chat_member` | Участник конкретного чата. |
 | `chat_owner` | Участник с ролью `owner` или `admin` в конкретном чате. |
-| `staff` | Django staff/superuser. Полный доступ. |
+| `staff` | Django staff / superuser. Полный доступ. |
 
 ---
 
@@ -64,12 +79,12 @@
 **Auth:** не требуется  
 **Доступ:** `anonymous`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `username` | string | ✅ | Логин пользователя |
-| `password` | string | ✅ | Пароль |
+|---|---|---:|---|
+| `username` | string | да | Логин пользователя |
+| `password` | string | да | Пароль |
 
 ```json
 {
@@ -78,16 +93,18 @@
 }
 ```
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"
 }
 ```
-> После успешного ответа frontend сохраняет `token` и отправляет его во всех защищённых запросах:  
-> `Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b`
 
-**Response 400 Bad Request** — неверные учётные данные:
+После успешного ответа frontend сохраняет токен и отправляет его во всех защищённых запросах.
+
+#### Response 400 Bad Request
+
 ```json
 {
   "non_field_errors": [
@@ -96,33 +113,33 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Токен выдан |
-| 400 | Неверный username / password |
+| 400 | Неверные username / password |
 
 ---
 
-### `POST /api/register/` — Регистрация
+### `POST /api/auth/register/` — Регистрация
 
 **Auth:** не требуется  
 **Доступ:** `anonymous`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `username` | string | ✅ | Уникальный логин |
-| `password` | string | ✅ | Пароль (мин. 8 символов) |
-| `email` | string (email) | ✅ | Уникальный email |
-| `first_name` | string | ✅ | Имя |
-| `last_name` | string | ✅ | Фамилия |
-| `birth_date` | string (YYYY-MM-DD) | ✅ | Дата рождения |
-| `phone_number` | string | ✅ | Уникальный номер, формат `+7XXXXXXXXXX` |
-| `accepted_user_agreement` | boolean | ✅ | Должно быть `true` |
-| `accepted_privacy_policy` | boolean | ✅ | Должно быть `true` |
+|---|---|---:|---|
+| `username` | string | да | Уникальный логин |
+| `password` | string | да | Пароль, минимум 8 символов |
+| `email` | string | да | Уникальный email |
+| `first_name` | string | да | Имя |
+| `last_name` | string | да | Фамилия |
+| `birth_date` | string (YYYY-MM-DD) | да | Дата рождения |
+| `phone_number` | string | да | Уникальный номер |
+| `accepted_user_agreement` | boolean | да | Должно быть `true` |
+| `accepted_privacy_policy` | boolean | да | Должно быть `true` |
 
 ```json
 {
@@ -138,7 +155,8 @@
 }
 ```
 
-**Response 201 Created:**
+#### Response 201 Created
+
 ```json
 {
   "id": 1,
@@ -153,9 +171,11 @@
   "role": "user"
 }
 ```
-> Пароль в ответе **не** возвращается.
 
-**Response 400 Bad Request** — ошибки валидации:
+Пароль в ответе не возвращается.
+
+#### Response 400 Bad Request
+
 ```json
 {
   "username": ["A user with that username already exists."],
@@ -166,12 +186,12 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 201 | Пользователь создан |
-| 400 | Ошибки валидации полей |
+| 400 | Ошибки валидации |
 
 ---
 
@@ -180,9 +200,8 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `user`
 
-**Query parameters:** нет
+#### Response 200 OK
 
-**Response 200 OK:**
 ```json
 {
   "id": 1,
@@ -198,29 +217,174 @@
 }
 ```
 
-> `role`: `"user"` — обычный пользователь, `"admin"` — Django staff/superuser.
+`role` для обычного пользователя равен `user`, для Django staff/superuser — `admin`.
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Данные пользователя |
 | 401 | Токен не передан или невалиден |
 
 ---
 
-### `GET /api/users/` — Список пользователей *(только admin)*
+### `POST /api/auth/logout/` — Выход
+
+**Auth:** `Authorization: Token <token>`  
+**Доступ:** `user`
+
+#### Назначение
+
+Удаляет токен пользователя на backend и завершает сессию авторизации на frontend.
+
+#### Response 204 No Content
+
+Тело ответа отсутствует.
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 204 | Пользователь вышел |
+| 401 | Токен не передан или невалиден |
+
+---
+
+### `POST /api/auth/password-reset/` — Запрос восстановления пароля
+
+**Auth:** не требуется  
+**Доступ:** `anonymous`
+
+#### Request body
+
+| Поле | Тип | Обязательно | Описание |
+|---|---|---:|---|
+| `email` | string | да | Email пользователя |
+
+```json
+{
+  "email": "demo@example.com"
+}
+```
+
+#### Response 202 Accepted
+
+```json
+{
+  "detail": "Password reset email sent."
+}
+```
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 202 | Письмо отправлено |
+| 400 | Некорректный email |
+
+---
+
+### `POST /api/auth/password-reset/confirm/` — Подтверждение восстановления пароля
+
+**Auth:** не требуется  
+**Доступ:** `anonymous`
+
+#### Request body
+
+| Поле | Тип | Обязательно | Описание |
+|---|---|---:|---|
+| `uid` | string | да | Идентификатор пользователя из письма |
+| `token` | string | да | Токен подтверждения |
+| `new_password` | string | да | Новый пароль |
+
+```json
+{
+  "uid": "MQ",
+  "token": "set-password-token",
+  "new_password": "NewStrongPassword123"
+}
+```
+
+#### Response 200 OK
+
+```json
+{
+  "detail": "Password has been reset successfully."
+}
+```
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 200 | Пароль обновлён |
+| 400 | Ошибка token / uid / password |
+
+---
+
+### `POST /api/auth/email-confirm/` — Подтверждение email
+
+**Auth:** не требуется  
+**Доступ:** `anonymous`
+
+#### Request body
+
+| Поле | Тип | Обязательно | Описание |
+|---|---|---:|---|
+| `uid` | string | да | Идентификатор пользователя |
+| `token` | string | да | Токен подтверждения email |
+
+#### Response 200 OK
+
+```json
+{
+  "detail": "Email confirmed successfully."
+}
+```
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 200 | Email подтверждён |
+| 400 | Ошибка token / uid |
+
+---
+
+### `DELETE /api/me/` — Удаление аккаунта
+
+**Auth:** `Authorization: Token <token>`  
+**Доступ:** `user`
+
+#### Назначение
+
+Удаляет аккаунт текущего пользователя или переводит его в неактивное состояние согласно backend-логике.
+
+#### Response 204 No Content
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 204 | Аккаунт удалён |
+| 401 | Не авторизован |
+| 400 | Ошибка бизнес-логики |
+
+---
+
+### `GET /api/users/` — Список пользователей
 
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `staff`
 
-**Query parameters:**
+#### Query parameters
 
 | Параметр | Тип | Описание |
-|----------|-----|----------|
+|---|---|---|
 | `page` | integer | Номер страницы |
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "count": 42,
@@ -243,10 +407,10 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Список пользователей |
 | 401 | Не авторизован |
 | 403 | Нет прав staff |
@@ -258,15 +422,18 @@
 ### `GET /api/chats/` — Список своих чатов
 
 **Auth:** `Authorization: Token <token>`  
-**Доступ:** `user` (видит только свои чаты)
+**Доступ:** `user`
 
-**Query parameters:**
+#### Query parameters
 
 | Параметр | Тип | Описание |
-|----------|-----|----------|
-| `page` | integer | Номер страницы (default: 1) |
+|---|---|---|
+| `page` | integer | Номер страницы |
+| `search` | string | Фильтр по названию |
+| `ordering` | string | Сортировка, например `created_at` или `-updated_at` |
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "count": 5,
@@ -280,20 +447,17 @@
       "is_active": true,
       "created_at": "2026-05-01T10:00:00Z",
       "updated_at": "2026-05-18T09:30:00Z"
-    },
-    {
-      "id": 2,
-      "title": "Team Standup",
-      "created_by": 3,
-      "is_active": true,
-      "created_at": "2026-04-15T08:00:00Z",
-      "updated_at": "2026-05-17T18:00:00Z"
     }
   ]
 }
 ```
 
-> ⚠️ Данные находятся в `results`, а не на верхнем уровне ответа.
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 200 | Список чатов |
+| 401 | Не авторизован |
 
 ---
 
@@ -302,11 +466,11 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `user`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `title` | string | ✅ | Название чата |
+|---|---|---:|---|
+| `title` | string | да | Название чата |
 
 ```json
 {
@@ -314,7 +478,8 @@
 }
 ```
 
-**Response 201 Created:**
+#### Response 201 Created
+
 ```json
 {
   "id": 1,
@@ -325,19 +490,21 @@
   "updated_at": "2026-05-18T12:00:00Z"
 }
 ```
-> Создатель автоматически получает роль `owner` в `chat_members`.
 
-**Response 400 Bad Request:**
+Создатель автоматически получает роль `owner` в `chat_members`.
+
+#### Response 400 Bad Request
+
 ```json
 {
   "title": ["This field may not be blank."]
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 201 | Чат создан |
 | 400 | Ошибки валидации |
 | 401 | Не авторизован |
@@ -349,7 +516,8 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_member`
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "id": 1,
@@ -361,13 +529,13 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Данные чата |
 | 401 | Не авторизован |
-| 404 | Чат не найден **или** пользователь не является участником |
+| 404 | Чат не найден или пользователь не является участником |
 
 ---
 
@@ -376,14 +544,16 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_owner` или `staff`
 
-**Request body** (все поля опциональны):
+#### Request body
+
 ```json
 {
   "title": "Project Alpha — Final"
 }
 ```
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "id": 1,
@@ -395,14 +565,14 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Чат обновлён |
 | 400 | Ошибки валидации |
 | 401 | Не авторизован |
-| 403 | Нет прав (не owner/admin/staff) |
+| 403 | Нет прав |
 | 404 | Чат не найден |
 
 ---
@@ -412,12 +582,12 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_owner` или `staff`
 
-**Response 204 No Content** — тело ответа пустое.
+#### Response 204 No Content
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 204 | Чат удалён |
 | 401 | Не авторизован |
 | 403 | Нет прав |
@@ -430,16 +600,17 @@
 ### `GET /api/chat-members/` — Список участников
 
 **Auth:** `Authorization: Token <token>`  
-**Доступ:** `user` (только участники своих чатов)
+**Доступ:** `user`
 
-**Query parameters:**
+#### Query parameters
 
 | Параметр | Тип | Описание |
-|----------|-----|----------|
-| `chat` | integer | ✅ Рекомендуется — ID чата для фильтрации |
+|---|---|---|
+| `chat` | integer | ID чата |
 | `page` | integer | Номер страницы |
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "count": 3,
@@ -452,13 +623,6 @@
       "user": 1,
       "role": "owner",
       "joined_at": "2026-05-01T10:00:00Z"
-    },
-    {
-      "id": 2,
-      "chat": 1,
-      "user": 2,
-      "role": "member",
-      "joined_at": "2026-05-02T08:00:00Z"
     }
   ]
 }
@@ -471,13 +635,13 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_owner` или `staff`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `chat` | integer | ✅ | ID чата |
-| `user` | integer | ✅ | ID добавляемого пользователя |
-| `role` | string | ✅ | `"owner"` / `"admin"` / `"member"` |
+|---|---|---:|---|
+| `chat` | integer | да | ID чата |
+| `user` | integer | да | ID пользователя |
+| `role` | string | да | `owner` / `admin` / `member` |
 
 ```json
 {
@@ -487,7 +651,8 @@
 }
 ```
 
-**Response 201 Created:**
+#### Response 201 Created
+
 ```json
 {
   "id": 3,
@@ -498,7 +663,8 @@
 }
 ```
 
-**Response 400 Bad Request** — пользователь уже в чате:
+#### Response 400 Bad Request
+
 ```json
 {
   "non_field_errors": [
@@ -507,14 +673,14 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 201 | Участник добавлен |
 | 400 | Ошибки валидации / пользователь уже в чате |
 | 401 | Не авторизован |
-| 403 | Нет прав (не owner/admin/staff) |
+| 403 | Нет прав |
 | 404 | Чат или пользователь не найден |
 
 ---
@@ -530,7 +696,8 @@
 }
 ```
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "id": 2,
@@ -548,28 +715,29 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_owner` или `staff`
 
-**Response 204 No Content**
+#### Response 204 No Content
 
 ---
 
 ## 4. Сообщения
 
-> **Важно:** URL для сообщений — `/api/messages/?chat=<id>`, а **не** `/api/chats/{id}/messages/`.  
-> Нейминг выровнен с реальной реализацией backend.
+> URL для сообщений: `/api/messages/?chat=<id>`.
 
 ### `GET /api/messages/` — Список сообщений
 
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_member`
 
-**Query parameters:**
+#### Query parameters
 
 | Параметр | Тип | Обязательно | Описание |
-|----------|-----|-------------|----------|
-| `chat` | integer | ✅ | ID чата |
-| `page` | integer | | Номер страницы |
+|---|---|---:|---|
+| `chat` | integer | да | ID чата |
+| `page` | integer | нет | Номер страницы |
+| `ordering` | string | нет | Сортировка, например `created_at` или `-created_at` |
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "count": 135,
@@ -585,26 +753,15 @@
       "message_type": "default",
       "task_status": "none",
       "analyst_notes": "",
+      "classification": null,
       "created_at": "2026-05-18T10:00:00Z",
       "updated_at": "2026-05-18T10:00:00Z"
-    },
-    {
-      "id": 2,
-      "chat": 1,
-      "sender": 2,
-      "sender_username": "alice",
-      "text": "Кто берёт задачу по логину?",
-      "message_type": "question",
-      "task_status": "none",
-      "analyst_notes": "",
-      "created_at": "2026-05-18T10:05:00Z",
-      "updated_at": "2026-05-18T10:05:00Z"
     }
   ]
 }
 ```
 
-> Список всегда в `results`. `count` — общее количество сообщений в чате (используется для подсчёта страниц: `Math.ceil(count / page_size)`).
+`classification` может быть `null`, пока Celery не завершил обработку.
 
 ---
 
@@ -613,41 +770,20 @@
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_member`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `chat` | integer | ✅ | ID чата |
-| `text` | string | ✅ | Текст сообщения |
-| `message_type` | string | | `"default"` / `"question"` / `"task"` (default: `"default"`) |
-| `task_status` | string | | `"none"` / `"todo"` / `"in_progress"` / `"done"` (default: `"none"`) |
-| `analyst_notes` | string | | Заметки аналитика (default: `""`) |
+|---|---|---:|---|
+| `chat` | integer | да | ID чата |
+| `text` | string | да | Текст сообщения |
+| `message_type` | string | нет | `default`, `question`, `task` |
+| `task_status` | string | нет | `none`, `todo`, `in_progress`, `done` |
+| `analyst_notes` | string | нет | Заметки аналитика |
 
-> `sender` — **не передаётся** в request. Backend автоматически подставляет `request.user`.
+`sender` не передаётся в request — backend подставляет `request.user`.
 
-**Обычное сообщение:**
-```json
-{
-  "chat": 1,
-  "text": "Привет всем!",
-  "message_type": "default",
-  "task_status": "none",
-  "analyst_notes": ""
-}
-```
+#### Response 201 Created
 
-**Сообщение-задача:**
-```json
-{
-  "chat": 1,
-  "text": "Сделать экран логина",
-  "message_type": "task",
-  "task_status": "todo",
-  "analyst_notes": "Важно для MVP"
-}
-```
-
-**Response 201 Created:**
 ```json
 {
   "id": 42,
@@ -658,12 +794,14 @@
   "message_type": "default",
   "task_status": "none",
   "analyst_notes": "",
+  "classification": null,
   "created_at": "2026-05-18T15:00:00Z",
   "updated_at": "2026-05-18T15:00:00Z"
 }
 ```
 
-**Response 400 Bad Request** — нарушено доменное правило `task_status`:
+#### Response 400 Bad Request
+
 ```json
 {
   "task_status": [
@@ -672,7 +810,8 @@
 }
 ```
 
-**Response 400 Bad Request** — попытка написать в чужой чат:
+#### Response 400 Bad Request
+
 ```json
 {
   "chat": [
@@ -681,12 +820,12 @@
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 201 | Сообщение создано |
-| 400 | Ошибки валидации / нарушение доменного правила |
+| 400 | Ошибки валидации |
 | 401 | Не авторизован |
 | 403 | Не участник чата |
 
@@ -695,7 +834,7 @@
 ### `PATCH /api/messages/{id}/` — Изменить сообщение
 
 **Auth:** `Authorization: Token <token>`  
-**Доступ:** автор сообщения, `chat_owner`, или `staff`
+**Доступ:** автор сообщения, `chat_owner` или `staff`
 
 ```json
 {
@@ -704,7 +843,8 @@
 }
 ```
 
-**Response 200 OK:**
+#### Response 200 OK
+
 ```json
 {
   "id": 42,
@@ -715,19 +855,20 @@
   "message_type": "task",
   "task_status": "in_progress",
   "analyst_notes": "Важно для MVP",
+  "classification": null,
   "created_at": "2026-05-18T15:00:00Z",
   "updated_at": "2026-05-18T15:30:00Z"
 }
 ```
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Обновлено |
 | 400 | Ошибки валидации |
 | 401 | Не авторизован |
-| 403 | Нет прав (не автор и не owner/admin/staff) |
+| 403 | Нет прав |
 | 404 | Сообщение не найдено |
 
 ---
@@ -735,30 +876,64 @@
 ### `DELETE /api/messages/{id}/` — Удалить сообщение
 
 **Auth:** `Authorization: Token <token>`  
-**Доступ:** автор, `chat_owner`, или `staff`
+**Доступ:** автор сообщения, `chat_owner` или `staff`
 
-**Response 204 No Content**
+#### Response 204 No Content
 
 ---
 
-## 5. Семантический поиск
+## 5. Классификация сообщений
 
-### `GET /api/search/` — Семантический поиск по сообщениям
+### `POST /api/messages/{id}/classify/` — Запустить классификацию
 
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_member`
 
-**Query parameters:**
+#### Назначение
+
+Запускает асинхронную ML-обработку сообщения через Celery. Backend возвращает задачу в очередь, а результат сохраняется позже в поле `classification`.
+
+#### Response 202 Accepted
+
+```json
+{
+  "task_id": "d3b07384-d9a2-4e5c-8d3c-1a2b3c4d5e6f",
+  "status": "queued"
+}
+```
+
+#### Коды ответов
+
+| Код | Ситуация |
+|---|---|
+| 202 | Классификация поставлена в очередь |
+| 401 | Не авторизован |
+| 403 | Нет прав |
+| 404 | Сообщение не найдено |
+
+---
+
+## 6. Семантический поиск
+
+### `GET /api/search/semantic/` — Семантический поиск по сообщениям
+
+**Auth:** `Authorization: Token <token>`  
+**Доступ:** `chat_member`
+
+#### Query parameters
 
 | Параметр | Тип | Обязательно | Описание |
-|----------|-----|-------------|----------|
-| `q` | string | ✅ | Поисковый запрос (по смыслу) |
-| `chat_id` | integer | ✅ | ID чата |
-| `page` | integer | | Номер страницы |
+|---|---|---:|---|
+| `q` | string | да | Поисковый запрос |
+| `chat` | integer | да | ID чата |
+| `page` | integer | нет | Номер страницы |
+| `limit` | integer | нет | Размер выдачи, максимум 50 |
+| `date_from` | string | нет | Фильтр по дате начала |
+| `date_to` | string | нет | Фильтр по дате конца |
+| `message_type` | string | нет | Фильтр по типу сообщения |
 
-**Пример запроса:** `GET /api/search/?q=кто+отвечает+за+дедлайн&chat_id=1`
+#### Response 200 OK
 
-**Response 200 OK:**
 ```json
 {
   "count": 3,
@@ -766,60 +941,54 @@
   "previous": null,
   "results": [
     {
-      "id": 17,
-      "chat": 1,
-      "sender": 2,
-      "sender_username": "alice",
-      "text": "Анна берёт на себя дедлайн по спринту",
-      "message_type": "default",
-      "task_status": "none",
-      "analyst_notes": "",
-      "similarity_score": 0.923,
-      "created_at": "2026-05-10T09:00:00Z"
-    },
-    {
-      "id": 23,
-      "chat": 1,
-      "sender": 3,
-      "sender_username": "anna",
-      "text": "Да, я закрою задачу до пятницы",
+      "message_id": 42,
+      "chat_id": 10,
+      "chat_title": "Sprint planning",
+      "sender": {
+        "id": 1,
+        "username": "demo"
+      },
+      "text": "Prepare release notes",
       "message_type": "task",
-      "task_status": "in_progress",
-      "analyst_notes": "",
-      "similarity_score": 0.887,
-      "created_at": "2026-05-10T09:15:00Z"
+      "created_at": "2026-05-25T10:00:00Z",
+      "classification": "task",
+      "similarity_score": 0.923
     }
   ]
 }
 ```
 
-> `similarity_score` — косинусное сходство (0 до 1). Чем выше — тем релевантнее.  
-> Поиск идёт **по смыслу**, а не по ключевым словам — через pgvector `<=>` оператор.
+#### Правила
 
-**Коды ответов:**
+- обычные пользователи ищут только в чатах, где они участники;
+- проектные админы могут искать по всем чатам;
+- сообщения без embedding пропускаются;
+- `limit` ограничен значением 50.
+
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
+|---|---|
 | 200 | Результаты поиска |
-| 400 | Не передан `q` или `chat_id` |
+| 400 | Не передан `q` или `chat` |
 | 401 | Не авторизован |
-| 403 | Не участник чата |
+| 403 | Нет прав |
 
 ---
 
-## 6. AI-ассистент
+## 7. AI-ассистент
 
 ### `POST /api/assistant/` — Запрос к AI-ассистенту
 
 **Auth:** `Authorization: Token <token>`  
 **Доступ:** `chat_member`
 
-**Request body:**
+#### Request body
 
 | Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `question` | string | ✅ | Вопрос пользователя |
-| `chat_id` | integer | ✅ | ID чата (контекст для RAG) |
+|---|---|---:|---|
+| `question` | string | да | Вопрос пользователя |
+| `chat_id` | integer | да | ID чата, который используется как контекст |
 
 ```json
 {
@@ -828,7 +997,8 @@
 }
 ```
 
-**Response 202 Accepted** — задача поставлена в очередь:
+#### Response 202 Accepted
+
 ```json
 {
   "task_id": "d3b07384-d9a2-4e5c-8d3c-1a2b3c4d5e6f",
@@ -837,45 +1007,43 @@
 }
 ```
 
-> Backend немедленно возвращает `202`. Ответ AI придёт асинхронно через WebSocket-событие `ai_response`.  
-> Frontend должен подписаться на `/ws/chats/{chat_id}/` до отправки запроса.
+Ответ AI приходит асинхронно через событие `ai_response`.
 
-**Коды ответов:**
+#### Коды ответов
 
 | Код | Ситуация |
-|-----|----------|
-| 202 | Задача принята в очередь Celery |
+|---|---|
+| 202 | Задача принята в Celery |
 | 400 | Не передан `question` или `chat_id` |
 | 401 | Не авторизован |
-| 403 | Не участник чата |
-| 500 | Redis/Celery недоступен |
+| 403 | Нет прав |
+| 500 | Redis или Celery недоступны |
 
 ---
 
-## 7. WebSocket — `/ws/chats/{id}/`
+## 8. WebSocket — `/ws/chats/{id}/`
 
-**Auth:** токен передаётся в query string: `/ws/chats/1/?token=<token>`  
-**Доступ:** `chat_member`
+**Auth:** токен передаётся в query string:
 
-### Подключение
-
-```js
-const ws = new WebSocket(
-  `ws://127.0.0.1:8000/ws/chats/1/?token=${localStorage.getItem('token')}`
-);
+```text
+/ws/chats/1/?token=<token>
 ```
 
-### Event types (server → client)
+**Доступ:** `chat_member`
 
-Все события имеют единую обёртку:
+### Формат сообщений
+
+Все события используют единую обёртку:
+
 ```json
 {
   "event": "<event_type>",
-  "payload": { ... }
+  "payload": { }
 }
 ```
 
-#### `new_message` — новое сообщение в чате
+### `new_message`
+
 ```json
 {
   "event": "new_message",
@@ -892,7 +1060,8 @@ const ws = new WebSocket(
 }
 ```
 
-#### `message_updated` — сообщение изменено
+### `message_updated`
+
 ```json
 {
   "event": "message_updated",
@@ -905,7 +1074,8 @@ const ws = new WebSocket(
 }
 ```
 
-#### `message_deleted` — сообщение удалено
+### `message_deleted`
+
 ```json
 {
   "event": "message_deleted",
@@ -915,32 +1085,35 @@ const ws = new WebSocket(
 }
 ```
 
-#### `ai_response` — ответ AI-ассистента готов
+### `ai_response`
+
 ```json
 {
   "event": "ai_response",
   "payload": {
     "task_id": "d3b07384-d9a2-4e5c-8d3c-1a2b3c4d5e6f",
     "message_id": 99,
-    "content": "Ответственный за задачу по логину — Анна (на основе сообщений чата от 10 мая).",
+    "content": "Ответственный за задачу по логину — Анна.",
     "message_type": "assistant",
     "created_at": "2026-05-18T15:02:30Z"
   }
 }
 ```
 
-#### `label_updated` — ML-сервис классифицировал сообщение (асинхронно)
+### `classification_updated`
+
 ```json
 {
-  "event": "label_updated",
+  "event": "classification_updated",
   "payload": {
     "message_id": 42,
-    "label": "question"
+    "classification": "question"
   }
 }
 ```
 
-#### `error` — ошибка в WS-канале
+### `error`
+
 ```json
 {
   "event": "error",
@@ -951,16 +1124,14 @@ const ws = new WebSocket(
 }
 ```
 
-### Event types (client → server)
+### `ping` / `pong`
 
-#### `ping` — проверка соединения
 ```json
 {
   "event": "ping"
 }
 ```
 
-**Server response:**
 ```json
 {
   "event": "pong"
@@ -969,213 +1140,202 @@ const ws = new WebSocket(
 
 ---
 
-## 8. ML Service (FastAPI)
+## 9. Интеграция ML через Celery
 
-> Базовый URL ML Service: `http://ml-service:8001` (внутренняя сеть Docker).  
-> Frontend **напрямую с ML Service не общается** — только через Backend/Celery.
+Отдельный ML microservice не используется. ML-задачи выполняются в фоне через Celery.
 
-### `POST /classify` — Классификация сообщения
+### Celery-задачи
 
-**Auth:** API key в заголовке: `X-API-Key: <internal_key>`  
-**Вызывает:** Celery Worker
+- `classify_message`
+- `generate_embedding`
+- `generate_ai_response`
+- `search_messages`
 
-**Request body:**
+### Вход для ML-задач
 
-| Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `text` | string | ✅ | Текст для классификации |
-| `message_id` | string (UUID) | | ID сообщения (для логирования) |
+Backend передаёт в Celery:
+- `message_id`;
+- `chat_id`;
+- `text`;
+- `user_id`;
+- контекст выбранного чата;
+- список сообщений для RAG, если нужен AI-ассистент.
 
-```json
-{
-  "text": "Кто возьмёт задачу по экрану логина?",
-  "message_id": "d3b07384-d9a2-4e5c-8d3c-1a2b3c4d5e6f"
-}
-```
+### Выход ML-задач
 
-**Response 200 OK:**
-```json
-{
-  "label": "question",
-  "confidence": 0.94,
-  "probabilities": {
-    "question": 0.94,
-    "task": 0.04,
-    "statement": 0.01,
-    "offtopic": 0.01
-  },
-  "model": "classify-v1",
-  "processing_time_ms": 45
-}
-```
+Celery получает:
+- `label`;
+- `confidence`;
+- `probabilities`;
+- `vector`;
+- `similarity_score`;
+- сгенерированный ответ AI;
+- статус выполнения и возможную ошибку.
 
-> `label`: одно из `"question"` / `"task"` / `"statement"` / `"offtopic"`.  
-> `confidence` < 0.5 → Celery может сохранить `label = null` и не обновлять поле.
+### Сохранение результата
 
-**Response 422 Unprocessable Entity** — пустой текст:
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "text"],
-      "msg": "field required",
-      "type": "value_error.missing"
-    }
-  ]
-}
-```
-
-**Response 503 Service Unavailable** — модель не загружена:
-```json
-{
-  "detail": "ML model is not ready. Retry after 30 seconds.",
-  "retry_after": 30
-}
-```
-
-**Коды ответов:**
-
-| Код | Ситуация |
-|-----|----------|
-| 200 | Классификация выполнена |
-| 422 | Ошибка валидации входных данных |
-| 503 | Модель недоступна (fallback: `label = null`) |
-| 504 | Timeout (> 10 сек) → Celery retry |
-
-> **Timeout / Fallback**: если ML Service не ответил за 10 секунд, Celery делает retry (макс. 3 попытки). После 3 неудач `label` остаётся `null`, задача помечается как `failed`.
+Backend или Celery сохраняет:
+- `classification` в сообщение;
+- `embedding` в таблицу `embeddings`;
+- AI-ответ как отдельное сообщение типа `assistant`.
 
 ---
 
-### `POST /embed` — Получить вектор (эмбеддинг)
+## 10. Fallback-сценарии
 
-**Auth:** `X-API-Key: <internal_key>`  
-**Вызывает:** Celery Worker
+### ML недоступен
 
-**Request body:**
+Если Celery или ML-обработка недоступны:
+- сообщение всё равно сохраняется;
+- `classification = null`;
+- UI показывает, что классификация будет выполнена позже.
 
-| Поле | Тип | Обязательно | Описание |
-|------|-----|-------------|----------|
-| `text` | string | ✅ | Текст для векторизации |
-| `model` | string | | Название модели (default: `"text-embedding-3-small"`) |
+### Низкая confidence
 
-```json
-{
-  "text": "Кто отвечает за дедлайн по спринту?",
-  "model": "text-embedding-3-small"
-}
-```
+Если confidence ниже порога:
+- метка не сохраняется;
+- `classification = null` или `needs_review = true`.
 
-**Response 200 OK:**
-```json
-{
-  "vector": [0.023, -0.117, 0.445, "...1536 значений..."],
-  "model": "text-embedding-3-small",
-  "dimensions": 1536,
-  "processing_time_ms": 120
-}
-```
+### Ошибка классификации
 
-**Response 422 Unprocessable Entity:**
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "text"],
-      "msg": "ensure this value has at most 8192 characters",
-      "type": "value_error.any_str.max_length"
-    }
-  ]
-}
-```
+Если классификация завершилась ошибкой:
+- backend не ломает отправку сообщения;
+- задача помечается как failed;
+- пользователь видит обычное сообщение без ML-тега.
 
-**Коды ответов:**
+### Пустое сообщение
 
-| Код | Ситуация |
-|-----|----------|
-| 200 | Вектор возвращён |
-| 422 | Текст пустой или слишком длинный (> 8192 символов) |
-| 503 | Модель недоступна |
-| 504 | Timeout → Celery retry |
+Если `text` пустой:
+- backend возвращает `400 Bad Request`;
+- задача в Celery не создаётся.
 
 ---
 
-## 9. Сводная таблица эндпоинтов
+## 11. Пагинация, фильтрация, сортировка
+
+### Пагинация
+
+Для списков используется стандартный DRF-формат:
+
+```json
+{
+  "count": 100,
+  "next": "http://127.0.0.1:8000/api/messages/?page=2",
+  "previous": null,
+  "results": []
+}
+```
+
+### Фильтрация
+
+Поддерживаются фильтры:
+- `search` для чатов;
+- `chat` для сообщений и участников;
+- `q` для семантического поиска;
+- `date_from` и `date_to` для поиска;
+- `message_type` для поиска.
+
+### Сортировка
+
+Поддерживаются поля:
+- `created_at`;
+- `updated_at`;
+- `-created_at`;
+- `-updated_at`.
+
+---
+
+## 12. CORS и окружение
+
+### Frontend dev URL
+
+```text
+http://127.0.0.1:3000
+```
+
+### Backend dev URL
+
+```text
+http://127.0.0.1:8000
+```
+
+### WebSocket dev URL
+
+```text
+ws://127.0.0.1:8000/ws/chats/{id}/?token=<token>
+```
+
+### CORS
+
+Frontend должен иметь доступ к backend API из dev-окружения. Разрешаются запросы только с доверенных локальных адресов.
+
+### Переменные окружения
+
+Примерно должны быть заданы:
+
+```env
+DEBUG=True
+SECRET_KEY=change-me
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000
+API_PAGE_SIZE=20
+REDIS_URL=redis://redis:6379/0
+DATABASE_URL=postgresql://...
+```
+
+---
+
+## 13. Сводная таблица эндпоинтов
 
 | Метод | URL | Auth | Доступ | Пагинация |
-|-------|-----|------|--------|-----------|
-| POST | `/api/auth/token/` | — | anonymous | — |
-| POST | `/api/register/` | — | anonymous | — |
-| GET | `/api/me/` | Token | user | — |
-| GET | `/api/users/` | Token | staff | ✅ `results` |
-| GET | `/api/chats/` | Token | user | ✅ `results` |
-| POST | `/api/chats/` | Token | user | — |
-| GET | `/api/chats/{id}/` | Token | chat_member | — |
-| PATCH | `/api/chats/{id}/` | Token | chat_owner / staff | — |
-| PUT | `/api/chats/{id}/` | Token | chat_owner / staff | — |
-| DELETE | `/api/chats/{id}/` | Token | chat_owner / staff | — |
-| GET | `/api/chat-members/` | Token | chat_member | ✅ `results` |
-| POST | `/api/chat-members/` | Token | chat_owner / staff | — |
-| PATCH | `/api/chat-members/{id}/` | Token | chat_owner / staff | — |
-| DELETE | `/api/chat-members/{id}/` | Token | chat_owner / staff | — |
-| GET | `/api/messages/?chat=` | Token | chat_member | ✅ `results` |
-| POST | `/api/messages/` | Token | chat_member | — |
-| PATCH | `/api/messages/{id}/` | Token | автор / chat_owner / staff | — |
-| DELETE | `/api/messages/{id}/` | Token | автор / chat_owner / staff | — |
-| GET | `/api/search/?q=&chat_id=` | Token | chat_member | ✅ `results` |
-| POST | `/api/assistant/` | Token | chat_member | — |
-| WS | `/ws/chats/{id}/?token=` | Token | chat_member | — |
-| POST | `ml:8001/classify` | API Key | internal (Celery) | — |
-| POST | `ml:8001/embed` | API Key | internal (Celery) | — |
+|---|---|---|---|---|
+| POST | `/api/auth/token/` | нет | anonymous | нет |
+| POST | `/api/auth/register/` | нет | anonymous | нет |
+| GET | `/api/me/` | Token | user | нет |
+| POST | `/api/auth/logout/` | Token | user | нет |
+| POST | `/api/auth/password-reset/` | нет | anonymous | нет |
+| POST | `/api/auth/password-reset/confirm/` | нет | anonymous | нет |
+| POST | `/api/auth/email-confirm/` | нет | anonymous | нет |
+| DELETE | `/api/me/` | Token | user | нет |
+| GET | `/api/users/` | Token | staff | да |
+| GET | `/api/chats/` | Token | user | да |
+| POST | `/api/chats/` | Token | user | нет |
+| GET | `/api/chats/{id}/` | Token | chat_member | нет |
+| PATCH | `/api/chats/{id}/` | Token | chat_owner / staff | нет |
+| DELETE | `/api/chats/{id}/` | Token | chat_owner / staff | нет |
+| GET | `/api/chat-members/` | Token | user | да |
+| POST | `/api/chat-members/` | Token | chat_owner / staff | нет |
+| PATCH | `/api/chat-members/{id}/` | Token | chat_owner / staff | нет |
+| DELETE | `/api/chat-members/{id}/` | Token | chat_owner / staff | нет |
+| GET | `/api/messages/?chat=` | Token | chat_member | да |
+| POST | `/api/messages/` | Token | chat_member | нет |
+| PATCH | `/api/messages/{id}/` | Token | author / chat_owner / staff | нет |
+| DELETE | `/api/messages/{id}/` | Token | author / chat_owner / staff | нет |
+| POST | `/api/messages/{id}/classify/` | Token | chat_member | нет |
+| GET | `/api/search/semantic/` | Token | chat_member | да |
+| POST | `/api/assistant/` | Token | chat_member | нет |
+| WS | `/ws/chats/{id}/?token=` | Token | chat_member | нет |
 
 ---
 
+## 14. Матрица соответствия
+
+| Бизнес-требование | API | Backend модель | Frontend экран | Статус |
+|---|---|---|---|---|
+| Регистрация пользователя | `/api/auth/register/` | `User` | Экран регистрации | Готово |
+| Логин | `/api/auth/token/` | `User` | Экран входа | Готово |
+| Просмотр профиля | `/api/me/` | `User` | Профиль | Готово |
+| Выход из системы | `/api/auth/logout/` | `User` | Профиль / меню | Добавить |
+| Подтверждение email | `/api/auth/email-confirm/` | `User` | Экран подтверждения | Добавить |
+| Восстановление пароля | `/api/auth/password-reset/` | `User` | Экран reset password | Добавить |
+| Создание чата | `/api/chats/` | `Chat`, `ChatMember` | Список чатов / модалка | Готово |
+| Просмотр сообщений | `/api/messages/?chat=` | `Message` | Экран чата | Готово |
+| Добавление участника | `/api/chat-members/` | `ChatMember`, `Role` | Настройки чата | Готово |
+| Классификация сообщения | `/api/messages/{id}/classify/` | `MessageClassification` | Тег у сообщения | В работе |
+| Семантический поиск | `/api/search/semantic/` | `Embedding`, `Message` | Экран поиска | В работе |
+| AI-ассистент | `/api/assistant/` | `Message`, `Embedding` | Панель AI | В работе |
+| Real-time обновления | `/ws/chats/{id}/` | `Message`, `MessageClassification` | Экран чата | Частично |
+| Удаление аккаунта | `DELETE /api/me/` | `User` | Профиль | Добавить |
+| Fallback при недоступности ML | Celery retry / `classification = null` | `MessageClassification` | Экран чата | Готово |
 
 ---
-
-## Sprint backend update: current stabilized contracts
-
-Current backend exposes live OpenAPI when `drf-spectacular` is installed:
-
-- `GET /api/schema/`
-- `GET /api/docs/`
-
-All API errors are normalized to:
-
-```json
-{
-  "detail": "Validation error.",
-  "field_errors": {},
-  "code": "invalid"
-}
-```
-
-Message classification is asynchronous. `POST /api/messages/` returns after saving the message; `classification` can be `null` until `messages.tasks.classify_message_task` finishes. When present, classification includes `label`, `confidence`, `probabilities`, `status`, `error_message`, `source`, `needs_review`, `classified_at`.
-
-Semantic search endpoint:
-
-```http
-GET /api/search/semantic/?q=...&chat=...&limit=20&date_from=2026-05-01&date_to=2026-05-25&message_type=task
-```
-
-Rules:
-
-- regular users search only messages from chats where they are participants;
-- project admins search all chats;
-- messages without embeddings are skipped;
-- `limit` is capped at 50.
-
-Response item:
-
-```json
-{
-  "message_id": 42,
-  "chat_id": 10,
-  "chat_title": "Sprint planning",
-  "sender": {"id": 1, "username": "demo"},
-  "text": "Prepare release notes",
-  "message_type": "task",
-  "created_at": "2026-05-25T10:00:00Z",
-  "classification": "task",
-  "similarity_score": 0.923
-}
-```

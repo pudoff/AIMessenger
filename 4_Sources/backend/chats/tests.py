@@ -145,6 +145,21 @@ class ChatAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Chat.objects.filter(id=self.chat.id).exists())
 
+    def test_direct_chat_member_can_delete_chat(self):
+        direct_chat = Chat.objects.create(
+            title='Direct chat',
+            chat_type=Chat.ChatType.DIRECT,
+            created_by=self.owner,
+        )
+        ChatMember.objects.create(chat=direct_chat, user=self.owner, role=ChatMember.Role.OWNER)
+        ChatMember.objects.create(chat=direct_chat, user=self.member, role=ChatMember.Role.MEMBER)
+        self.client.force_authenticate(self.member)
+
+        response = self.client.delete(reverse('chat-detail', args=[direct_chat.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Chat.objects.filter(id=direct_chat.id).exists())
+
     def test_role_admin_can_see_and_update_any_chat(self):
         admin = User.objects.create_user(username='role_admin', password='pass', role=User.Role.ADMIN)
         self.client.force_authenticate(admin)

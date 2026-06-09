@@ -12,6 +12,7 @@ function LoginPage() {
   
   const registrationStatus = searchParams.get('registration');
   const [form, setForm] = useState({ login: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState(
     location.state?.notice ||
     (registrationStatus === 'confirmed' ? 'Регистрация подтверждена. Теперь вы можете войти.' : '')
@@ -105,7 +106,7 @@ function LoginPage() {
             <span>Пароль</span>
             <div className="password-input-wrapper">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={(e) => {
                   setForm(prev => ({ ...prev, password: e.target.value }));
@@ -116,6 +117,15 @@ function LoginPage() {
                 disabled={loading}
                 required
               />
+              <button
+                className="toggle-password-btn"
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              >
+                {showPassword ? '◉' : '⊘'}
+              </button>
             </div>
           </label>
 

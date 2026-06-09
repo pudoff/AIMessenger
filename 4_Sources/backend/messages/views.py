@@ -1,9 +1,13 @@
 import math
+import logging
+import os
 import re
+from difflib import SequenceMatcher
 from datetime import datetime, time
 
 from django.conf import settings
 from django.db import connection
+from django.http import FileResponse, Http404
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -23,6 +27,8 @@ try:
     from pgvector.django import CosineDistance
 except ImportError:
     CosineDistance = None
+
+logger = logging.getLogger(__name__)
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -64,12 +70,56 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def _save_attachments(self, message):
         for uploaded_file in self.request.FILES.getlist('attachments'):
-            MessageAttachment.objects.create(
+            attachment = MessageAttachment.objects.create(
                 message=message,
                 file=uploaded_file,
                 original_name=uploaded_file.name,
                 content_type=getattr(uploaded_file, 'content_type', '') or '',
                 size=getattr(uploaded_file, 'size', 0) or 0,
+            )
+            self._log_attachment_saved(attachment)
+
+    @staticmethod
+    def _log_attachment_saved(attachment):
+        file_path = ''
+        file_exists = None
+
+        try:
+            file_path = attachment.file.path
+            file_exists = os.path.exists(file_path)
+        except (NotImplementedError, ValueError, OSError) as exc:
+            logger.warning(
+                "Attachment path check failed: attachment_id=%s message_id=%s file_name=%s error=%s",
+                attachment.id,
+                attachment.message_id,
+                attachment.file.name if attachment.file else '',
+                exc,
+            )
+
+        logger.info(
+            "Attachment saved: attachment_id=%s message_id=%s chat_id=%s original_name=%s "
+            "file_name=%s file_path=%s file_exists=%s media_root=%s file_url=%s size=%s content_type=%s",
+            attachment.id,
+            attachment.message_id,
+            attachment.message.chat_id,
+            attachment.original_name,
+            attachment.file.name if attachment.file else '',
+            file_path,
+            file_exists,
+            settings.MEDIA_ROOT,
+            attachment.file.url if attachment.file else '',
+            attachment.size,
+            attachment.content_type,
+        )
+
+        if file_exists is False:
+            logger.warning(
+                "Attachment database row was created but file is missing on disk: "
+                "attachment_id=%s file_name=%s expected_path=%s media_root=%s",
+                attachment.id,
+                attachment.file.name if attachment.file else '',
+                file_path,
+                settings.MEDIA_ROOT,
             )
 
     @staticmethod
@@ -89,8 +139,46 @@ class MessageViewSet(viewsets.ModelViewSet):
         )
 
 
+class MessageAttachmentDownloadView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, pk):
+        try:
+            attachment = MessageAttachment.objects.select_related(
+                'message',
+                'message__chat',
+            ).get(pk=pk)
+        except MessageAttachment.DoesNotExist:
+            raise Http404('Файл не найден.')
+
+        chat = attachment.message.chat
+        if not is_project_admin(request.user) and not chat.chat_members.filter(user=request.user).exists():
+            return Response({'detail': 'У вас нет прав для скачивания этого файла.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not attachment.file:
+            raise Http404('Файл не найден.')
+
+        try:
+            file_handle = attachment.file.open('rb')
+        except (FileNotFoundError, OSError, ValueError):
+            logger.warning(
+                "Attachment download requested but file is missing: attachment_id=%s file_name=%s media_root=%s",
+                attachment.id,
+                attachment.file.name if attachment.file else '',
+                settings.MEDIA_ROOT,
+            )
+            raise Http404('Файл не найден.')
+
+        response = FileResponse(file_handle, as_attachment=True, filename=attachment.original_name)
+        if attachment.content_type:
+            response['Content-Type'] = attachment.content_type
+        return response
+
+
 class SemanticSearchView(APIView):
     permission_classes = (IsAuthenticated,)
+    FUZZY_SCORE_THRESHOLD = 0.72
+    FUZZY_TOKEN_THRESHOLD = 0.72
     CATEGORY_INTENTS = {
         'question': {'вопрос', 'вопросы', 'questions', 'question'},
         'task': {'задача', 'задачи', 'поручение', 'поручения', 'tasks', 'task'},
@@ -126,25 +214,125 @@ class SemanticSearchView(APIView):
             results = self._category_results(queryset, category_intent, limit)
             return Response({'count': len(results), 'results': results}, status=status.HTTP_200_OK)
 
-        queryset = queryset.filter(embedding__isnull=False).distinct()
+        queryset = queryset.distinct()
+        fuzzy_results = self._fuzzy_results(queryset, query, limit)
+
+        semantic_queryset = queryset.filter(embedding__isnull=False).distinct()
         query_vector = self._query_embedding(query)
 
         if connection.vendor == 'postgresql' and CosineDistance is not None:
             rows = (
-                queryset.annotate(distance=CosineDistance('embedding__vector', query_vector))
+                semantic_queryset.annotate(distance=CosineDistance('embedding__vector', query_vector))
                 .order_by('distance')[:limit]
             )
-            results = [self._serialize_result(message, 1 - float(message.distance or 0), mode='semantic') for message in rows]
+            semantic_results = [self._serialize_result(message, 1 - float(message.distance or 0), mode='semantic') for message in rows]
         else:
             scored = []
-            for message in queryset[:1000]:
+            for message in semantic_queryset[:1000]:
                 scored.append((self._cosine_similarity(query_vector, message.embedding.vector), message))
-            results = [
+            semantic_results = [
                 self._serialize_result(message, score, mode='semantic')
                 for score, message in sorted(scored, key=lambda item: item[0], reverse=True)[:limit]
             ]
 
+        results = self._merge_search_results(fuzzy_results, semantic_results, limit)
         return Response({'count': len(results), 'results': results}, status=status.HTTP_200_OK)
+
+    @classmethod
+    def _fuzzy_results(cls, queryset, query, limit):
+        scored = []
+        for message in queryset.order_by('-created_at')[:1000]:
+            score, matched_terms = cls._fuzzy_text_score(query, message.text)
+            if score >= cls.FUZZY_SCORE_THRESHOLD:
+                scored.append((score, message.created_at, message.id, message, matched_terms))
+
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return [
+            cls._serialize_result(message, score, mode='fuzzy', lexical_score=score, matched_terms=matched_terms)
+            for score, _created_at, _message_id, message, matched_terms in scored[:limit]
+        ]
+
+    @classmethod
+    def _fuzzy_text_score(cls, query, text):
+        query_norm = cls._normalize_search_text(query)
+        text_norm = cls._normalize_search_text(text)
+        if not query_norm or not text_norm:
+            return 0.0, []
+
+        if query_norm in text_norm:
+            return 1.0, cls._matched_terms(query_norm.split(), text_norm.split())
+
+        query_tokens = query_norm.split()
+        text_tokens = text_norm.split()
+        if not query_tokens or not text_tokens:
+            return 0.0, []
+
+        phrase_score = cls._best_window_similarity(query_tokens, text_tokens)
+        token_scores = []
+        matched_terms = []
+        for query_token in query_tokens:
+            best_score = 0.0
+            best_token = ''
+            for text_token in text_tokens:
+                score = SequenceMatcher(None, query_token, text_token).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_token = text_token
+            token_scores.append(best_score)
+            if best_score >= cls.FUZZY_TOKEN_THRESHOLD and best_token:
+                matched_terms.append(best_token)
+
+        token_average = sum(token_scores) / len(token_scores)
+        coverage = len(matched_terms) / len(query_tokens)
+        score = max(phrase_score, token_average * (0.72 + 0.28 * coverage))
+
+        if len(query_norm) <= 4 and score < 0.86:
+            return 0.0, []
+
+        return score, sorted(set(matched_terms), key=matched_terms.index)
+
+    @staticmethod
+    def _normalize_search_text(value):
+        normalized = (value or '').lower().replace('ё', 'е')
+        normalized = re.sub(r'[^0-9a-zа-я]+', ' ', normalized)
+        return re.sub(r'\s+', ' ', normalized).strip()
+
+    @staticmethod
+    def _best_window_similarity(query_tokens, text_tokens):
+        window_size = len(query_tokens)
+        query_phrase = ' '.join(query_tokens)
+        if window_size >= len(text_tokens):
+            return SequenceMatcher(None, query_phrase, ' '.join(text_tokens)).ratio()
+
+        best_score = 0.0
+        for index in range(0, len(text_tokens) - window_size + 1):
+            candidate = ' '.join(text_tokens[index:index + window_size])
+            best_score = max(best_score, SequenceMatcher(None, query_phrase, candidate).ratio())
+        return best_score
+
+    @classmethod
+    def _matched_terms(cls, query_tokens, text_tokens):
+        terms = []
+        for query_token in query_tokens:
+            for text_token in text_tokens:
+                if query_token == text_token:
+                    terms.append(text_token)
+                    break
+        return terms
+
+    @staticmethod
+    def _merge_search_results(primary_results, secondary_results, limit):
+        merged = []
+        seen_message_ids = set()
+        for result in [*primary_results, *secondary_results]:
+            message_id = result['message_id']
+            if message_id in seen_message_ids:
+                continue
+            merged.append(result)
+            seen_message_ids.add(message_id)
+            if len(merged) >= limit:
+                break
+        return merged
 
     def _query_embedding(self, query):
         try:
@@ -241,7 +429,7 @@ class SemanticSearchView(APIView):
         return max(0.0, min(1.0, float(score)))
 
     @classmethod
-    def _serialize_result(cls, message, score, mode):
+    def _serialize_result(cls, message, score, mode, lexical_score=0.0, matched_terms=None):
         classification = getattr(message, 'classification', None)
         raw_score = float(score)
         return {
@@ -258,5 +446,7 @@ class SemanticSearchView(APIView):
             'classification': classification.label if classification else None,
             'similarity_score': round(cls._normalize_similarity_score(raw_score), 6),
             'raw_similarity_score': round(raw_score, 6),
+            'lexical_score': round(cls._normalize_similarity_score(lexical_score), 6),
+            'matched_terms': matched_terms or [],
             'search_mode': mode,
         }

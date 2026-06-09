@@ -116,6 +116,20 @@ class MessageAccessTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_settings(MESSAGE_MAX_LENGTH=10)
+    def test_message_text_has_max_length(self):
+        self.client.force_authenticate(self.member)
+
+        response = self.client.post(
+            reverse('message-list'),
+            {'chat': self.chat.id, 'text': 'x' * 11},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        errors = response.json().get('field_errors') or response.json()
+        self.assertIn('text', errors)
+
     def test_sender_is_taken_from_request_user(self):
         self.client.force_authenticate(self.member)
 
@@ -341,6 +355,31 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(task_result['label'], 'task')
         self.assertEqual(toxic_result['label'], 'offtopic')
 
+    def test_local_fallback_treats_greeting_as_default(self):
+        for text in ('Добрый день!', 'Здравствуйте', 'Привет всем!'):
+            with self.subTest(text=text):
+                result = _mock_predict(text)
+
+                self.assertEqual(result['label'], 'default')
+
+    def test_local_fallback_sends_low_quality_text_to_review(self):
+        for text, reason in (
+            ('Lorem ipsum dolor sit amet', 'lorem_ipsum'),
+            ('лоивамдо', 'gibberish'),
+            ('яывлмвлмыот', 'gibberish'),
+        ):
+            with self.subTest(text=text):
+                result = _mock_predict(text)
+
+                self.assertEqual(result['label'], 'needs_review')
+                self.assertTrue(result['needs_review'])
+                self.assertEqual(result['review_reason'], reason)
+
+    def test_local_fallback_does_not_mark_pangram_as_question(self):
+        result = _mock_predict('съешь ещё этих мягких французских булок')
+
+        self.assertEqual(result['label'], 'default')
+
     def test_message_create_accepts_attachment(self):
         self.client.force_authenticate(self.member)
         uploaded = SimpleUploadedFile('note.txt', b'hello file', content_type='text/plain')
@@ -378,6 +417,44 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         attachment_url = response.json()['attachments'][0]['url']
         self.assertTrue(attachment_url.startswith('https://api.example.test/media/message_attachments/'))
+
+    def test_message_attachment_can_be_downloaded_by_chat_member(self):
+        self.client.force_authenticate(self.member)
+        uploaded = SimpleUploadedFile('note.txt', b'hello file', content_type='text/plain')
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                with patch('messages.tasks.classify_message_task.apply_async'), patch('messages.tasks.build_message_embedding_task.apply_async'):
+                    with self.captureOnCommitCallbacks(execute=True):
+                        create_response = self.client.post(
+                            reverse('message-list'),
+                            {'chat': self.chat.id, 'text': '', 'attachments': [uploaded]},
+                            format='multipart',
+                        )
+
+                attachment = MessageAttachment.objects.get(message_id=create_response.json()['id'])
+                response = self.client.get(reverse('api-message-attachment-download', args=[attachment.id]))
+                content = b''.join(response.streaming_content)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('attachment', response['Content-Disposition'])
+        self.assertEqual(content, b'hello file')
+
+    def test_message_attachment_download_is_forbidden_for_non_member(self):
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                attachment = MessageAttachment.objects.create(
+                    message=self.message,
+                    file=SimpleUploadedFile('note.txt', b'hello file', content_type='text/plain'),
+                    original_name='note.txt',
+                    content_type='text/plain',
+                    size=10,
+                )
+                self.client.force_authenticate(self.outsider)
+
+                response = self.client.get(reverse('api-message-attachment-download', args=[attachment.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_message_attachment_size_limit_is_validated(self):
         self.client.force_authenticate(self.member)
@@ -424,6 +501,42 @@ class MessageAccessTests(APITestCase):
         classification = MessageClassification.objects.get(message=self.message)
         self.assertEqual(classification.status, MessageClassification.Status.COMPLETED)
         self.assertEqual(classification.label, 'default')
+
+    def test_classification_task_postprocesses_low_quality_ml_result(self):
+        self.message.text = 'Lorem ipsum dolor sit amet'
+        self.message.save(update_fields=['text'])
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.return_value = {
+                'label': 'task',
+                'class_name': 'task',
+                'confidence': 0.98,
+                'probabilities': {'task': 0.98},
+            }
+
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.label, 'needs_review')
+        self.assertTrue(classification.needs_review)
+
+    def test_classification_task_postprocesses_question_without_question_signal(self):
+        self.message.text = 'съешь ещё этих мягких французских булок'
+        self.message.save(update_fields=['text'])
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.return_value = {
+                'label': 'question',
+                'class_name': 'question',
+                'confidence': 0.98,
+                'probabilities': {'question': 0.98},
+            }
+
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.label, 'default')
+        self.assertFalse(classification.needs_review)
 
     def test_embedding_task_is_idempotent(self):
         with patch('config.ml_tasks.embed_text') as ml_task:
@@ -508,6 +621,43 @@ class SemanticSearchTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn(self.no_embedding.id, [item['message_id'] for item in response.json()['results']])
+
+    def test_fuzzy_search_finds_word_with_one_typo_without_embedding(self):
+        message = Message.objects.create(chat=self.chat, sender=self.owner, text='Обсудим новый мессенджер')
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'мессенжнр', 'chat': self.chat.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = response.json()['results'][0]
+        self.assertEqual(result['message_id'], message.id)
+        self.assertEqual(result['search_mode'], 'fuzzy')
+        self.assertGreaterEqual(result['similarity_score'], SemanticSearchView.FUZZY_SCORE_THRESHOLD)
+        self.assertIn('мессенджер', result['matched_terms'])
+
+    def test_fuzzy_search_finds_phrase_with_two_typos(self):
+        message = Message.objects.create(chat=self.chat, sender=self.owner, text='Привет, как дела?')
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'првет как дела', 'chat': self.chat.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = response.json()['results'][0]
+        self.assertEqual(result['message_id'], message.id)
+        self.assertEqual(result['search_mode'], 'fuzzy')
+        self.assertGreaterEqual(result['similarity_score'], SemanticSearchView.FUZZY_SCORE_THRESHOLD)
+
+    def test_fuzzy_search_does_not_match_unrelated_mention(self):
+        target = Message.objects.create(chat=self.chat, sender=self.owner, text='Это тестовое сообщение')
+        mention = Message.objects.create(chat=self.chat, sender=self.owner, text='@ivanov')
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('api-search-semantic'), {'q': 'тстово', 'chat': self.chat.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item['message_id'] for item in response.json()['results'] if item['search_mode'] == 'fuzzy']
+        self.assertIn(target.id, ids)
+        self.assertNotIn(mention.id, ids)
 
     def test_category_query_returns_classified_questions_without_embedding(self):
         question = Message.objects.create(chat=self.chat, sender=self.owner, text='Как дела?')

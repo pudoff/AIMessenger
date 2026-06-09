@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { authAPI } from '../../api/auth';
 import Logo from '../../components/Logo';
 import logoAuth from '../../assets/logo_new.png';
+import { useAuth } from '../../context/AuthContext';
 
 const PASSWORD_RULES = [
   { test: (value) => value.length >= 8, text: 'Минимум 8 символов' },
@@ -26,12 +27,13 @@ function getPasswordError(password, confirmPassword) {
 function getFirstError(err) {
   const backendErrors = err?.data?.field_errors || err?.data || {};
   const firstError = Object.values(backendErrors).flat?.()[0];
-  return firstError || err?.message || '';
+  return String(firstError || err?.message || '');
 }
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const { uidb64, token } = useParams();
+  const { logout } = useAuth();
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
   const [touched, setTouched] = useState({});
   const [error, setError] = useState('');
@@ -40,9 +42,33 @@ function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorShownTime, setErrorShownTime] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const passwordError = getPasswordError(form.password, form.confirmPassword);
   const isFormValid = !passwordError;
+
+  useEffect(() => {
+    let mounted = true;
+
+    logout();
+    setIsCheckingLink(true);
+    setLinkError('');
+
+    authAPI.validatePasswordResetLink({ uidb64, token })
+      .catch((err) => {
+        if (mounted) {
+          setLinkError(getFirstError(err) || 'Ссылка восстановления недействительна или устарела.');
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsCheckingLink(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [uidb64, token]);
 
   // Очищать ошибку с задержкой - минимум 5 секунд видимости
   const clearErrorWithDelay = () => {
@@ -89,9 +115,7 @@ function ResetPasswordPage() {
       setIsSuccess(true);
       window.setTimeout(() => navigate('/login', { replace: true }), 1800);
     } catch (err) {
-      const backendErrors = err.data || {};
-      const firstError = Object.values(backendErrors).flat?.()[0];
-      const errMsg = firstError || err.message || 'Не удалось сменить пароль. Запросите новую ссылку.';
+      const errMsg = getFirstError(err) || 'Не удалось сменить пароль. Запросите новую ссылку.';
       setError(errMsg);
       setErrorShownTime(Date.now());
     } finally {

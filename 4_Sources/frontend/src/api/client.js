@@ -54,7 +54,7 @@ const getHttpErrorMessage = (status, data) => {
     
     case 429:
       // Too many requests - rate limiting
-      return 'Слишком много попыток. Попробуйте позже';
+      return getFirstBackendError(data) || 'Слишком много попыток. Попробуйте позже';
     
     case 500:
     case 502:

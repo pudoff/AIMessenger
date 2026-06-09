@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth import authenticate
@@ -9,6 +11,30 @@ from rest_framework import serializers
 
 from config.media import build_public_media_url
 from .models import Contact, User
+
+
+INVALID_PHONE_MESSAGE = 'Несуществующий номер телефона'
+SEQUENTIAL_PHONE_NUMBERS = {'0123456789', '1234567890', '9876543210'}
+
+
+def normalize_russian_phone(value):
+    digits = re.sub(r'\D', '', value or '')
+    if len(digits) == 11 and digits[0] in ('7', '8'):
+        digits = digits[1:]
+    if len(digits) != 10:
+        return None
+    return digits
+
+
+def is_unrealistic_phone_number(value):
+    digits = normalize_russian_phone(value)
+    if not digits:
+        return True
+    if len(set(digits)) == 1:
+        return True
+    if digits in SEQUENTIAL_PHONE_NUMBERS:
+        return True
+    return False
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -171,6 +197,16 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Пользователь с таким email уже существует.')
         return value
 
+    def validate_phone_number(self, value):
+        digits = normalize_russian_phone(value)
+        if is_unrealistic_phone_number(value):
+            raise serializers.ValidationError(INVALID_PHONE_MESSAGE)
+
+        normalized_value = f'+7{digits}'
+        if User.objects.filter(phone_number=normalized_value).exists():
+            raise serializers.ValidationError('Пользователь с таким номером телефона уже существует.')
+        return normalized_value
+
     def create(self, validated_data):
         return User.objects.create_user(is_active=False, **validated_data)
 
@@ -226,6 +262,8 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
         if not default_token_generator.check_token(user, attrs['token']):
             raise serializers.ValidationError({'token': 'Ссылка восстановления недействительна.'})
+        if not self.context.get('validate_link_only') and user.check_password(attrs['password']):
+            raise serializers.ValidationError({'password': 'Новый пароль должен отличаться от предыдущего.'})
 
         attrs['user'] = user
         return attrs
@@ -282,6 +320,8 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'current_password': 'Введите текущий пароль.'})
         if new_password and not self.instance.check_password(current_password):
             raise serializers.ValidationError({'current_password': 'Текущий пароль указан неверно.'})
+        if new_password and self.instance.check_password(new_password):
+            raise serializers.ValidationError({'new_password': 'Новый пароль должен отличаться от предыдущего.'})
 
         avatar = attrs.get('avatar', serializers.empty)
         if avatar not in (serializers.empty, None, ''):

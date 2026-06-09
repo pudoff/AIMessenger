@@ -7,11 +7,11 @@ const AuthLoader = () => (
 );
 
 export function RequireAuth({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, initializing } = useAuth();
   const location = useLocation();
 
   // 🔒 Ждём окончания проверки токена
-  if (loading) return <AuthLoader />;
+  if (initializing) return <AuthLoader />;
   
   // 🔒 Нет токена → редирект на логин
   if (!isAuthenticated) {
@@ -21,14 +21,14 @@ export function RequireAuth({ children }) {
   return children;
 }
 
-export function RequireGuest({ children }) {
-  const { currentUser, isAuthenticated, loading } = useAuth();
+export function RequireGuest({ children, allowAuthenticated = false }) {
+  const { currentUser, isAuthenticated, initializing } = useAuth();
 
   // 🔒 Ждём окончания проверки
-  if (loading) return <AuthLoader />;
+  if (initializing) return <AuthLoader />;
   
   // 🔒 Уже авторизован → редирект в приложение
-  if (isAuthenticated) {
+  if (isAuthenticated && !allowAuthenticated) {
     return <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/app'} replace />;
   }
 

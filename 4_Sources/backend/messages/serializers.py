@@ -1,3 +1,6 @@
+import logging
+import math
+
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
@@ -6,6 +9,8 @@ from chats.models import ChatMember
 from config.media import build_public_media_url
 from users.permissions import is_project_admin
 from .models import Message, MessageClassification, MessageReadReceipt
+
+logger = logging.getLogger(__name__)
 
 
 class MessageClassificationSerializer(serializers.ModelSerializer):
@@ -70,16 +75,55 @@ class MessageSerializer(serializers.ModelSerializer):
         attachments = []
         for attachment in obj.attachments.all():
             url = attachment.file.url if attachment.file else ''
+            self._log_missing_attachment_file(attachment)
             url = build_public_media_url(request, url, attachment.uploaded_at.timestamp())
+            download_url = f'/api/messages/attachments/{attachment.id}/download/'
+            if request:
+                download_url = request.build_absolute_uri(download_url)
             attachments.append({
                 'id': attachment.id,
                 'url': url,
+                'download_url': download_url,
                 'original_name': attachment.original_name,
                 'content_type': attachment.content_type,
                 'size': attachment.size,
                 'uploaded_at': attachment.uploaded_at,
             })
         return attachments
+
+    @staticmethod
+    def _log_missing_attachment_file(attachment):
+        if not attachment.file:
+            logger.warning(
+                "Attachment has empty file field: attachment_id=%s message_id=%s",
+                attachment.id,
+                attachment.message_id,
+            )
+            return
+
+        try:
+            exists = attachment.file.storage.exists(attachment.file.name)
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Attachment storage existence check failed: attachment_id=%s message_id=%s "
+                "file_name=%s error=%s",
+                attachment.id,
+                attachment.message_id,
+                attachment.file.name,
+                exc,
+            )
+            return
+
+        if not exists:
+            logger.warning(
+                "Attachment file is referenced by API but missing in storage: "
+                "attachment_id=%s message_id=%s file_name=%s media_root=%s file_url=%s",
+                attachment.id,
+                attachment.message_id,
+                attachment.file.name,
+                settings.MEDIA_ROOT,
+                attachment.file.url,
+            )
 
     def get_sender_avatar_url(self, obj):
         request = self.context.get('request')
@@ -135,6 +179,10 @@ class MessageSerializer(serializers.ModelSerializer):
 
         files = request.FILES.getlist('attachments') if request else []
         text = attrs.get('text', getattr(self.instance, 'text', ''))
+        if len(text or '') > settings.MESSAGE_MAX_LENGTH:
+            raise serializers.ValidationError({
+                'text': f'Сообщение не должно быть длиннее {settings.MESSAGE_MAX_LENGTH} символов.'
+            })
         if not (text or '').strip() and not files:
             raise serializers.ValidationError({'text': 'Введите текст или прикрепите файл.'})
         self._validate_attachments(files)
@@ -156,9 +204,8 @@ class MessageSerializer(serializers.ModelSerializer):
         allowed_types = set(settings.ALLOWED_ATTACHMENT_CONTENT_TYPES)
         for uploaded_file in files:
             if uploaded_file.size > settings.MAX_UPLOAD_SIZE_BYTES:
-                max_mb = settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)
                 raise serializers.ValidationError({
-                    'attachments': f'Файл {uploaded_file.name} превышает лимит {max_mb} МБ.'
+                    'attachments': f'Файл слишком большой. Макс. {MessageSerializer._format_upload_limit()}.'
                 })
 
             content_type = getattr(uploaded_file, 'content_type', '') or ''
@@ -166,3 +213,11 @@ class MessageSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'attachments': f'Тип файла {content_type or "unknown"} не разрешен.'
                 })
+
+    @staticmethod
+    def _format_upload_limit():
+        size = int(settings.MAX_UPLOAD_SIZE_BYTES)
+        if size >= 1024 ** 3:
+            value = size / (1024 ** 3)
+            return f'{value:g} ГБ'
+        return f'{math.ceil(size / (1024 * 1024))} МБ'
