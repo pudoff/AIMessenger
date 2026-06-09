@@ -16,21 +16,21 @@
 }
 
 .tag--question {
-  color: #7d5400;
-  background: rgba(214, 163, 74, 0.18);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
 }
 
 .tag--task {
-  color: #55b777;
-  background: rgba(106, 157, 123, 0.18);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
 .tag--default {
-  color: var(--accent-strong);
-  background: rgba(126, 137, 217, 0.16);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .tag--toxic {
-  color: #9f2d2d;
-  background: rgba(185, 109, 109, 0.18);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
 }

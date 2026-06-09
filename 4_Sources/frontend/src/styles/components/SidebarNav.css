@@ -21,7 +21,7 @@
 .shell-nav__item--active,
 .admin-menu__item--active {
   background: rgba(126, 137, 217, 0.14);
-  color: var(--accent-strong);
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -50,7 +50,7 @@
   gap: 12px;
   margin-top: auto;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--panel-muted);
   border-radius: 18px;
   border: 1px solid var(--border);
 }

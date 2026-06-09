@@ -31,7 +31,7 @@
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--panel);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
@@ -52,14 +52,15 @@
   width: min(100%, 720px);
   padding: 16px;
   border-radius: 20px 20px 20px 8px;
-  background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border);
+  background: var(--panel-muted);
 }
 
 .message__bubble--mine {
   color: white;
   background: linear-gradient(135deg, var(--accent-strong), var(--accent));
   border-radius: 20px 20px 8px 20px;
+  border: transparent;
 }
 
 .message__bubble p {
@@ -256,4 +257,24 @@
 .message__edit-actions button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+message__bubble--mine .tag {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.message__bubble--mine .tag--question {
+  color: #ffe699;
+}
+
+.message__bubble--mine .tag--task {
+  color: #b3ffd1; 
+}
+
+.message__bubble--mine .tag--toxic {
+  color: #ffb3b3; 
+}
+
+.message__bubble--mine .tag--default {
+  color: #e9e9ff
 }
