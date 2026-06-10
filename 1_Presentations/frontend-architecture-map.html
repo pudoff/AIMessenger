@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIMessenger architecture map</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #182033;
+      --muted: #697386;
+      --line: #d9dfeb;
+      --accent: #2563eb;
+      --accent-soft: #e8f0ff;
+      --green: #0f9f6e;
+      --orange: #b7791f;
+      --red: #c2410c;
+      --violet: #7c3aed;
+      --shadow: 0 14px 34px rgba(20, 32, 54, 0.08);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      padding: 22px;
+      background: #111827;
+      color: #f9fafb;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      font-size: 16px;
+    }
+
+    h3 {
+      font-size: 14px;
+    }
+
+    .subtitle {
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .segmented button {
+      min-height: 34px;
+      color: #cbd5e1;
+      background: transparent;
+    }
+
+    .segmented button.active {
+      color: #111827;
+      background: #f9fafb;
+    }
+
+    .search {
+      width: 100%;
+      min-height: 38px;
+      padding: 0 11px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 7px;
+      color: #f9fafb;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    .search::placeholder {
+      color: #94a3b8;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 9px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #e5e7eb;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .chip.active {
+      color: #111827;
+      background: #f9fafb;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 12px;
+      color: #d1d5db;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .side-card {
+      padding: 13px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .side-card p {
+      margin-top: 7px;
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .action {
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--panel);
+    }
+
+    .workspace {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    svg {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 560px;
+      display: block;
+      cursor: grab;
+      background:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 32px 32px;
+      background-color: #fbfcff;
+      user-select: none;
+      touch-action: none;
+    }
+
+    svg.is-panning {
+      cursor: grabbing;
+    }
+
+    .node circle {
+      stroke: #fff;
+      stroke-width: 2.5;
+      filter: drop-shadow(0 8px 14px rgba(17, 24, 39, 0.12));
+    }
+
+    .node {
+      cursor: pointer;
+      pointer-events: all;
+    }
+
+    .node text {
+      pointer-events: none;
+      font-size: 12px;
+      font-weight: 650;
+      fill: var(--ink);
+      paint-order: stroke;
+      stroke: rgba(255, 255, 255, 0.9);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+
+    .link {
+      stroke: #cbd5e1;
+      stroke-width: 1.3;
+      fill: none;
+      marker-end: url(#arrow);
+      opacity: 0.32;
+    }
+
+    .link.active {
+      stroke: #334155;
+      stroke-width: 2.4;
+      opacity: 0.95;
+      marker-end: url(#arrowActive);
+    }
+
+    .link.dim {
+      opacity: 0.09;
+    }
+
+    .link.dim {
+      opacity: 0.12;
+    }
+
+    .node.dim {
+      opacity: 0.34;
+    }
+
+    .node.hidden,
+    .link.hidden {
+      display: none;
+    }
+
+    .node.selected circle {
+      stroke: #111827;
+      stroke-width: 4;
+    }
+
+    .inspector {
+      position: absolute;
+      right: 18px;
+      bottom: 58px;
+      z-index: 4;
+      width: min(380px, calc(100% - 36px));
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+      max-height: min(44vh, 360px);
+      overflow: auto;
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+
+    .inspector.is-collapsed {
+      transform: translateY(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .inspector-toggle,
+    .map-controls {
+      position: absolute;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .inspector-toggle {
+      right: 18px;
+      bottom: 18px;
+    }
+
+    .map-controls {
+      left: 18px;
+      top: 18px;
+      align-items: center;
+    }
+
+    .map-button {
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 22px rgba(20, 32, 54, 0.08);
+      position: relative;
+      z-index: 6;
+    }
+
+    .hint {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.88);
+      font-size: 12px;
+    }
+
+    .inspector h2 {
+      margin-bottom: 5px;
+    }
+
+    .inspector p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.48;
+    }
+
+    .meta {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+    }
+
+    .pill {
+      padding: 5px 8px;
+      border-radius: 999px;
+      color: #334155;
+      background: #eef2f7;
+      font-size: 12px;
+    }
+
+    .list {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .list div {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f8fafc;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .flow-card {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .flow-card h3 {
+      margin-bottom: 7px;
+    }
+
+    .flow-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .bottom {
+        grid-template-columns: 1fr;
+      }
+
+      svg {
+        min-height: 680px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+    <aside>
+      <div>
+        <h1>AIMessenger architecture</h1>
+        <p class="subtitle">Временная интерактивная карта кода для папки <strong>4_Sources/frontend</strong>.</p>
+      </div>
+
+      <div class="control-group">
+        <h2>Вид</h2>
+        <div class="segmented" role="tablist">
+          <button class="active" data-mode="mind">Mind map</button>
+          <button data-mode="graph">Imports</button>
+          <button data-mode="routes">Routes</button>
+          <button data-mode="backendMl">Backend/ML</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h2>Поиск</h2>
+        <input class="search" id="search" placeholder="Например: AuthContext, ChatRoom, api" />
+      </div>
+
+      <div class="control-group">
+        <h2>Слои</h2>
+        <div class="chips" id="filters"></div>
+      </div>
+
+      <div class="side-card">
+        <h2>Как читать</h2>
+        <p>Толстая логика приложения лежит в страницах. Компоненты ниже в графе в основном отображают UI, контексты
+          держат авторизацию и непрочитанные сообщения, API-модули заворачивают HTTP-запросы.</p>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot" style="background:#2563eb"></i>entry/router</span>
+        <span><i class="dot" style="background:#7c3aed"></i>layout</span>
+        <span><i class="dot" style="background:#0f9f6e"></i>page</span>
+        <span><i class="dot" style="background:#f59e0b"></i>component</span>
+        <span><i class="dot" style="background:#ef4444"></i>context</span>
+        <span><i class="dot" style="background:#0891b2"></i>api/util</span>
+        <span><i class="dot" style="background:#dc2626"></i>task/worker</span>
+        <span><i class="dot" style="background:#9333ea"></i>ML/storage</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h2 id="viewTitle">Mind map: слои фронтенда</h2>
+          <p id="viewText">Показывает крупные зоны React-приложения и основные зависимости между ними.</p>
+        </div>
+        <div class="actions">
+          <button class="action" id="fit">Сбросить вид</button>
+          <button class="action" id="exportSvg">Экспорт SVG</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <svg id="map" viewBox="0 0 1200 720" aria-label="Frontend architecture graph">
+          <defs>
+            <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"
+              markerUnits="userSpaceOnUse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#cbd5e1"></path>
+            </marker>
+            <marker id="arrowActive" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"
+              markerUnits="userSpaceOnUse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#334155"></path>
+            </marker>
+          </defs>
+        </svg>
+        <div class="map-controls">
+          <button class="map-button" id="zoomOut" type="button">-</button>
+          <button class="map-button" id="zoomIn" type="button">+</button>
+          <span class="hint">Drag to pan, wheel to zoom</span>
+        </div>
+        <button class="map-button inspector-toggle" id="toggleInspector" type="button">Details</button>
+        <article class="inspector" id="inspector"></article>
+      </section>
+
+      <section class="bottom">
+        <article class="flow-card">
+          <h3>Авторизация</h3>
+          <p>main.jsx оборачивает приложение в AuthProvider. AuthContext читает token из localStorage, вызывает
+            authAPI.getMe, а RouteGuards решают, пустить ли пользователя в /app или /admin.</p>
+        </article>
+        <article class="flow-card">
+          <h3>Чаты</h3>
+          <p>DirectChatsPage и GroupChatsPage загружают список чатов, сообщения и участников. Отправка идет через
+            messagesAPI.send с optimistic UI и последующей заменой временного сообщения.</p>
+        </article>
+        <article class="flow-card">
+          <h3>Непрочитанные</h3>
+          <p>UnreadProvider хранит состояние в localStorage. AppLayout периодически синхронизирует
+            direct/group/corporate чаты и передает activeChatId, чтобы активный чат не считался новым.</p>
+        </article>
+        <article class="flow-card">
+          <h3>Админка</h3>
+          <p>AdminLayout живет под /admin и защищен ролью admin. Страницы Dashboard, Users, Chats и Broadcast используют
+            adminAPI и общие компоненты заголовков/аватаров.</p>
+        </article>
+        <article class="flow-card">
+          <h3>Backend/ML workflow</h3>
+          <p>MessageViewSet сохраняет сообщение и ставит Celery-задачи. Backend-worker через Redis вызывает ML-worker,
+            получает классификацию и embedding, после чего сохраняет MessageClassification и MessageEmbedding в PostgreSQL/pgvector.</p>
+        </article>
+        <article class="flow-card">
+          <h3>Семантический поиск</h3>
+          <p>SemanticSearchView принимает запрос /api/search/semantic/, проверяет права доступа к чатам, ищет по vector(384)
+            и добавляет fuzzy fallback для опечаток. Frontend показывает результат и может сфокусироваться на сообщении.</p>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const colors = {
+      entry: '#2563eb',
+      router: '#2563eb',
+      layout: '#7c3aed',
+      page: '#0f9f6e',
+      component: '#f59e0b',
+      context: '#ef4444',
+      api: '#0891b2',
+      util: '#64748b',
+      data: '#8b5cf6',
+      style: '#475569',
+      backend: '#334155',
+      viewset: '#16a34a',
+      serializer: '#0284c7',
+      permission: '#ea580c',
+      model: '#9333ea',
+      task: '#dc2626',
+      ml: '#db2777',
+      infra: '#0f766e',
+      storage: '#4f46e5'
+    };
+
+    const nodes = [
+      { id: 'main.jsx', type: 'entry', group: 'Bootstrap', path: 'src/main.jsx', note: 'Точка входа: ReactDOM, BrowserRouter, AuthProvider, UnreadProvider, App.' },
+      { id: 'App.jsx', type: 'router', group: 'Routing', path: 'src/App.jsx', note: 'Определяет публичные, пользовательские и админские маршруты.' },
+      { id: 'AuthContext', type: 'context', group: 'State', path: 'src/context/AuthContext.jsx', note: 'Токен, текущий пользователь, login/register/logout/refreshProfile.' },
+      { id: 'UnreadContext', type: 'context', group: 'State', path: 'src/context/UnreadContext.jsx', note: 'Локальное состояние непрочитанных сообщений для direct/group/corporate.' },
+      { id: 'RouteGuards', type: 'component', group: 'Routing', path: 'src/components/guards/RouteGuards.jsx', note: 'RequireAuth, RequireGuest, RequireRole на базе AuthContext.' },
+      { id: 'AppLayout', type: 'layout', group: 'Layouts', path: 'src/layouts/AppLayout.jsx', note: 'Пользовательская оболочка, SidebarNav, Outlet, синхронизация unread каждые 10 секунд.' },
+      { id: 'AdminLayout', type: 'layout', group: 'Layouts', path: 'src/layouts/AdminLayout.jsx', note: 'Админская оболочка с навигацией, Logo, Avatar и logout.' },
+      { id: 'SidebarNav', type: 'component', group: 'Components', path: 'src/components/SidebarNav.jsx', note: 'Главная навигация пользовательского раздела.' },
+      { id: 'MessengerPage', type: 'page', group: 'Messenger', path: 'src/pages/messenger/MessengerPage.jsx', note: 'Сводный список direct/group/corporate чатов, поиск, переход в нужный раздел.' },
+      { id: 'DirectChatsPage', type: 'page', group: 'Messenger', path: 'src/pages/messenger/DirectChatsPage.jsx', note: 'Личные чаты: polling чатов 5с, сообщений 3с, semantic search, optimistic send.' },
+      { id: 'GroupChatsPage', type: 'page', group: 'Messenger', path: 'src/pages/messenger/GroupChatsPage.jsx', note: 'Группы: создание, участники, удаление, semantic search, сообщения.' },
+      { id: 'CommunitiesPage', type: 'page', group: 'Messenger', path: 'src/pages/messenger/CommunitiesPage.jsx', note: 'Корпоративные сообщества из /chats/?type=corporate.' },
+      { id: 'ContactsPage', type: 'page', group: 'Messenger', path: 'src/pages/messenger/ContactsPage.jsx', note: 'Контакты, поиск пользователей, добавление/удаление, старт direct-чата.' },
+      { id: 'AssistantPage', type: 'page', group: 'Assistant', path: 'src/pages/assistant/AssistantPage.jsx', note: 'AI-страница с локальными быстрыми ответами и semantic search по сообщениям.' },
+      { id: 'SettingsPage', type: 'page', group: 'Settings', path: 'src/pages/SettingsPage.jsx', note: 'Профиль, телефон/email, пароль, аватар через authAPI.updateMe.' },
+      { id: 'AuthPages', type: 'page', group: 'Auth', path: 'src/pages/auth/*.jsx', note: 'Login/Register/ForgotPassword/ResetPassword используют AuthContext и authAPI.' },
+      { id: 'AdminPages', type: 'page', group: 'Admin', path: 'src/pages/admin/*.jsx', note: 'Dashboard, Users, Chats, Broadcast. Работают с adminAPI.' },
+      { id: 'ChatPageShell', type: 'component', group: 'Chat UI', path: 'src/components/chat/ChatPageShell.jsx', note: 'Универсальная оболочка split/single-column для чатовых страниц.' },
+      { id: 'ChatList', type: 'component', group: 'Chat UI', path: 'src/components/chat/ChatList.jsx', note: 'Список карточек чатов с unread badge.' },
+      { id: 'ChatHeader', type: 'component', group: 'Chat UI', path: 'src/components/chat/ChatHeader.jsx', note: 'Шапка выбранного чата.' },
+      { id: 'ChatRoom', type: 'component', group: 'Chat UI', path: 'src/components/chat/ChatRoom.jsx', note: 'Лента сообщений, разделители дат, focus на semantic result, ChatComposer.' },
+      { id: 'MessageBubble', type: 'component', group: 'Chat UI', path: 'src/components/MessageBubble.jsx', note: 'Отображение сообщения, вложений, тегов, edit/delete для своих сообщений.' },
+      { id: 'ChatComposer', type: 'component', group: 'Chat UI', path: 'src/components/ChatComposer.jsx', note: 'Поле ввода, emoji, файлы, submit сообщения.' },
+      { id: 'CommonComponents', type: 'component', group: 'Components', path: 'src/components/*.jsx', note: 'Avatar, Logo, SectionHeader, Tag, StoriesBar, LegalModal.' },
+      { id: 'api/client', type: 'api', group: 'API', path: 'src/api/client.js', note: 'Единый request: API_BASE, Token auth, parse JSON, retry, HTTP/network errors.' },
+      { id: 'authAPI', type: 'api', group: 'API', path: 'src/api/auth.js', note: 'login/register/password reset/getMe/updateMe/logout.' },
+      { id: 'chatsAPI', type: 'api', group: 'API', path: 'src/api/chats.js', note: 'CRUD чатов, markRead, openDirect.' },
+      { id: 'messagesAPI', type: 'api', group: 'API', path: 'src/api/chats.js', note: 'Список, отправка, update/delete сообщений, semantic search.' },
+      { id: 'contactsAPI', type: 'api', group: 'API', path: 'src/api/contacts.js', note: 'Список контактов, поиск, добавить/удалить, открыть direct.' },
+      { id: 'adminAPI', type: 'api', group: 'API', path: 'src/api/admin.js', note: 'Данные админ-панели, пользователи, корпоративные чаты, рассылки.' },
+      { id: 'utils', type: 'util', group: 'Shared', path: 'src/utils/*.js', note: 'validation, media URL resolver, phone mask, errorHandler.' },
+      { id: 'data', type: 'data', group: 'Shared', path: 'src/data/*.js', note: 'Моковые/демо данные для assistant, admin, contacts, chats, legal content.' },
+      { id: 'styles', type: 'style', group: 'Shared', path: 'src/styles/**/*.css', note: 'Глобальные стили, layouts, components, pages.' },
+      { id: 'Backend API', type: 'backend', group: 'External', path: 'API_BASE', note: 'Django/REST endpoints за API_BASE. Фронт общается через api/client.' },
+      { id: 'config/urls.py', type: 'backend', group: 'Backend Entry', path: '4_Sources/backend/config/urls.py', scope: 'backend', note: 'Главная карта backend routes: auth, users, contacts, chats, messages, semantic search, schema/docs, admin.' },
+      { id: 'DRF Router', type: 'backend', group: 'Backend Entry', path: 'DefaultRouter', scope: 'backend', note: 'Регистрирует ViewSet endpoints /api/users/, /api/chats/, /api/messages/ и related API.' },
+      { id: 'Auth/Register API', type: 'viewset', group: 'Users API', path: 'backend/users/views.py', scope: 'backend', note: 'Регистрация, подтверждение email, token login, /api/me/, восстановление и смена пароля.' },
+      { id: 'UserSerializer', type: 'serializer', group: 'Users API', path: 'backend/users/serializers.py', scope: 'backend', note: 'Валидация пользователя, email, телефона, пароля, профиля и аватара.' },
+      { id: 'User/Contact models', type: 'model', group: 'Users Domain', path: 'backend/users/models.py', scope: 'backend', note: 'Расширенный пользователь, роли, контакты, профильные поля, avatar/media.' },
+      { id: 'ChatViewSet', type: 'viewset', group: 'Chats API', path: 'backend/chats/views.py', scope: 'backend', note: 'CRUD чатов, open direct, delete direct/group, unread_count, mark-read, участники и права доступа.' },
+      { id: 'ChatSerializer', type: 'serializer', group: 'Chats API', path: 'backend/chats/serializers.py', scope: 'backend', note: 'Сериализация Chat, ChatMember, unread fields, last message и участников.' },
+      { id: 'Chat permissions', type: 'permission', group: 'Security', path: 'backend/chats/permissions.py', scope: 'backend', note: 'Проверяет членство в чате, роль owner/admin и доступ project admin.' },
+      { id: 'Chat/ChatMember models', type: 'model', group: 'Chats Domain', path: 'backend/chats/models.py', scope: 'backend', note: 'Chat, ChatMember, типы direct/group/corporate, created_by, роли участников.' },
+      { id: 'MessageViewSet', type: 'viewset', group: 'Messages API', path: 'backend/messages/views.py', scope: 'backend', note: 'Создание, чтение, update/delete сообщений, multipart attachments, постановка ML-задач в Celery.' },
+      { id: 'MessageSerializer', type: 'serializer', group: 'Messages API', path: 'backend/messages/serializers.py', scope: 'backend', note: 'Текст, sender, classification, read receipts, attachments и download_url.' },
+      { id: 'Message permissions', type: 'permission', group: 'Security', path: 'backend/messages/permissions.py', scope: 'backend', note: 'Доступ к сообщениям только участникам чата; запись только членам чата или администраторам.' },
+      { id: 'Message models', type: 'model', group: 'Messages Domain', path: 'backend/messages/models.py', scope: 'backend', note: 'Message, MessageClassification, MessageAttachment, MessageReadReceipt, MessageEmbedding.' },
+      { id: 'AttachmentDownloadView', type: 'viewset', group: 'Files API', path: 'backend/messages/views.py', scope: 'backend', note: 'Безопасная выдача вложений через FileResponse после проверки доступа к чату.' },
+      { id: 'SemanticSearchView', type: 'viewset', group: 'Search API', path: 'backend/messages/views.py', scope: 'backend', note: 'Endpoint /api/search/semantic/: pgvector cosine search плюс fuzzy fallback и фильтры chat/date/type.' },
+      { id: 'classification.py', type: 'ml', group: 'Backend ML Adapter', path: 'backend/messages/classification.py', scope: 'backend', note: 'Fallback-классификатор, postprocess ML-ответа, needs_review для мусорного текста и спорных результатов.' },
+      { id: 'config/celery.py', type: 'task', group: 'Async Entry', path: 'backend/config/celery.py', scope: 'backend', note: 'Celery app backend-сервиса, broker/result backend через Redis, очереди backend и ml.' },
+      { id: 'classify_message_task', type: 'task', group: 'Async Tasks', path: 'backend/messages/tasks.py', scope: 'backend', note: 'Берет Message, вызывает ML-классификацию или fallback, сохраняет MessageClassification status/source/needs_review.' },
+      { id: 'build_message_embedding_task', type: 'task', group: 'Async Tasks', path: 'backend/messages/tasks.py', scope: 'backend', note: 'Строит embedding сообщения, проверяет text_hash, сохраняет MessageEmbedding vector(384).' },
+      { id: 'Redis broker', type: 'infra', group: 'Infrastructure', path: 'docker-compose*.yml', scope: 'backend', note: 'Брокер Celery и result backend для связки backend-worker и ml-worker.' },
+      { id: 'backend-worker', type: 'infra', group: 'Infrastructure', path: 'docker-compose*.yml', scope: 'backend', note: 'Отдельный Celery worker backend-очереди: классификация сообщений и построение embeddings.' },
+      { id: 'ml-worker', type: 'infra', group: 'Infrastructure', path: '4_Sources/ml-service', scope: 'backend', note: 'Celery worker ML-очереди, исполняет ml_service.predict_text, embed_text, embed_texts.' },
+      { id: 'ml tasks', type: 'task', group: 'ML Service', path: 'ml-service/tasks.py', scope: 'backend', note: 'Точки входа ML-worker: классификация текста и генерация embeddings для backend.' },
+      { id: 'ChatPredictor', type: 'ml', group: 'ML Service', path: 'ml-service/predictor.py', scope: 'backend', note: 'Загружает модель из artifacts, возвращает class_name, confidence, probabilities, needs_review.' },
+      { id: 'Embedder', type: 'ml', group: 'ML Service', path: 'ml-service/embedder.py', scope: 'backend', note: 'Sentence-transformers или fallback hash embedding, размерность 384 для pgvector.' },
+      { id: 'PostgreSQL pgvector', type: 'storage', group: 'Storage', path: 'postgres + extension vector', scope: 'backend', note: 'Хранит пользователей, чаты, сообщения, классификации, вложения, read receipts и vector(384) embeddings.' },
+      { id: 'Media storage', type: 'storage', group: 'Storage', path: 'MEDIA_ROOT / MEDIA_URL', scope: 'backend', note: 'Файлы вложений и аватары пользователей, отдача через backend/nginx/traefik в зависимости от окружения.' }
+    ];
+
+    const links = [
+      ['main.jsx', 'AuthContext'], ['main.jsx', 'UnreadContext'], ['main.jsx', 'App.jsx'], ['main.jsx', 'styles'],
+      ['App.jsx', 'RouteGuards'], ['App.jsx', 'AppLayout'], ['App.jsx', 'AdminLayout'], ['App.jsx', 'AuthPages'],
+      ['App.jsx', 'MessengerPage'], ['App.jsx', 'DirectChatsPage'], ['App.jsx', 'GroupChatsPage'], ['App.jsx', 'CommunitiesPage'],
+      ['App.jsx', 'ContactsPage'], ['App.jsx', 'AssistantPage'], ['App.jsx', 'SettingsPage'], ['App.jsx', 'AdminPages'],
+      ['RouteGuards', 'AuthContext'], ['AppLayout', 'SidebarNav'], ['AppLayout', 'UnreadContext'], ['AppLayout', 'api/client'],
+      ['AdminLayout', 'AuthContext'], ['AdminLayout', 'CommonComponents'],
+      ['MessengerPage', 'ChatPageShell'], ['MessengerPage', 'ChatList'], ['MessengerPage', 'api/client'], ['MessengerPage', 'UnreadContext'],
+      ['DirectChatsPage', 'ChatPageShell'], ['DirectChatsPage', 'ChatHeader'], ['DirectChatsPage', 'ChatList'], ['DirectChatsPage', 'ChatRoom'],
+      ['DirectChatsPage', 'AuthContext'], ['DirectChatsPage', 'UnreadContext'], ['DirectChatsPage', 'chatsAPI'], ['DirectChatsPage', 'messagesAPI'], ['DirectChatsPage', 'api/client'],
+      ['GroupChatsPage', 'ChatPageShell'], ['GroupChatsPage', 'ChatHeader'], ['GroupChatsPage', 'ChatList'], ['GroupChatsPage', 'ChatRoom'],
+      ['GroupChatsPage', 'AuthContext'], ['GroupChatsPage', 'UnreadContext'], ['GroupChatsPage', 'chatsAPI'], ['GroupChatsPage', 'messagesAPI'], ['GroupChatsPage', 'contactsAPI'], ['GroupChatsPage', 'api/client'],
+      ['CommunitiesPage', 'api/client'], ['ContactsPage', 'contactsAPI'], ['ContactsPage', 'CommonComponents'],
+      ['AssistantPage', 'messagesAPI'], ['AssistantPage', 'data'], ['SettingsPage', 'authAPI'], ['SettingsPage', 'AuthContext'], ['SettingsPage', 'CommonComponents'],
+      ['AuthPages', 'AuthContext'], ['AuthPages', 'authAPI'], ['AuthPages', 'utils'], ['AdminPages', 'adminAPI'], ['AdminPages', 'CommonComponents'], ['AdminPages', 'data'],
+      ['ChatRoom', 'MessageBubble'], ['ChatRoom', 'ChatComposer'], ['ChatList', 'CommonComponents'], ['MessageBubble', 'CommonComponents'], ['MessageBubble', 'utils'],
+      ['authAPI', 'api/client'], ['chatsAPI', 'api/client'], ['messagesAPI', 'api/client'], ['contactsAPI', 'api/client'], ['adminAPI', 'api/client'], ['utils', 'api/client'],
+      ['api/client', 'Backend API'],
+      ['Backend API', 'config/urls.py'], ['config/urls.py', 'DRF Router'],
+      ['config/urls.py', 'Auth/Register API'], ['config/urls.py', 'AttachmentDownloadView'], ['config/urls.py', 'SemanticSearchView'],
+      ['DRF Router', 'ChatViewSet'], ['DRF Router', 'MessageViewSet'],
+      ['Auth/Register API', 'UserSerializer'], ['Auth/Register API', 'User/Contact models'], ['UserSerializer', 'User/Contact models'], ['User/Contact models', 'PostgreSQL pgvector'], ['User/Contact models', 'Media storage'],
+      ['ChatViewSet', 'ChatSerializer'], ['ChatViewSet', 'Chat permissions'], ['ChatViewSet', 'Chat/ChatMember models'], ['ChatViewSet', 'Message models'],
+      ['ChatSerializer', 'Chat/ChatMember models'], ['Chat permissions', 'Chat/ChatMember models'], ['Chat/ChatMember models', 'PostgreSQL pgvector'],
+      ['MessageViewSet', 'MessageSerializer'], ['MessageViewSet', 'Message permissions'], ['MessageViewSet', 'Message models'], ['MessageViewSet', 'classify_message_task'], ['MessageViewSet', 'build_message_embedding_task'],
+      ['MessageSerializer', 'Message models'], ['Message permissions', 'Chat/ChatMember models'], ['Message permissions', 'Message models'], ['Message models', 'PostgreSQL pgvector'], ['Message models', 'Media storage'],
+      ['AttachmentDownloadView', 'Message permissions'], ['AttachmentDownloadView', 'Message models'], ['AttachmentDownloadView', 'Media storage'],
+      ['SemanticSearchView', 'Message permissions'], ['SemanticSearchView', 'Message models'], ['SemanticSearchView', 'PostgreSQL pgvector'],
+      ['config/celery.py', 'Redis broker'], ['backend-worker', 'config/celery.py'], ['backend-worker', 'Redis broker'],
+      ['classify_message_task', 'backend-worker'], ['classify_message_task', 'classification.py'], ['classify_message_task', 'Redis broker'], ['classify_message_task', 'Message models'],
+      ['build_message_embedding_task', 'backend-worker'], ['build_message_embedding_task', 'Redis broker'], ['build_message_embedding_task', 'Message models'],
+      ['Redis broker', 'ml-worker'], ['ml-worker', 'ml tasks'], ['ml tasks', 'ChatPredictor'], ['ml tasks', 'Embedder'],
+      ['ChatPredictor', 'classification.py'], ['Embedder', 'build_message_embedding_task'], ['build_message_embedding_task', 'PostgreSQL pgvector']
+    ].map(([source, target]) => ({ source, target }));
+
+    const layouts = {
+      mind: {
+        title: 'Mind map: слои фронтенда',
+        text: 'Крупные зоны React-приложения и основные зависимости между ними.',
+        points: {
+          'main.jsx': [145, 95], 'App.jsx': [310, 95], 'AuthContext': [145, 235], 'UnreadContext': [145, 350], 'RouteGuards': [455, 95],
+          'AppLayout': [610, 170], 'AdminLayout': [610, 470], 'SidebarNav': [775, 170],
+          'MessengerPage': [755, 270], 'DirectChatsPage': [930, 190], 'GroupChatsPage': [930, 305], 'CommunitiesPage': [930, 420], 'ContactsPage': [930, 535],
+          'AssistantPage': [735, 70], 'SettingsPage': [735, 620], 'AuthPages': [455, 235], 'AdminPages': [760, 470],
+          'ChatPageShell': [1080, 175], 'ChatList': [1080, 270], 'ChatHeader': [1080, 365], 'ChatRoom': [1080, 460],
+          'MessageBubble': [1025, 590], 'ChatComposer': [1145, 590], 'CommonComponents': [590, 620],
+          'authAPI': [330, 340], 'chatsAPI': [485, 340], 'messagesAPI': [485, 455], 'contactsAPI': [330, 455], 'adminAPI': [635, 545], 'api/client': [485, 610],
+          'utils': [310, 610], 'data': [610, 70], 'styles': [145, 610], 'Backend API': [780, 610]
+        }
+      },
+      graph: {
+        title: 'Imports: карта зависимостей',
+        text: 'Ближе к реальному направлению импортов: страницы зависят от компонентов, контекстов и API-оберток.',
+        points: {
+          'main.jsx': [80, 100], 'App.jsx': [215, 100], 'RouteGuards': [360, 100], 'AuthContext': [520, 95], 'UnreadContext': [520, 205],
+          'AppLayout': [360, 240], 'AdminLayout': [360, 360], 'SidebarNav': [520, 330],
+          'AuthPages': [215, 240], 'MessengerPage': [215, 360], 'DirectChatsPage': [215, 470], 'GroupChatsPage': [215, 580],
+          'CommunitiesPage': [80, 470], 'ContactsPage': [80, 580], 'AssistantPage': [80, 240], 'SettingsPage': [80, 360], 'AdminPages': [520, 470],
+          'ChatPageShell': [700, 260], 'ChatList': [700, 355], 'ChatHeader': [700, 450], 'ChatRoom': [700, 545], 'MessageBubble': [890, 510], 'ChatComposer': [890, 610], 'CommonComponents': [890, 355],
+          'authAPI': [700, 95], 'chatsAPI': [700, 155], 'messagesAPI': [890, 155], 'contactsAPI': [890, 95], 'adminAPI': [700, 650], 'api/client': [1040, 155],
+          'utils': [1040, 355], 'data': [1040, 500], 'styles': [1040, 650], 'Backend API': [1140, 155]
+        }
+      },
+      routes: {
+        title: 'Routes: пользовательские и админские сценарии',
+        text: 'Маршруты из App.jsx: публичная авторизация, защищенный /app для user и /admin для admin.',
+        points: {
+          'main.jsx': [90, 360], 'App.jsx': [245, 360], 'RouteGuards': [400, 360], 'AuthContext': [400, 210], 'UnreadContext': [400, 520],
+          'AuthPages': [590, 130], 'AppLayout': [590, 330], 'AdminLayout': [590, 540], 'SidebarNav': [760, 330],
+          'MessengerPage': [775, 175], 'DirectChatsPage': [940, 250], 'GroupChatsPage': [940, 360], 'CommunitiesPage': [940, 470], 'ContactsPage': [940, 580],
+          'AssistantPage': [775, 70], 'SettingsPage': [775, 690], 'AdminPages': [775, 540],
+          'ChatPageShell': [1110, 250], 'ChatList': [1110, 360], 'ChatHeader': [1110, 470], 'ChatRoom': [1110, 580],
+          'MessageBubble': [1040, 680], 'ChatComposer': [1165, 680], 'CommonComponents': [775, 645],
+          'authAPI': [590, 210], 'chatsAPI': [940, 90], 'messagesAPI': [1110, 90], 'contactsAPI': [940, 690], 'adminAPI': [940, 540], 'api/client': [1110, 185],
+          'utils': [590, 690], 'data': [1110, 540], 'styles': [90, 690], 'Backend API': [1110, 20]
+        }
+      },
+      backendMl: {
+        title: 'Backend/ML: workflow сообщений, классификации и поиска',
+        text: 'Связь frontend API-клиента с Django REST, доменными моделями, Celery/Redis, ML-worker и PostgreSQL/pgvector.',
+        points: {
+          'api/client': [80, 360], 'authAPI': [80, 160], 'chatsAPI': [80, 250], 'messagesAPI': [80, 470], 'contactsAPI': [80, 560],
+          'Backend API': [210, 360], 'config/urls.py': [350, 360], 'DRF Router': [490, 360],
+          'Auth/Register API': [520, 90], 'UserSerializer': [690, 90], 'User/Contact models': [870, 90],
+          'ChatViewSet': [520, 230], 'ChatSerializer': [690, 195], 'Chat permissions': [690, 265], 'Chat/ChatMember models': [870, 230],
+          'MessageViewSet': [520, 405], 'MessageSerializer': [690, 345], 'Message permissions': [690, 425], 'Message models': [870, 405],
+          'AttachmentDownloadView': [520, 560], 'SemanticSearchView': [520, 665],
+          'config/celery.py': [690, 560], 'classify_message_task': [870, 520], 'build_message_embedding_task': [870, 615],
+          'backend-worker': [1030, 560], 'Redis broker': [1030, 405], 'ml-worker': [1160, 405],
+          'ml tasks': [1160, 520], 'ChatPredictor': [1160, 615], 'Embedder': [1030, 685],
+          'classification.py': [870, 690], 'PostgreSQL pgvector': [1060, 150], 'Media storage': [1060, 270]
+        }
+      }
+    };
+
+    const svg = document.getElementById('map');
+    const inspector = document.getElementById('inspector');
+    const search = document.getElementById('search');
+    const filters = document.getElementById('filters');
+    const modeButtons = document.querySelectorAll('[data-mode]');
+    const viewTitle = document.getElementById('viewTitle');
+    const viewText = document.getElementById('viewText');
+    const toggleInspector = document.getElementById('toggleInspector');
+    const zoomIn = document.getElementById('zoomIn');
+    const zoomOut = document.getElementById('zoomOut');
+    let mode = 'mind';
+    let selected = null;
+    let enabledTypes = new Set(Object.keys(colors));
+    let inspectorOpen = false;
+    let camera = { x: 0, y: 0, width: 1200, height: 720 };
+    let panStart = null;
+    let didPan = false;
+
+    const typeLabels = {
+      entry: 'entry', router: 'router', layout: 'layout', page: 'page', component: 'component',
+      context: 'context', api: 'api', util: 'util', data: 'data', style: 'style', backend: 'backend',
+      viewset: 'viewset', serializer: 'serializer', permission: 'permission', model: 'model',
+      task: 'task', ml: 'ml', infra: 'infra', storage: 'storage'
+    };
+
+    Object.keys(typeLabels).forEach((type) => {
+      const button = document.createElement('button');
+      button.className = 'chip active';
+      button.dataset.type = type;
+      button.textContent = typeLabels[type];
+      button.addEventListener('click', () => {
+        if (enabledTypes.has(type)) enabledTypes.delete(type);
+        else enabledTypes.add(type);
+        button.classList.toggle('active', enabledTypes.has(type));
+        render();
+      });
+      filters.appendChild(button);
+    });
+
+    function nodeById(id) {
+      return nodes.find((node) => node.id === id);
+    }
+
+    function activeLinks() {
+      if (!selected) return [];
+      return links.filter((link) => link.source === selected || link.target === selected);
+    }
+
+    function connectedIds() {
+      if (!selected) return new Set(nodes.map((node) => node.id));
+      const ids = new Set([selected]);
+      activeLinks().forEach((link) => {
+        ids.add(link.source);
+        ids.add(link.target);
+      });
+      return ids;
+    }
+
+    function spacedPositions(ids, x, startY, endY) {
+      if (ids.length === 0) return {};
+      if (ids.length === 1) return { [ids[0]]: [x, (startY + endY) / 2] };
+      return ids.reduce((result, id, index) => {
+        const y = startY + ((endY - startY) * index) / (ids.length - 1);
+        result[id] = [x, y];
+        return result;
+      }, {});
+    }
+
+    function focusPositions() {
+      if (!selected) return null;
+      const incoming = links
+        .filter((link) => link.target === selected)
+        .map((link) => link.source);
+      const outgoing = links
+        .filter((link) => link.source === selected)
+        .map((link) => link.target);
+      const incomingOnly = [...new Set(incoming.filter((id) => id !== selected && !outgoing.includes(id)))];
+      const outgoingUnique = [...new Set(outgoing.filter((id) => id !== selected))];
+
+      return {
+        [selected]: [600, 360],
+        ...spacedPositions(incomingOnly, 300, 150, 570),
+        ...spacedPositions(outgoingUnique, 900, 110, 610)
+      };
+    }
+
+    function pos(id) {
+      return layouts[mode].points[id] || [600, 360];
+    }
+
+    function radiusFor(node) {
+      if (!node) return 24;
+      return node.type === 'page' ? 25 : node.type === 'component' ? 22 : 24;
+    }
+
+    function edgePoint(fromId, toId, extra = 10) {
+      const from = nodeById(fromId);
+      const [x1, y1] = pos(fromId);
+      const [x2, y2] = pos(toId);
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.hypot(dx, dy) || 1;
+      const distance = radiusFor(from) + extra;
+      return [
+        x1 + (dx / length) * distance,
+        y1 + (dy / length) * distance
+      ];
+    }
+
+    function linkPath(link) {
+      const [x1, y1] = edgePoint(link.target, link.source, 6);
+      const [x2, y2] = edgePoint(link.source, link.target, 6);
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const distance = Math.hypot(dx, dy) || 1;
+      const normalX = -dy / distance;
+      const normalY = dx / distance;
+      const lift = Math.min(70, Math.max(22, distance * 0.12));
+      const cx1 = x1 + dx * 0.35 + normalX * lift;
+      const cy1 = y1 + dy * 0.35 + normalY * lift;
+      const cx2 = x1 + dx * 0.65 + normalX * lift;
+      const cy2 = y1 + dy * 0.65 + normalY * lift;
+      return `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
+    }
+
+    function modeAllowsNode(node) {
+      if (mode === 'backendMl') {
+        return node.scope === 'backend' || ['api/client', 'authAPI', 'chatsAPI', 'messagesAPI', 'contactsAPI', 'Backend API'].includes(node.id);
+      }
+      return node.scope !== 'backend';
+    }
+
+    function visibleNode(node) {
+      const q = search.value.trim().toLowerCase();
+      const text = `${node.id} ${node.type} ${node.group} ${node.path} ${node.note}`.toLowerCase();
+      return modeAllowsNode(node) && enabledTypes.has(node.type) && (!q || text.includes(q));
+    }
+
+    function connectedToSelection(id) {
+      if (!selected) return true;
+      return connectedIds().has(id);
+    }
+
+    function applyCamera() {
+      svg.setAttribute('viewBox', `${camera.x} ${camera.y} ${camera.width} ${camera.height}`);
+    }
+
+    function resetCamera() {
+      camera = { x: 0, y: 0, width: 1200, height: 720 };
+      applyCamera();
+    }
+
+    function zoomAt(scale, clientX = null, clientY = null) {
+      const rect = svg.getBoundingClientRect();
+      const px = clientX == null ? rect.left + rect.width / 2 : clientX;
+      const py = clientY == null ? rect.top + rect.height / 2 : clientY;
+      const focusX = camera.x + ((px - rect.left) / rect.width) * camera.width;
+      const focusY = camera.y + ((py - rect.top) / rect.height) * camera.height;
+      const nextWidth = Math.max(420, Math.min(2200, camera.width * scale));
+      const nextHeight = Math.max(252, Math.min(1320, camera.height * scale));
+
+      camera.x = focusX - ((px - rect.left) / rect.width) * nextWidth;
+      camera.y = focusY - ((py - rect.top) / rect.height) * nextHeight;
+      camera.width = nextWidth;
+      camera.height = nextHeight;
+      applyCamera();
+    }
+
+    function render() {
+      viewTitle.textContent = layouts[mode].title;
+      viewText.textContent = layouts[mode].text;
+      svg.classList.toggle('links-focus', Boolean(selected));
+      svg.querySelectorAll('.link,.node').forEach((el) => el.remove());
+      const visible = new Map(nodes.map((node) => [
+        node.id,
+        visibleNode(node)
+      ]));
+
+      links.forEach((link) => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', linkPath(link));
+        path.classList.add('link');
+        if (!visible.get(link.source) || !visible.get(link.target)) path.classList.add('hidden');
+        if (selected && (link.source === selected || link.target === selected)) path.classList.add('active');
+        if (selected && link.source !== selected && link.target !== selected) path.classList.add('dim');
+        svg.appendChild(path);
+      });
+
+      nodes.forEach((node) => {
+        const [x, y] = pos(node.id);
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.classList.add('node');
+        if (!visible.get(node.id)) group.classList.add('hidden');
+        if (selected && !connectedToSelection(node.id)) group.classList.add('dim');
+        if (selected === node.id) group.classList.add('selected');
+        group.setAttribute('transform', `translate(${x},${y})`);
+        group.tabIndex = 0;
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', node.type === 'page' ? 25 : node.type === 'component' ? 22 : 24);
+        circle.setAttribute('fill', colors[node.type]);
+        group.appendChild(circle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', 0);
+        text.setAttribute('y', 42);
+        text.setAttribute('text-anchor', 'middle');
+        text.textContent = node.id;
+        group.appendChild(text);
+
+        group.addEventListener('pointerdown', (event) => {
+          event.stopPropagation();
+        });
+        group.addEventListener('click', () => {
+          if (didPan) return;
+          selected = node.id;
+          inspectorOpen = true;
+          render();
+        });
+        group.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            selected = node.id;
+            inspectorOpen = true;
+            render();
+          }
+        });
+        svg.appendChild(group);
+      });
+
+      showInspector(nodes.find((node) => node.id === selected) || null);
+      inspector.classList.toggle('is-collapsed', !inspectorOpen);
+      toggleInspector.textContent = inspectorOpen ? 'Hide details' : 'Details';
+      applyCamera();
+    }
+
+    function showInspector(node) {
+      if (!node) {
+        inspector.innerHTML = `
+          <h2>Details</h2>
+          <p>Выберите любой кружок на диаграмме, чтобы увидеть описание модуля, входящие и исходящие связи.</p>
+          <div class="meta">
+            <span class="pill">overview</span>
+            <span class="pill">4_Sources/frontend + backend + ml-service</span>
+          </div>
+        `;
+        return;
+      }
+
+      const outgoing = links.filter((link) => link.source === node.id).map((link) => link.target);
+      const incoming = links.filter((link) => link.target === node.id).map((link) => link.source);
+      inspector.innerHTML = `
+        <h2>${node.id}</h2>
+        <p>${node.note}</p>
+        <div class="meta">
+          <span class="pill">${node.type}</span>
+          <span class="pill">${node.group}</span>
+          <span class="pill">${node.path}</span>
+        </div>
+        <div class="list">
+          <div><strong>Зависит от:</strong> ${outgoing.length ? outgoing.join(', ') : 'нет явных зависимостей на карте'}</div>
+          <div><strong>Используется в:</strong> ${incoming.length ? incoming.join(', ') : 'верхний уровень или внешняя точка'}</div>
+        </div>
+      `;
+    }
+
+    modeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        modeButtons.forEach((item) => item.classList.remove('active'));
+        button.classList.add('active');
+        mode = button.dataset.mode;
+        resetCamera();
+        render();
+      });
+    });
+
+    search.addEventListener('input', render);
+
+    toggleInspector.addEventListener('click', () => {
+      inspectorOpen = !inspectorOpen;
+      render();
+    });
+
+    document.querySelectorAll('.map-button').forEach((button) => {
+      button.addEventListener('pointerdown', (event) => event.stopPropagation());
+      button.addEventListener('click', (event) => event.stopPropagation());
+    });
+
+    zoomIn.addEventListener('click', () => zoomAt(0.82));
+    zoomOut.addEventListener('click', () => zoomAt(1.18));
+
+    svg.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      zoomAt(event.deltaY > 0 ? 1.12 : 0.88, event.clientX, event.clientY);
+    }, { passive: false });
+
+    svg.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('.node')) return;
+      panStart = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        x: camera.x,
+        y: camera.y
+      };
+      didPan = false;
+      svg.classList.add('is-panning');
+      svg.setPointerCapture(event.pointerId);
+    });
+
+    svg.addEventListener('pointermove', (event) => {
+      if (!panStart) return;
+      const rect = svg.getBoundingClientRect();
+      const dx = ((event.clientX - panStart.clientX) / rect.width) * camera.width;
+      const dy = ((event.clientY - panStart.clientY) / rect.height) * camera.height;
+      if (Math.abs(event.clientX - panStart.clientX) + Math.abs(event.clientY - panStart.clientY) > 4) {
+        didPan = true;
+      }
+      camera.x = panStart.x - dx;
+      camera.y = panStart.y - dy;
+      applyCamera();
+    });
+
+    svg.addEventListener('pointerup', (event) => {
+      panStart = null;
+      svg.classList.remove('is-panning');
+      svg.releasePointerCapture(event.pointerId);
+      setTimeout(() => { didPan = false; }, 0);
+    });
+
+    svg.addEventListener('pointerleave', () => {
+      panStart = null;
+      svg.classList.remove('is-panning');
+    });
+
+    document.getElementById('fit').addEventListener('click', () => {
+      selected = null;
+      search.value = '';
+      enabledTypes = new Set(Object.keys(colors));
+      document.querySelectorAll('.chip').forEach((chip) => chip.classList.add('active'));
+      inspectorOpen = false;
+      resetCamera();
+      render();
+    });
+
+    document.getElementById('exportSvg').addEventListener('click', () => {
+      const copy = svg.cloneNode(true);
+      copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const blob = new Blob([copy.outerHTML], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `frontend-architecture-${mode}.svg`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    render();
+  </script>
+</body>
+
+</html>
