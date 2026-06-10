@@ -8,7 +8,6 @@
 .admin-shell__sidebar {
   padding: 24px;
   backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.58);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;

@@ -30,7 +30,7 @@
   --text: #1a2c48;
   --text-soft: #6a7e98;
   --accent: #4a5bc4;
-  --accent-strong: #2c4a7c;
+  --accent-strong: #163564;
   --accent-soft: #edf1f9;
   --muted: #6a7e98;
   --success: #1a9e5a;
@@ -48,7 +48,7 @@
   --text: #e8ecf8;
   --text-soft: #a8b4d0;
   --accent: #6a9fe8;
-  --accent-strong: #4a7fcc;
+  --accent-strong: #203f6e;/*#4a7fcc;*/
   --accent-soft: #1a2440;
   --muted: #a8b4d0;
   --success: #2ecc80;

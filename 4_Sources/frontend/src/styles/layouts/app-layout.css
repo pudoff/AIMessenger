@@ -125,6 +125,7 @@
     transition: transform 0.24s ease;
     box-shadow: 20px 0 60px rgba(10, 18, 36, 0.22);
     overflow-y: auto;
+    background: var(--panel);
   }
 
   .app-shell--nav-open .shell-sidebar {

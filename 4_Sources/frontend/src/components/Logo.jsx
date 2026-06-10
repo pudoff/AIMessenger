@@ -1,9 +1,8 @@
-import defaultLogo from '../assets/logo_final/01_full_logo_horizontal.png';
-
-function Logo({ compact = false, src = defaultLogo, hideText = false }) {
+function Logo({ compact = false, hideText = false }) {
   return (
     <div className={`brand ${compact ? 'brand--compact' : ''} ${hideText ? 'brand--centered' : ''}`}>
-      <img className="brand__image" src={src} alt="Наш слон" />
+      <div className="brand__image" aria-label="Наш слон" />
+      
       {!compact && !hideText && (
         <div>
           <div className="brand__title">Наш слон</div>
