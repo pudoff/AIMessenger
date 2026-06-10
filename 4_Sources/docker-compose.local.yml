@@ -45,10 +45,9 @@ services:
       BACKEND_CELERY_QUEUE: backend
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      MEDIA_ROOT: /app/media
-      SERVE_MEDIA_FILES: ${SERVE_MEDIA_FILES:-True}
-      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
-      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+      EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+      FRONTEND_BASE_URL: http://localhost:3000
+      BACKEND_PUBLIC_BASE_URL: http://localhost:8000
     entrypoint: /app/entrypoint.sh
     networks:
       - backend
@@ -101,6 +100,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:8000/api"
     container_name: frontend
     ports:
       - "3000:80"
@@ -143,12 +144,12 @@ services:
     networks:
       - backend
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -d \"$${POSTGRES_DB}\" -U \"$${POSTGRES_USER}\"" ]
       interval: 5s
-      timeout: 1s
-      retries: 10
-      start_period: 5s
-      start_interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+      start_interval: 2s
 
   redis:
     image: redis:alpine

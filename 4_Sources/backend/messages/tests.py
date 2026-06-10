@@ -66,6 +66,18 @@ class MessageAccessTests(APITestCase):
         self.assertEqual(len(results(response)), 2)
         self.assertTrue(all(item['chat'] == self.chat.id for item in results(response)))
 
+    def test_message_list_respects_page_size_query_param(self):
+        Message.objects.bulk_create(
+            Message(chat=self.chat, sender=self.member, text=f'Message {index}')
+            for index in range(24)
+        )
+        self.client.force_authenticate(self.member)
+
+        response = self.client.get(reverse('message-list'), {'chat': self.chat.id, 'page_size': 25})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(results(response)), 25)
+
     def test_message_response_contains_read_state(self):
         self.client.force_authenticate(self.member)
 
@@ -350,10 +362,21 @@ class MessageAccessTests(APITestCase):
 
     def test_local_fallback_detects_imperative_and_toxicity(self):
         task_result = _mock_predict('Людочка, принеси мне чай')
+        short_task_result = _mock_predict('Принеси воды')
+        casual_task_result = _mock_predict('принеси пивка')
+        typo_task_result = _mock_predict('Съеште еще этих мягких французских булок')
         toxic_result = _mock_predict('ты дурак')
 
         self.assertEqual(task_result['label'], 'task')
+        self.assertEqual(short_task_result['label'], 'task')
+        self.assertEqual(casual_task_result['label'], 'task')
+        self.assertEqual(typo_task_result['label'], 'task')
         self.assertEqual(toxic_result['label'], 'offtopic')
+
+    def test_local_fallback_detects_explicit_question(self):
+        result = _mock_predict('Сколько будет 2 + 2?')
+
+        self.assertEqual(result['label'], 'question')
 
     def test_local_fallback_treats_greeting_as_default(self):
         for text in ('Добрый день!', 'Здравствуйте', 'Привет всем!'):
@@ -375,10 +398,10 @@ class MessageAccessTests(APITestCase):
                 self.assertTrue(result['needs_review'])
                 self.assertEqual(result['review_reason'], reason)
 
-    def test_local_fallback_does_not_mark_pangram_as_question(self):
+    def test_local_fallback_marks_imperative_pangram_as_task(self):
         result = _mock_predict('съешь ещё этих мягких французских булок')
 
-        self.assertEqual(result['label'], 'default')
+        self.assertEqual(result['label'], 'task')
 
     def test_message_create_accepts_attachment(self):
         self.client.force_authenticate(self.member)
@@ -521,7 +544,7 @@ class MessageAccessTests(APITestCase):
         self.assertTrue(classification.needs_review)
 
     def test_classification_task_postprocesses_question_without_question_signal(self):
-        self.message.text = 'съешь ещё этих мягких французских булок'
+        self.message.text = 'эти мягкие французские булки лежат на столе'
         self.message.save(update_fields=['text'])
 
         with patch('config.ml_tasks.classify_message') as ml_task:
@@ -536,6 +559,42 @@ class MessageAccessTests(APITestCase):
 
         classification = MessageClassification.objects.get(message=self.message)
         self.assertEqual(classification.label, 'default')
+        self.assertFalse(classification.needs_review)
+
+    def test_classification_task_promotes_explicit_question_signal(self):
+        self.message.text = 'Сколько будет 2 + 2?'
+        self.message.save(update_fields=['text'])
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.return_value = {
+                'label': 'default',
+                'class_name': 'statement',
+                'confidence': 0.51,
+                'probabilities': {'statement': 0.51},
+            }
+
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.label, 'question')
+        self.assertFalse(classification.needs_review)
+
+    def test_classification_task_promotes_imperative_signal(self):
+        self.message.text = 'Съеште еще этих мягких французских булок'
+        self.message.save(update_fields=['text'])
+
+        with patch('config.ml_tasks.classify_message') as ml_task:
+            ml_task.return_value.get.return_value = {
+                'label': 'default',
+                'class_name': 'statement',
+                'confidence': 0.51,
+                'probabilities': {'statement': 0.51},
+            }
+
+            classify_message_task.run(self.message.id)
+
+        classification = MessageClassification.objects.get(message=self.message)
+        self.assertEqual(classification.label, 'task')
         self.assertFalse(classification.needs_review)
 
     def test_embedding_task_is_idempotent(self):

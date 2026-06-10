@@ -41,9 +41,22 @@ class ChatPredictorTests(unittest.TestCase):
         self.assertEqual(set(result["probabilities"].keys()), set(CANONICAL_CLASSES))
 
     def test_imperative_request_is_task(self):
-        result = self.predictor.predict_one("Людочка, принеси мне чай")
+        for message in (
+            "Людочка, принеси мне чай",
+            "Принеси воды",
+            "принеси пивка",
+            "Съеште еще этих мягких французских булок",
+        ):
+            with self.subTest(message=message):
+                result = self.predictor.predict_one(message)
 
-        self.assertEqual(result["class_name"], "task")
+                self.assertEqual(result["class_name"], "task")
+                self.assertFalse(result["needs_review"])
+
+    def test_explicit_question_is_question(self):
+        result = self.predictor.predict_one("Сколько будет 2 + 2?")
+
+        self.assertEqual(result["class_name"], "question")
         self.assertFalse(result["needs_review"])
 
     def test_toxic_message_is_offtopic(self):
@@ -76,10 +89,10 @@ class ChatPredictorTests(unittest.TestCase):
                 self.assertTrue(result["needs_review"])
                 self.assertEqual(result["review_reason"], "gibberish")
 
-    def test_pangram_without_question_mark_is_not_question(self):
+    def test_imperative_pangram_is_task(self):
         result = self.predictor.predict_one("съешь ещё этих мягких французских булок")
 
-        self.assertEqual(result["class_name"], "statement")
+        self.assertEqual(result["class_name"], "task")
         self.assertFalse(result["needs_review"])
 
 

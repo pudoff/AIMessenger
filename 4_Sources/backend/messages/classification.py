@@ -178,6 +178,9 @@ IMPERATIVE_VERBS = (
     "соберите",
     "создай",
     "создайте",
+    "съешь",
+    "съешьте",
+    "съеште",
     "уточни",
     "уточните",
 )
@@ -253,6 +256,25 @@ def _has_question_signal(text):
     return "?" in lowered or bool(QUESTION_RE.search(lowered))
 
 
+def _has_task_signal(text):
+    lowered = (text or "").lower().replace("ё", "е")
+    return bool(IMPERATIVE_RE.search(lowered) or TASK_RE.search(lowered))
+
+
+def _adjust_result(result, label, confidence):
+    adjusted = dict(result)
+    probabilities = dict(adjusted.get("probabilities") or {})
+    adjusted["label"] = label
+    adjusted["class_name"] = label
+    adjusted["confidence"] = confidence
+    adjusted["max_probability"] = confidence
+    adjusted["needs_review"] = False
+    if probabilities:
+        probabilities[label] = max(probabilities.get(label, 0), confidence)
+        adjusted["probabilities"] = probabilities
+    return adjusted
+
+
 def postprocess_classification_result(text, result):
     probabilities = result.get("probabilities") or {}
     confidence = float(result.get("confidence") or result.get("max_probability") or 0)
@@ -261,14 +283,12 @@ def postprocess_classification_result(text, result):
         return _needs_review_result(reason, confidence=min(confidence or 0.35, 0.4), probabilities=probabilities)
 
     label = result.get("class_name") or result.get("label")
+    if label != "offtopic" and _has_task_signal(text):
+        return _adjust_result(result, "task", max(confidence, 0.9))
+    if label not in ("offtopic", "task") and _has_question_signal(text):
+        return _adjust_result(result, "question", max(confidence, 0.9))
     if label == "question" and not _has_question_signal(text):
-        adjusted = dict(result)
-        adjusted["label"] = "default"
-        adjusted["class_name"] = "default"
-        adjusted["confidence"] = max(min(confidence, 0.72), 0.62)
-        adjusted["max_probability"] = adjusted["confidence"]
-        adjusted["needs_review"] = False
-        return adjusted
+        return _adjust_result(result, "default", max(min(confidence, 0.72), 0.62))
 
     return result
 

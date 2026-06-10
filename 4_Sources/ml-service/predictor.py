@@ -179,6 +179,9 @@ IMPERATIVE_VERBS = (
     "соберите",
     "создай",
     "создайте",
+    "съешь",
+    "съешьте",
+    "съеште",
     "уточни",
     "уточните",
 )
@@ -303,6 +306,8 @@ class ChatPredictor:
             return "statement"
         if IMPERATIVE_RE.search(lowered):
             return "task"
+        if "?" in lowered or QUESTION_RE.search(lowered):
+            return "question"
         return None
 
     def _to_class_name(self, raw_label: Any) -> str:

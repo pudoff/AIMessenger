@@ -1,15 +1,18 @@
-ARG PYTHON_IMAGE=python:3.12-slim
-FROM ${PYTHON_IMAGE}
+# syntax=docker/dockerfile:1.7
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=180 \
+    PIP_RETRIES=10 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
-ARG PIP_INDEX_URL=https://pypi.org/simple
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt --index-url ${PIP_INDEX_URL}
+RUN python -m pip install --upgrade pip
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --prefer-binary --retries 10 --timeout 180 -r requirements.txt
 
 COPY . /app/
 
