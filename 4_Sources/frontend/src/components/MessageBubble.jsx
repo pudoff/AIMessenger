@@ -28,6 +28,10 @@ function AttachmentPreview({ attachment }) {
   const name = getAttachmentName(attachment);
   const isImage = isImageAttachment(attachment);
   const [blobUrl, setBlobUrl] = useState('');
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState('');
+  const [viewerObjectUrl, setViewerObjectUrl] = useState('');
+  const [viewerError, setViewerError] = useState('');
 
   useEffect(() => {
     if (!isImage || attachment.preview_url || !attachment.download_url) {
@@ -55,6 +59,29 @@ function AttachmentPreview({ attachment }) {
     };
   }, [attachment.id, attachment.download_url, attachment.preview_url, isImage]);
 
+  useEffect(() => {
+    return () => {
+      if (viewerObjectUrl) {
+        URL.revokeObjectURL(viewerObjectUrl);
+      }
+    };
+  }, [viewerObjectUrl]);
+
+  useEffect(() => {
+    if (!isViewerOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsViewerOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isViewerOpen]);
+
   const handleDownload = async (event) => {
     event.preventDefault();
     try {
@@ -81,21 +108,79 @@ function AttachmentPreview({ attachment }) {
 
   const previewUrl = blobUrl || url;
 
+  const openViewer = async () => {
+    setIsViewerOpen(true);
+    setViewerError('');
+    setViewerUrl(previewUrl);
+
+    if (!attachment.download_url) {
+      return;
+    }
+
+    try {
+      const blob = await fetchAttachmentBlob(attachment);
+      const objectUrl = URL.createObjectURL(blob);
+      setViewerObjectUrl((previousUrl) => {
+        if (previousUrl) {
+          URL.revokeObjectURL(previousUrl);
+        }
+        return objectUrl;
+      });
+      setViewerUrl(objectUrl);
+    } catch (error) {
+      console.error('Не удалось открыть изображение:', error);
+      setViewerError('Не удалось загрузить оригинал, показано доступное превью.');
+      setViewerUrl(previewUrl);
+    }
+  };
+
   return (
-    <a
-      href={previewUrl}
-      onClick={handleDownload}
-      className="message__image-attachment"
-      aria-label={`Открыть изображение ${name}`}
-    >
-      <span className="message__image-thumb">
-        <img src={previewUrl} alt={name} loading="lazy" />
-      </span>
-      <span className="message__image-caption">{name}</span>
-      <span className="message__image-popover" aria-hidden="true">
-        <img src={previewUrl} alt="" loading="lazy" />
-      </span>
-    </a>
+    <>
+      <button
+        type="button"
+        onClick={openViewer}
+        className="message__image-attachment"
+        aria-label={`Открыть изображение ${name}`}
+      >
+        <span className="message__image-thumb">
+          <img src={previewUrl} alt={name} loading="lazy" />
+        </span>
+        <span className="message__image-caption">{name}</span>
+        <span className="message__image-popover" aria-hidden="true">
+          <img src={previewUrl} alt="" loading="lazy" />
+        </span>
+      </button>
+
+      {isViewerOpen && (
+        <div
+          className="message__image-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Просмотр изображения ${name}`}
+          onClick={() => setIsViewerOpen(false)}
+        >
+          <button
+            type="button"
+            className="message__image-viewer-close"
+            onClick={() => setIsViewerOpen(false)}
+            aria-label="Закрыть изображение"
+          >
+            ×
+          </button>
+          <figure className="message__image-viewer-content" onClick={(event) => event.stopPropagation()}>
+            {viewerUrl ? (
+              <img src={viewerUrl} alt={name} />
+            ) : (
+              <span className="message__image-viewer-status">Загрузка изображения...</span>
+            )}
+            <figcaption>
+              <span>{name}</span>
+              {viewerError && <small>{viewerError}</small>}
+            </figcaption>
+          </figure>
+        </div>
+      )}
+    </>
   );
 }
 

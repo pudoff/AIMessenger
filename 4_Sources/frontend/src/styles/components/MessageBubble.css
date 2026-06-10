@@ -95,9 +95,15 @@
   align-items: flex-start;
   width: fit-content;
   max-width: min(260px, 100%);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: inherit;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
   outline: none;
+  cursor: zoom-in;
 }
 
 .message__image-thumb {
@@ -178,6 +184,85 @@
   right: 0;
   left: auto;
   transform-origin: right bottom;
+}
+
+.message__image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 48px);
+  background: rgba(9, 17, 34, 0.82);
+  backdrop-filter: blur(10px);
+  cursor: zoom-out;
+}
+
+.message__image-viewer-content {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  max-width: min(1120px, 96vw);
+  max-height: min(860px, 92vh);
+  margin: 0;
+  cursor: default;
+}
+
+.message__image-viewer-content img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(1120px, 96vw);
+  max-height: calc(92vh - 72px);
+  object-fit: contain;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.45);
+}
+
+.message__image-viewer-content figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(1120px, 96vw);
+  padding: 0 4px;
+  color: white;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.message__image-viewer-content figcaption small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.message__image-viewer-status {
+  display: grid;
+  min-width: min(420px, 82vw);
+  min-height: 220px;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-weight: 800;
+}
+
+.message__image-viewer-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.74);
+  color: white;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
 }
 
 .message__bubble--mine .message__meta,
