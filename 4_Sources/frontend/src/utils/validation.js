@@ -37,11 +37,8 @@ export const validateField = (name, value, form = {}) => {
 
     case 'password':
       if (!value) return 'Это поле обязательно';
-      if (value.length < 8) return 'Минимум 8 символов';
-      // Дополнительные проверки 
-      if (/^\d+$/.test(value)) return 'Пароль не должен состоять только из цифр';
-      if (value.toLowerCase().includes('password') || value.toLowerCase().includes('qwerty')) {
-        return 'Пароль слишком простой';
+      if (!PASSWORD_REQUIREMENTS.every((rule) => rule.test(value))) {
+        return 'Пароль не соответствует требованиям сложности';
       }
       return null;
 
@@ -288,9 +285,11 @@ export const getFirstBackendError = (data) => {
 
 // Требования к паролю для отображения подсказок
 export const PASSWORD_REQUIREMENTS = [
-  { test: (val) => val.length >= 8, text: 'Минимум 8 символов' },
-  { test: (val) => /[a-z]/.test(val) && /[A-Z]/.test(val), text: 'Заглавные и строчные буквы' },
-  { test: (val) => /\d/.test(val), text: 'Хотя бы одна цифра' },
-  { test: (val) => !/^\d+$/.test(val), text: 'Не только цифры' },
+  { test: (value) => value.length >= 8, text: 'Минимум 8 символов' },
+  { test: (value) => /[a-z]/.test(value) && /[A-Z]/.test(value), text: 'Заглавные и строчные латинские буквы' },
+  { test: (value) => /\d/.test(value), text: 'Хотя бы одна цифра' },
+  { test: (value) => /[^A-Za-z]/.test(value), text: 'Не только буквы' },
+  { test: (value) => /^[\x20-\x7E]+$/.test(value), text: 'Только латиница, цифры и спецсимволы' },
+  { test: (value) => !/(password|qwerty|123456|12345678|111111|admin|letmein)/i.test(value), text: 'Не очевидный пароль' },
 ];
 

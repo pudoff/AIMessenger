@@ -4,15 +4,9 @@ import { authAPI } from '../../api/auth';
 import Logo from '../../components/Logo';
 import logoAuth from '../../assets/logo_new.png';
 import { useAuth } from '../../context/AuthContext';
+import { PASSWORD_REQUIREMENTS } from '../../utils/validation';
 
-const PASSWORD_RULES = [
-  { test: (value) => value.length >= 8, text: 'Минимум 8 символов' },
-  { test: (value) => /[a-z]/.test(value) && /[A-Z]/.test(value), text: 'Заглавные и строчные латинские буквы' },
-  { test: (value) => /\d/.test(value), text: 'Хотя бы одна цифра' },
-  { test: (value) => /[^A-Za-z]/.test(value), text: 'Не только буквы' },
-  { test: (value) => /^[\x20-\x7E]+$/.test(value), text: 'Только латиница, цифры и спецсимволы' },
-  { test: (value) => !/(password|qwerty|123456|12345678|111111|admin|letmein)/i.test(value), text: 'Не очевидный пароль' },
-];
+const PASSWORD_RULES = PASSWORD_REQUIREMENTS;
 
 function getPasswordError(password, confirmPassword) {
   if (!password) return 'Введите новый пароль.';
