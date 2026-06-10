@@ -13,9 +13,29 @@
   max-width: 210px;
 }
 
+/* Базовый стиль блока логотипа */
 .brand__image {
+  aspect-ratio: 2.5 / 1;
+  display: block;
+
   width: min(100%, 320px);
-  height: auto;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center left;
+  
+  background-image: url('../../assets/logo_final/01_full_logo_horizontal.png'); 
+}
+
+.brand--centered .brand__image {
+  background-position: center;
+}
+
+[data-theme='sun'] .brand__image {
+  background-image: url('../../assets/logo_final/01_full_logo_horizontal.png'); 
+}
+
+[data-theme='moon'] .brand__image {
+  background-image: url('../../assets/logo_final/11_dark_theme.png');
 }
 
 .brand__title {
